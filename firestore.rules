@@ -1,0 +1,92 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidQuestion(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.questionText is string && data.questionText.size() > 0 && data.questionText.size() <= 50000
+        && data.options is list && data.options.size() >= 2 && data.options.size() <= 10
+        && data.correctOption is string && data.correctOption.size() <= 10;
+    }
+
+    function isValidTopic(data) {
+      return data.key is string && data.key.size() <= 100
+        && data.labelHindi is string && data.labelHindi.size() > 0 && data.labelHindi.size() <= 300;
+    }
+
+    function isValidTest(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.title is string && data.title.size() > 0 && data.title.size() <= 500
+        && data.totalQuestions is number && data.totalQuestions >= 1
+        && data.totalTimeMinutes is number && data.totalTimeMinutes >= 1;
+    }
+
+    function isValidAttempt(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.testId is string && data.testId.size() <= 128;
+    }
+
+    function isValidTombstone(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.questionId is string && data.questionId.size() <= 128;
+    }
+
+    // Question Bank collection
+    match /questions/{questionId} {
+      allow read: if true;
+      allow create, update: if isValidId(questionId) && isValidQuestion(incoming());
+      allow delete: if isValidId(questionId);
+    }
+
+    // Registered Syllabus Topics collection
+    match /topics/{topicKey} {
+      allow read: if true;
+      allow create, update: if isValidId(topicKey) && isValidTopic(incoming());
+      allow delete: if isValidId(topicKey);
+    }
+
+    // Custom and Saved Mock Test sets
+    match /custom_tests/{testId} {
+      allow read: if true;
+      allow create, update: if isValidId(testId) && isValidTest(incoming());
+      allow delete: if isValidId(testId);
+    }
+
+    // Attempt and Score Analytics records
+    match /attempt_records/{attemptId} {
+      allow read: if true;
+      allow create, update: if isValidId(attemptId) && isValidAttempt(incoming());
+      allow delete: if isValidId(attemptId);
+    }
+
+    // Deleted Question Tombstones (to sync deletion across clients)
+    match /deleted_question_ids/{recordId} {
+      allow read: if true;
+      allow create, update: if isValidId(recordId) && isValidTombstone(incoming());
+      allow delete: if isValidId(recordId);
+    }
+  }
+}
