@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import { useState, useEffect } from 'react';
 import { MockTestSet, TestResult, ThemeMode } from './types';
 import { TopBar } from './components/TopBar';
@@ -213,7 +208,6 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Helper to trigger browser file download
   const triggerDownload = (fileName: string, content: string) => {
     const blob = new Blob([content], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -244,7 +238,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-blue-600 selection:text-white transition-colors duration-150">
-      {/* Top Bar with English Navigation & Controls */}
+      {/* Top Bar Navigation */}
       <TopBar
         currentSet={currentSet}
         availableSets={availableSets}
@@ -325,7 +319,7 @@ export default function App() {
         )}
       </main>
 
-      {/* Pattern Guide Modal */}
+      {/* Modals */}
       {isRulesModalOpen && (
         <PatternGuideModal
           isOpen={isRulesModalOpen}
@@ -333,16 +327,14 @@ export default function App() {
         />
       )}
 
-      {/* Share Modal with Link & QR */}
       {isShareModalOpen && (
         <ShareModal
           isOpen={isShareModalOpen}
           onClose={() => setIsShareModalOpen(false)}
-          testTitle={currentSet.title}
+          testTitle={currentSet?.title ?? 'BPSC Test'}
         />
       )}
 
-      {/* Custom Random Test Generator Modal */}
       {isCustomTestModalOpen && (
         <CustomTestModal
           isOpen={isCustomTestModalOpen}
@@ -352,7 +344,6 @@ export default function App() {
         />
       )}
 
-      {/* Smart Bulk Question Paste / Importer Modal */}
       {isBulkImportModalOpen && (
         <BulkImportModal
           isOpen={isBulkImportModalOpen}
@@ -365,7 +356,6 @@ export default function App() {
         />
       )}
 
-      {/* Cloud Database (Firestore) Modal */}
       {isCloudModalOpen && (
         <CloudSyncModal
           isOpen={isCloudModalOpen}
@@ -377,7 +367,7 @@ export default function App() {
         />
       )}
 
-      {/* Clean Global Footer */}
+      {/* Global Dynamic Footer */}
       {activeView !== 'testing' && (
         <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-6 text-xs text-slate-500 dark:text-slate-400">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
@@ -385,7 +375,7 @@ export default function App() {
               <span className="font-bold text-slate-800 dark:text-slate-200">
                 BPSC TRE 4.0 Mathematics CBT Exam & Practice Portal
               </span>{' '}
-              · 155+ STET & TRE Real Questions · Questions & Solutions in Hindi · English Interface
+              · {totalQuestionsCount > 0 ? `${totalQuestionsCount}+` : ''} STET & TRE Real Questions · Questions & Solutions in Hindi · English Interface
             </div>
             <div className="flex items-center gap-4 text-slate-500 font-medium">
               <span>BPSC TRE 4.0 Standard</span>

@@ -2,7 +2,6 @@ import { useState } from 'react';
 import {
   FileDown,
   HelpCircle,
-  Layers,
   Home,
   Share2,
   BookOpen,
@@ -53,9 +52,13 @@ export function TopBar({
   theme,
   onToggleTheme,
   activeView,
-  totalQuestionsCount
+  totalQuestionsCount = 0
 }: TopBarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // ✅ Single source of truth — same number everywhere
+  const qCount = totalQuestionsCount > 0 ? totalQuestionsCount : 0;
+  const qLabel = qCount > 0 ? `${qCount}` : '…';
 
   return (
     <header className="border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md sticky top-0 z-40 shadow-xs">
@@ -75,13 +78,16 @@ export function TopBar({
                 CBT 2026
               </span>
             </div>
+            {/* ✅ Dynamic count — was hardcoded 155+ */}
             <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium hidden sm:block">
-              155+ STET & TRE Previous Year Mathematics Questions
+              {qCount > 0
+                ? `${qCount}+ STET & TRE Previous Year Mathematics Questions`
+                : 'STET & TRE Previous Year Mathematics Questions'}
             </div>
           </div>
         </div>
 
-        {/* Center: Desktop Navigation Tabs (when not testing) */}
+        {/* Center: Desktop Navigation Tabs */}
         {!isTesting && (
           <nav className="hidden lg:flex items-center gap-1 bg-slate-100 dark:bg-slate-800/60 p-1 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-bold">
             <button
@@ -140,7 +146,7 @@ export function TopBar({
 
         {/* Right: Actions */}
         <div className="flex items-center gap-2 shrink-0">
-          {/* Cloud Database Live Status Button */}
+          {/* ✅ Cloud DB — same dynamic count */}
           <button
             onClick={onOpenCloudModal}
             className="inline-flex items-center gap-1.5 px-2.5 py-2 text-xs font-bold rounded-xl text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-300 dark:border-emerald-800 transition-all shadow-xs"
@@ -148,13 +154,11 @@ export function TopBar({
           >
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             <Database className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span className="hidden md:inline">Cloud DB ({totalQuestionsCount || 157} Qs)</span>
+            <span className="hidden md:inline">Cloud DB ({qLabel} Qs)</span>
           </button>
 
-          {/* Theme Toggle */}
           <ThemeToggle theme={theme} onToggleTheme={onToggleTheme} />
 
-          {/* Share Button (Always Visible) */}
           <button
             onClick={onOpenShareModal}
             className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 transition-colors shadow-xs"
@@ -166,7 +170,6 @@ export function TopBar({
 
           {!isTesting && (
             <>
-              {/* Exam Rules Modal Trigger */}
               <button
                 onClick={onOpenRules}
                 className="hidden xl:inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 rounded-xl transition-colors"
@@ -175,7 +178,6 @@ export function TopBar({
                 <span>Pattern & Rules</span>
               </button>
 
-              {/* Download Standalone HTML Button */}
               <button
                 onClick={() => onDownloadHtml(currentSet)}
                 className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-xs"
@@ -187,7 +189,6 @@ export function TopBar({
             </>
           )}
 
-          {/* Mobile Menu Button */}
           {!isTesting && (
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -258,6 +259,7 @@ export function TopBar({
             <span>Results & History (स्कोरकार्ड)</span>
           </button>
 
+          {/* ✅ Mobile Cloud DB — same dynamic count */}
           <button
             onClick={() => {
               onOpenCloudModal();
@@ -267,7 +269,7 @@ export function TopBar({
           >
             <div className="flex items-center gap-2">
               <Database className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span>Cloud Database ({totalQuestionsCount || 157} Qs Live)</span>
+              <span>Cloud Database ({qLabel} Qs Live)</span>
             </div>
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
           </button>
@@ -302,7 +304,11 @@ export function TopBar({
             className="w-full p-2.5 rounded-xl text-left flex items-center gap-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
             <FileDown className="w-4 h-4" />
-            <span>Download Standalone HTML ({currentSet.title.slice(0, 18)}...)</span>
+            <span>
+              Download Standalone HTML (
+              {(currentSet?.title ?? 'Test').slice(0, 18)}
+              ...)
+            </span>
           </button>
         </div>
       )}
