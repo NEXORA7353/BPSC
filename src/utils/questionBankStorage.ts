@@ -46,11 +46,69 @@ export const DEFAULT_TOPICS: RegisteredTopic[] = [
   }
 ];
 
-export function getDefaultQuestions(): Question[] {
-  return [...lcmHcfQuestions, ...percentageQuestions, ...profitLossQuestions].map(q => ({
+// 🛡️ BULLETPROOF SANITIZERS (Prevents all .map crashes)
+export function sanitizeQuestion(q: any): Question {
+  if (!q || typeof q !== 'object') {
+    return {
+      id: `invalid_${Math.random()}`,
+      text: '',
+      options: [],
+      correctAnswer: 'E',
+      topic: 'custom',
+      topicNameHindi: 'सामान्य'
+    };
+  }
+  return {
     ...q,
-    options: Array.isArray(q?.options) ? q.options : []
-  }));
+    id: String(q.id || `q_${Math.random()}`),
+    text: String(q.text || ''),
+    options: Array.isArray(q.options)
+      ? q.options.map((opt: any) => ({
+          id: String(opt?.id || ''),
+          textHindi: String(opt?.textHindi || ''),
+          textEnglish: String(opt?.textEnglish || opt?.textHindi || '')
+        }))
+      : [],
+    correctAnswer: q.correctAnswer || 'E',
+    topic: q.topic || 'custom',
+    topicNameHindi: q.topicNameHindi || 'सामान्य'
+  };
+}
+
+export function sanitizeTestSet(t: any): MockTestSet {
+  if (!t || typeof t !== 'object') {
+    return {
+      id: `invalid_set_${Math.random()}`,
+      title: 'Untitled Test',
+      subtitle: '',
+      targetExam: 'BPSC TRE 4.0',
+      category: 'all',
+      categoryTitle: 'General',
+      topicBadges: [],
+      totalQuestions: 0,
+      totalTimeMinutes: 30,
+      questions: []
+    };
+  }
+  const safeQuestions = Array.isArray(t.questions)
+    ? t.questions.map(sanitizeQuestion)
+    : [];
+  return {
+    ...t,
+    id: String(t.id || `set_${Math.random()}`),
+    title: String(t.title || 'Untitled Test'),
+    subtitle: String(t.subtitle || ''),
+    category: t.category || 'all',
+    categoryTitle: t.categoryTitle || 'General',
+    topicBadges: Array.isArray(t.topicBadges) ? t.topicBadges.map(String) : [],
+    questions: safeQuestions,
+    totalQuestions: t.totalQuestions || safeQuestions.length,
+    totalTimeMinutes: t.totalTimeMinutes || Math.max(5, safeQuestions.length)
+  };
+}
+
+export function getDefaultQuestions(): Question[] {
+  return [...lcmHcfQuestions, ...percentageQuestions, ...profitLossQuestions].map(sanitizeQuestion);
 }
 
 // --- TOPICS DATABASE ---
@@ -95,7 +153,7 @@ let liveCloudQuestionsCache: Question[] | null = null;
 let liveCloudTestsCache: MockTestSet[] | null = null;
 
 export function setLiveCloudQuestions(questions: Question[]): void {
-  const safeQuestions = Array.isArray(questions) ? questions : [];
+  const safeQuestions = Array.isArray(questions) ? questions.map(sanitizeQuestion) : [];
   liveCloudQuestionsCache = safeQuestions;
   try {
     localStorage.setItem(STORAGE_KEYS.CUSTOM_QUESTIONS, JSON.stringify(safeQuestions));
@@ -105,7 +163,7 @@ export function setLiveCloudQuestions(questions: Question[]): void {
 }
 
 export function setLiveCloudTests(tests: MockTestSet[]): void {
-  const safeTests = Array.isArray(tests) ? tests : [];
+  const safeTests = Array.isArray(tests) ? tests.map(sanitizeTestSet) : [];
   liveCloudTestsCache = safeTests;
   try {
     localStorage.setItem(STORAGE_KEYS.CUSTOM_TESTS, JSON.stringify(safeTests));
@@ -126,14 +184,14 @@ export function getCustomQuestions(): Question[] {
     const raw = localStorage.getItem(STORAGE_KEYS.CUSTOM_QUESTIONS);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) ? parsed.map(sanitizeQuestion) : [];
   } catch {
     return [];
   }
 }
 
 export function saveCustomQuestions(questions: Question[]): void {
-  const safeQuestions = Array.isArray(questions) ? questions : [];
+  const safeQuestions = Array.isArray(questions) ? questions.map(sanitizeQuestion) : [];
   liveCloudQuestionsCache = safeQuestions;
   try {
     localStorage.setItem(STORAGE_KEYS.CUSTOM_QUESTIONS, JSON.stringify(safeQuestions));
@@ -167,10 +225,10 @@ export function getAllQuestionBank(): Question[] {
   if (liveCloudQuestionsCache && Array.isArray(liveCloudQuestionsCache) && liveCloudQuestionsCache.length > 0) {
     const map = new Map<string, Question>();
     liveCloudQuestionsCache.forEach((q) => {
-      if (q && q.id) map.set(q.id, q);
+      if (q && q.id) map.set(q.id, sanitizeQuestion(q));
     });
     getDefaultQuestions().forEach((q) => {
-      if (q && q.id && !map.has(q.id)) map.set(q.id, q);
+      if (q && q.id && !map.has(q.id)) map.set(q.id, sanitizeQuestion(q));
     });
     rawList = Array.from(map.values());
   } else {
@@ -179,23 +237,19 @@ export function getAllQuestionBank(): Question[] {
 
     const map = new Map<string, Question>();
     defaults.forEach((q) => {
-      if (q && q.id) map.set(q.id, q);
+      if (q && q.id) map.set(q.id, sanitizeQuestion(q));
     });
     if (Array.isArray(custom)) {
       custom.forEach((q) => {
-        if (q && q.id) map.set(q.id, q);
+        if (q && q.id) map.set(q.id, sanitizeQuestion(q));
       });
     }
     rawList = Array.from(map.values());
   }
 
-  // 🛑 SAFEGUARD FIX: Ensures options are ALWAYS array
   return rawList
     .filter((q) => q && q.id && !deletedIds.has(q.id))
-    .map((q) => ({
-      ...q,
-      options: Array.isArray(q.options) ? q.options : []
-    }));
+    .map(sanitizeQuestion);
 }
 
 export function addQuestionsToBank(newQuestions: Question[]): { count: number; total: number } {
@@ -203,14 +257,14 @@ export function addQuestionsToBank(newQuestions: Question[]): { count: number; t
   const existingIds = new Set(currentBank.map((q) => q.id));
   
   const prepared: Question[] = (Array.isArray(newQuestions) ? newQuestions : []).map((q, idx) => {
-    if (!q.id || existingIds.has(q.id)) {
+    const safeQ = sanitizeQuestion(q);
+    if (!safeQ.id || existingIds.has(safeQ.id)) {
       return {
-        ...q,
-        id: `custom_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 7)}`,
-        options: Array.isArray(q.options) ? q.options : []
+        ...safeQ,
+        id: `custom_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 7)}`
       };
     }
-    return { ...q, options: Array.isArray(q.options) ? q.options : [] };
+    return safeQ;
   });
 
   const updated = [...currentBank, ...prepared];
@@ -230,8 +284,8 @@ export function addQuestionsToBank(newQuestions: Question[]): { count: number; t
 
 export function updateQuestionInBank(updatedQuestion: Question): void {
   const custom = getCustomQuestions();
-  const index = custom.findIndex((q) => q.id === updatedQuestion.id);
-  const safeQ = { ...updatedQuestion, options: Array.isArray(updatedQuestion.options) ? updatedQuestion.options : [] };
+  const safeQ = sanitizeQuestion(updatedQuestion);
+  const index = custom.findIndex((q) => q.id === safeQ.id);
   
   if (index !== -1) {
     custom[index] = safeQ;
@@ -312,7 +366,7 @@ export function getSavedCustomTests(): MockTestSet[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.CUSTOM_TESTS);
     const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) ? parsed.map(sanitizeTestSet) : [];
   } catch {
     return [];
   }
@@ -320,11 +374,7 @@ export function getSavedCustomTests(): MockTestSet[] {
 
 export function saveCustomTest(testSet: MockTestSet): void {
   try {
-    const safeSet = {
-      ...testSet,
-      topicBadges: Array.isArray(testSet.topicBadges) ? testSet.topicBadges : [],
-      questions: Array.isArray(testSet.questions) ? testSet.questions : []
-    };
+    const safeSet = sanitizeTestSet(testSet);
     const existing = getSavedCustomTests().filter((t) => t.id !== safeSet.id);
     const updated = [safeSet, ...existing];
     liveCloudTestsCache = updated;
@@ -352,34 +402,23 @@ export function deleteCustomTest(testId: string): void {
   }
 }
 
-// 🛑 THE MOST CRITICAL FIX FOR YOUR CRASH: 
 export function getAllAvailableTests(): MockTestSet[] {
   const testMap = new Map<string, MockTestSet>();
   
   if (Array.isArray(defaultMockSets)) {
-    defaultMockSets.forEach((t) => { if (t && t.id) testMap.set(t.id, t); });
+    defaultMockSets.forEach((t) => { if (t && t.id) testMap.set(t.id, sanitizeTestSet(t)); });
   }
 
   const customTests = getSavedCustomTests();
   if (Array.isArray(customTests)) {
-    customTests.forEach((t) => { if (t && t.id) testMap.set(t.id, t); });
+    customTests.forEach((t) => { if (t && t.id) testMap.set(t.id, sanitizeTestSet(t)); });
   }
 
   if (liveCloudTestsCache && Array.isArray(liveCloudTestsCache)) {
-    liveCloudTestsCache.forEach((t) => { if (t && t.id) testMap.set(t.id, t); });
+    liveCloudTestsCache.forEach((t) => { if (t && t.id) testMap.set(t.id, sanitizeTestSet(t)); });
   }
 
-  const rawTests = Array.from(testMap.values());
-
-  // GUARANTEE safety for .map() calls in React components
-  return rawTests.map(test => ({
-    ...test,
-    topicBadges: Array.isArray(test.topicBadges) ? test.topicBadges : [],
-    questions: Array.isArray(test.questions) ? test.questions.map(q => ({
-      ...q,
-      options: Array.isArray(q?.options) ? q.options : []
-    })) : []
-  }));
+  return Array.from(testMap.values()).map(sanitizeTestSet);
 }
 
 export function createCustomMockTest(config: CustomTestConfig): MockTestSet {
@@ -387,7 +426,7 @@ export function createCustomMockTest(config: CustomTestConfig): MockTestSet {
   let selected: Question[] = [];
 
   if (config.creationMode === 'direct_paste' && Array.isArray(config.directQuestions)) {
-    selected = [...config.directQuestions];
+    selected = [...config.directQuestions].map(sanitizeQuestion);
   } else if (config.creationMode === 'handpick' && Array.isArray(config.specificQuestionIds)) {
     const idSet = new Set(config.specificQuestionIds);
     selected = allQuestions.filter((q) => idSet.has(q.id));
@@ -519,6 +558,52 @@ export function saveAttemptRecord(record: TestAttemptRecord): void {
     }
   } catch (err) {
     console.error('Failed to save attempt record', err);
+  }
+}
+
+// --- FULL DATABASE BACKUP & RESTORE ---
+export function exportFullDatabaseJson(): string {
+  const dbDump = {
+    version: '2.0',
+    exportDate: new Date().toISOString(),
+    registeredTopics: getAllRegisteredTopics(),
+    customQuestions: getCustomQuestions(),
+    deletedQuestionIds: getDeletedQuestionIds(),
+    customTests: getSavedCustomTests(),
+    bookmarks: getBookmarkedIds(),
+    attemptHistory: getAttemptRecords(),
+    savedResults: getSavedTestResults()
+  };
+  return JSON.stringify(dbDump, null, 2);
+}
+
+export function importFullDatabaseJson(jsonString: string): { success: boolean; message: string } {
+  try {
+    const data = JSON.parse(jsonString);
+    if (data.customQuestions && Array.isArray(data.customQuestions)) {
+      saveCustomQuestions(data.customQuestions);
+    }
+    if (data.deletedQuestionIds && Array.isArray(data.deletedQuestionIds)) {
+      saveDeletedQuestionIds(data.deletedQuestionIds);
+    }
+    if (data.registeredTopics && Array.isArray(data.registeredTopics)) {
+      localStorage.setItem(STORAGE_KEYS.REGISTERED_TOPICS, JSON.stringify(data.registeredTopics));
+    }
+    if (data.customTests && Array.isArray(data.customTests)) {
+      localStorage.setItem(STORAGE_KEYS.CUSTOM_TESTS, JSON.stringify(data.customTests));
+    }
+    if (data.bookmarks && Array.isArray(data.bookmarks)) {
+      localStorage.setItem(STORAGE_KEYS.BOOKMARKED_IDS, JSON.stringify(data.bookmarks));
+    }
+    if (data.attemptHistory && Array.isArray(data.attemptHistory)) {
+      localStorage.setItem(STORAGE_KEYS.ATTEMPT_HISTORY, JSON.stringify(data.attemptHistory));
+    }
+    if (data.savedResults && Array.isArray(data.savedResults)) {
+      localStorage.setItem(STORAGE_KEYS.FULL_SAVED_RESULTS, JSON.stringify(data.savedResults));
+    }
+    return { success: true, message: 'Database successfully imported!' };
+  } catch (err: any) {
+    return { success: false, message: `Import failed: ${err.message}` };
   }
 }
 
