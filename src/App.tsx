@@ -42,13 +42,21 @@ import { ProgressAnalyticsView } from './components/ProgressAnalyticsView';
 type AppView = 'intro' | 'testing' | 'results' | 'bank' | 'history' | 'progress';
 
 export default function App() {
+  const [isLoading, setIsLoading] = useState(true);
   const [theme, setTheme] = useState<ThemeMode>(() => getStoredTheme());
-  const [availableSets, setAvailableSets] = useState<MockTestSet[]>(() => getAllAvailableTests());
+  const [availableSets, setAvailableSets] = useState<MockTestSet[]>(() => getAllAvailableTests() || []);
   const [totalQuestionsCount, setTotalQuestionsCount] = useState<number>(() => getAllQuestionBank().length);
-  const [currentSetId, setCurrentSetId] = useState<string>(() => availableSets[0]?.id || 'bpsc_tre4_tri_mock_1');
+  const [currentSetId, setCurrentSetId] = useState<string>(() => availableSets[0]?.id || '');
   const [activeView, setActiveView] = useState<AppView>('intro');
   const [viewHistory, setViewHistory] = useState<AppView[]>(['intro']);
   const [testResult, setTestResult] = useState<TestResult | null>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Modals & Navigation
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -343,6 +351,25 @@ export default function App() {
   };
 
   const canGoBack = viewHistory.length > 1;
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#0A0F1D] text-slate-100 flex flex-col items-center justify-center p-6 blueprint-grid-34">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 font-black text-xl shadow-xl shadow-amber-500/10">
+            BPSC
+          </div>
+          <div className="w-8 h-8 border-3 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
+          <div className="text-center space-y-1">
+            <h2 className="text-sm font-bold tracking-widest uppercase text-slate-200">
+              BPSC TRE 4.0 गणित पोर्टल
+            </h2>
+            <p className="text-xs text-slate-400">पोर्टल लोड हो रहा है, कृपया प्रतीक्षा करें...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950 transition-colors duration-150 relative">

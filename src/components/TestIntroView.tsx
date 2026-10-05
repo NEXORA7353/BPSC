@@ -75,7 +75,7 @@ export function TestIntroView({
 
   const currentTitle = currentSet?.title ?? 'Mock Test';
   const currentId = currentSet?.id ?? '';
-  const qCount = totalQuestionsCount && totalQuestionsCount > 0 ? totalQuestionsCount : 157;
+  const qCount = totalQuestionsCount !== undefined ? totalQuestionsCount : 0;
 
   const marqueeItems = [
     'BPSC TRE 4.0 MATHEMATICS',
@@ -183,46 +183,81 @@ export function TestIntroView({
         </div>
 
         {/* HERO CTA ROW */}
-        <div className="flex flex-wrap items-center justify-between gap-4 p-6 glass-panel rounded-3xl">
-          <div className="space-y-1">
-            <div className="text-xs font-black uppercase tracking-widest text-amber-600 dark:text-amber-400">
-              Ready to Start Practice?
+        {safeSets.length === 0 ? (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-6 p-8 glass-panel rounded-3xl border border-amber-500/30 bg-amber-500/5">
+            <div className="space-y-2 text-center sm:text-left">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 text-amber-500 text-xs font-bold uppercase tracking-wider">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>पोर्टल पूरी तरह खाली एवं फ्रेश है</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+                नया टेस्ट या प्रश्न जोड़कर शुरुआत करें
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-xl">
+                डेटाबेस खाली कर दिया गया है। अब आप Bulk Paste से PDF या प्रश्न आयात कर सकते हैं, अथवा Custom Test Creator से तुरंत नया मॉक टेस्ट बना सकते हैं।
+              </p>
             </div>
-            <div className="text-lg font-black text-slate-900 dark:text-white">
-              Selected Set: {currentTitle}
-            </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400">
-              {currentSet?.totalQuestions ?? 20} Questions · {currentSet?.totalTimeMinutes ?? 20} Minutes · Negative Marking -0.33
+
+            <div className="flex flex-wrap items-center gap-3 shrink-0">
+              <button
+                onClick={() => onOpenBulkImport()}
+                className="px-5 py-3 rounded-2xl font-black text-xs sm:text-sm text-white bg-indigo-600 hover:bg-indigo-700 shadow-md transition-all active:scale-95 flex items-center gap-2"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>Bulk Import Questions</span>
+              </button>
+
+              <button
+                onClick={onOpenCustomTest}
+                className="px-5 py-3 rounded-2xl font-black text-xs sm:text-sm text-slate-950 bg-amber-400 hover:bg-amber-300 shadow-md transition-all active:scale-95 flex items-center gap-2"
+              >
+                <Shuffle className="w-4 h-4" />
+                <span>Create Custom Test</span>
+              </button>
             </div>
           </div>
+        ) : (
+          <div className="flex flex-wrap items-center justify-between gap-4 p-6 glass-panel rounded-3xl">
+            <div className="space-y-1">
+              <div className="text-xs font-black uppercase tracking-widest text-amber-600 dark:text-amber-400">
+                Ready to Start Practice?
+              </div>
+              <div className="text-lg font-black text-slate-900 dark:text-white">
+                Selected Set: {currentTitle}
+              </div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                {currentSet?.totalQuestions ?? 0} Questions · {currentSet?.totalTimeMinutes ?? 20} Minutes · Negative Marking -0.33
+              </div>
+            </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              onClick={() => setIsScratchpadOpen(true)}
-              className="px-4 py-3 rounded-2xl font-bold text-xs text-slate-700 dark:text-slate-200 bg-white/60 dark:bg-white/5 hover:bg-slate-100 border border-slate-200 dark:border-white/10 transition-all flex items-center gap-2"
-            >
-              <Edit3 className="w-4 h-4 text-amber-500" />
-              <span>Rough Sheet</span>
-            </button>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                onClick={() => setIsScratchpadOpen(true)}
+                className="px-4 py-3 rounded-2xl font-bold text-xs text-slate-700 dark:text-slate-200 bg-white/60 dark:bg-white/5 hover:bg-slate-100 border border-slate-200 dark:border-white/10 transition-all flex items-center gap-2"
+              >
+                <Edit3 className="w-4 h-4 text-amber-500" />
+                <span>Rough Sheet</span>
+              </button>
 
-            <button
-              onClick={() => setIsFormulaSheetOpen(true)}
-              className="px-4 py-3 rounded-2xl font-bold text-xs text-slate-700 dark:text-slate-200 bg-white/60 dark:bg-white/5 hover:bg-slate-100 border border-slate-200 dark:border-white/10 transition-all flex items-center gap-2"
-            >
-              <BookOpen className="w-4 h-4 text-blue-500" />
-              <span>Formulas</span>
-            </button>
+              <button
+                onClick={() => setIsFormulaSheetOpen(true)}
+                className="px-4 py-3 rounded-2xl font-bold text-xs text-slate-700 dark:text-slate-200 bg-white/60 dark:bg-white/5 hover:bg-slate-100 border border-slate-200 dark:border-white/10 transition-all flex items-center gap-2"
+              >
+                <BookOpen className="w-4 h-4 text-blue-500" />
+                <span>Formulas</span>
+              </button>
 
-            <button
-              onClick={() => onStartTest(currentId)}
-              className="px-8 py-3.5 rounded-2xl font-black text-sm text-slate-950 bg-amber-400 hover:bg-amber-300 shadow-xl shadow-amber-400/25 transition-all active:scale-95 flex items-center gap-2 group"
-            >
-              <Play className="w-4 h-4 fill-slate-950" />
-              <span>Start Examination</span>
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </button>
+              <button
+                onClick={() => onStartTest(currentId)}
+                className="px-8 py-3.5 rounded-2xl font-black text-sm text-slate-950 bg-amber-400 hover:bg-amber-300 shadow-xl shadow-amber-400/25 transition-all active:scale-95 flex items-center gap-2 group"
+              >
+                <Play className="w-4 h-4 fill-slate-950" />
+                <span>Start Examination</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* TESTS CATALOG SECTION */}
         <section className="space-y-6">

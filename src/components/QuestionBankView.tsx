@@ -267,31 +267,34 @@ export function QuestionBankView({
             <span>Create Custom Test</span>
           </button>
 
-          {/* Database Export/Import Menu */}
+          {/* Backup Export Button */}
           <button
             onClick={handleExportDb}
-            title="Backup Database to JSON"
-            className="p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shadow-2xs"
+            title="Download / Backup Database to JSON (डेटाबेस बैकअप डाउनलोड करें)"
+            className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-xs font-bold shadow-2xs"
           >
-            <Database className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <FileDown className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <span className="hidden lg:inline">Backup</span>
           </button>
 
+          {/* Backup Restore Button */}
           <button
             onClick={() => fileInputRef.current?.click()}
-            title="Restore Database from JSON"
-            className="p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shadow-2xs"
+            title="Restore Database from JSON File (बैकअप रिस्टोर करें)"
+            className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-xs font-bold shadow-2xs"
           >
             <Upload className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            <span className="hidden lg:inline">Restore</span>
           </button>
 
           {/* Clear Entire Database Button */}
           <button
             onClick={handleClearDatabase}
-            title="Clear Entire Database (Wipe All Data)"
-            className="flex items-center gap-1 px-3 py-2.5 rounded-xl border border-rose-300 dark:border-rose-900 text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors text-xs font-bold shadow-2xs"
+            title="Wipe & Clear Entire Database (सभी प्रश्न और टेस्ट हटाएँ)"
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition-colors text-xs font-bold shadow-xs active:scale-95"
           >
             <Trash2 className="w-4 h-4 text-rose-600 dark:text-rose-400" />
-            <span className="hidden md:inline">Clear Database</span>
+            <span>Clear Database</span>
           </button>
 
           {/* Cloud Sync Button */}

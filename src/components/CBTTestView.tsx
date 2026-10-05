@@ -36,6 +36,29 @@ export function CBTTestView({
   onViewResultsHistory,
   userName = 'PrIyA PaTeL'
 }: CBTTestViewProps) {
+  // If test has no questions, show empty state instead of crashing with white screen
+  if (!testSet || !Array.isArray(testSet.questions) || testSet.questions.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-950 text-slate-100 p-6 text-center">
+        <div className="p-8 rounded-3xl bg-slate-900 border border-slate-800 max-w-md w-full space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto text-amber-500">
+            <BookOpen className="w-7 h-7" />
+          </div>
+          <h2 className="text-xl font-bold">इस टेस्ट में कोई प्रश्न नहीं हैं</h2>
+          <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+            डेटाबेस पूरी तरह खाली है। कृपया Bulk Import या Custom Test Creator से नए गणित प्रश्न जोड़ें।
+          </p>
+          <button
+            onClick={onExitTest}
+            className="w-full py-2.5 px-4 rounded-xl bg-amber-500 text-slate-950 font-bold hover:bg-amber-400 transition-colors shadow-md text-xs sm:text-sm"
+          >
+            होम स्क्रीन पर वापस जाएं (Back to Home)
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const [currentIdx, setCurrentIdx] = useState(0);
   const totalQuestions = testSet.questions.length;
   const totalDurationSeconds = testSet.totalTimeMinutes * 60;
@@ -73,9 +96,14 @@ export function CBTTestView({
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
   const [isMobilePaletteOpen, setIsMobilePaletteOpen] = useState(false);
 
-  const currentQ = testSet.questions[currentIdx];
-  const currentResp = responses[currentQ.id];
-  const isCurrentBookmarked = bookmarkedIds.includes(currentQ.id);
+  const currentQ = testSet.questions[currentIdx] || testSet.questions[0];
+  const currentResp = (currentQ && responses[currentQ.id]) || {
+    questionId: currentQ?.id || '',
+    selectedOption: null,
+    status: 'not_answered',
+    timeSpentSeconds: 0
+  };
+  const isCurrentBookmarked = currentQ?.id ? bookmarkedIds.includes(currentQ.id) : false;
 
   // Stop TTS when question changes
   useEffect(() => {

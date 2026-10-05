@@ -132,16 +132,11 @@ export async function syncFromFirestore(): Promise<void> {
       cloudQuestions.push(d.data() as Question);
     });
 
-    if (!questionsSnap || cloudQuestions.length === 0) {
-      console.log('No cloud questions found. Automatically seeding built-in database to Firestore...');
-      await seedAllQuestionsToCloud().catch((err) => console.warn('Auto-seed failed:', err));
-    } else {
-      const questionMap = new Map<string, Question>();
-      getCustomQuestions().forEach((q) => questionMap.set(q.id, q));
-      cloudQuestions.forEach((q) => questionMap.set(q.id, q));
-      const finalQuestions = Array.from(questionMap.values()).filter((q) => !deletedQuestionSet.has(q.id));
-      setLiveCloudQuestions(finalQuestions);
-    }
+    const questionMap = new Map<string, Question>();
+    getCustomQuestions().forEach((q) => questionMap.set(q.id, q));
+    cloudQuestions.forEach((q) => questionMap.set(q.id, q));
+    const finalQuestions = Array.from(questionMap.values()).filter((q) => !deletedQuestionSet.has(q.id));
+    setLiveCloudQuestions(finalQuestions);
 
     // 3. Fetch Custom Tests from Firestore
     const testsSnap = await getDocs(collection(db, 'custom_tests')).catch((err) => {
