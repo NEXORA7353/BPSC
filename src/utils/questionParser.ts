@@ -83,25 +83,7 @@ export function parseBulkQuestionText(
     .replace(/[‘’]/g, "'")
     .replace(/[\u200B-\u200D\uFEFF]/g, '');
 
-  // Split into question blocks using lookahead on question start headers
-  // Matches "Q1", "Q 1", "Q.1", "Question 1", "प्रश्न 1", "\n1.", "\n1)", "\n[1]"
-  const questionHeaderRegex = /(?:\n+|^)(?=(?:प्रश्न\s*[:\-]?\s*\d+|Q(?:uestion)?\s*[\.:\-]?\s*\d+|\b\d{1,3}\s*[\.:\)\-\]\}]\s*))/i;
-
-  let rawBlocks = text
-    .split(questionHeaderRegex)
-    .map((b) => b.trim())
-    .filter((b) => b.length > 3);
-
-  // Fallback splitting if regex created only 1 block for multiple questions
-  if (rawBlocks.length <= 1 && text.includes('\n\n')) {
-    const paragraphBlocks = text
-      .split(/\n\s*\n/)
-      .map((b) => b.trim())
-      .filter((b) => b.length > 5);
-    if (paragraphBlocks.length > 1) {
-      rawBlocks = paragraphBlocks;
-    }
-  }
+  const rawBlocks = smartSplitQuestionBlocks(text);
 
   const questions: Question[] = [];
   const errors: string[] = [];
@@ -110,7 +92,15 @@ export function parseBulkQuestionText(
     try {
       const q = parseSingleQuestionBlock(block, index + 1, topicKey, topicNameHindi, dateFormatted);
       if (q) {
-        questions.push(q);
+        // Discard phantom dummy questions (blocks with no real question text or only placeholder dummy options)
+        const isDummyQuestion =
+          (!q.questionText || q.questionText.trim().length < 3) ||
+          (q.questionText.startsWith('Question #') && q.options[0]?.text === 'Option A' && q.options[1]?.text === 'Option B') ||
+          (q.options[0]?.text === 'Option A' && q.options[1]?.text === 'Option B' && q.options[2]?.text === 'Option C');
+
+        if (!isDummyQuestion) {
+          questions.push(q);
+        }
       }
     } catch (err: any) {
       errors.push(`Block #${index + 1}: ${err.message || 'Warning parsing block'}`);
@@ -120,8 +110,99 @@ export function parseBulkQuestionText(
   return {
     questions,
     errors,
-    totalDetected: rawBlocks.length
+    totalDetected: questions.length
   };
+}
+
+/**
+ * Checks whether text contains recognizable MCQ options
+ */
+function hasRecognizableOptions(t: string): boolean {
+  // Option (a)/(A) followed by Option (b)/(B)
+  const set1 = /(?:^|\n|\s)(?:\((?:[aA]|अ|क)\)|(?:[aA]|अ|क)[\.\)])\s*[\s\S]*?(?:^|\n|\s)(?:\((?:[bB]|ब|ख)\)|(?:[bB]|ब|ख)[\.\)])/i;
+  // Option (1) followed by Option (2)
+  const set2 = /(?:^|\n|\s)(?:\((?:1)\)(?!\/)|(?:1)[\.\)](?!\/))\s*[\s\S]*?(?:^|\n|\s)(?:\((?:2)\)(?!\/)|(?:2)[\.\)](?!\/))/i;
+  return set1.test(t) || set2.test(t);
+}
+
+/**
+ * Universal smart question splitter & consolidator.
+ * Handles 100, 200, 500+ questions seamlessly without creating phantom questions
+ * from multi-line explanations or numbered math statements.
+ */
+export function smartSplitQuestionBlocks(text: string): string[] {
+  // Pre-normalize gaps before explicit question starts
+  const withNormalizedGaps = text.replace(
+    /(?:\n)(?=\s*(?:(?:प्रश्न|Q(?:uestion)?|Prashna|Q\.)\s*[:\-]?\s*\d+|\d{1,4}\s*[\.:\)]\s+[^\n]{3,}))/gi,
+    '\n\n'
+  );
+
+  const paragraphs = withNormalizedGaps
+    .split(/\n\s*\n+/)
+    .map((p) => p.trim())
+    .filter((p) => p.length > 3);
+
+  if (paragraphs.length <= 1) {
+    // If no double-line breaks exist, fallback to line-start question markers
+    const fallbackDelim = /(?:\n+|^)(?=\s*(?:(?:प्रश्न|Q(?:uestion)?|Prashna)\s*[:\-]?\s*\d+|\d{1,4}\s*[\.:\)]\s+))/i;
+    const blocks = text.split(fallbackDelim).map((b) => b.trim()).filter((b) => b.length > 5);
+    if (blocks.length > 1) {
+      return blocks;
+    }
+    return [text];
+  }
+
+  const isExplicitQuestionStart = (t: string) =>
+    /^(?:प्रश्न\s*[:\-]?\s*\d+|Q(?:uestion)?\s*[\.:\-]?\s*\d+|\d{1,4}\s*[\.:\)]\s+)/i.test(t);
+
+  const isMetadataOrExplanation = (t: string) =>
+    /(?:^|\n)\s*(?:व्याख्या|Explanation|Solution|हल|उत्तर|Ans|Key|परीक्षा|Exam|Source)\s*[:\-]/i.test(t);
+
+  const questions: string[] = [];
+  let currentQ = '';
+
+  for (let i = 0; i < paragraphs.length; i++) {
+    const p = paragraphs[i];
+
+    if (!currentQ) {
+      currentQ = p;
+      continue;
+    }
+
+    // 1. Explicit start of next question (e.g. प्रश्न 2, Q2, 16.)
+    if (isExplicitQuestionStart(p)) {
+      questions.push(currentQ);
+      currentQ = p;
+    }
+    // 2. Explanation, Answer Key or Exam tag of current question (MUST merge into current question)
+    else if (isMetadataOrExplanation(p)) {
+      currentQ += '\n\n' + p;
+    }
+    // 3. Both have real options -> p must be a new question
+    else if (hasRecognizableOptions(p) && hasRecognizableOptions(currentQ)) {
+      questions.push(currentQ);
+      currentQ = p;
+    }
+    // 4. Current question does not have options yet -> merge into current
+    else if (!hasRecognizableOptions(currentQ)) {
+      currentQ += '\n\n' + p;
+    }
+    // 5. Lookahead: if p is not metadata AND subsequent paragraph has options -> p is the stem of next question
+    else if (!isMetadataOrExplanation(p) && i + 1 < paragraphs.length && hasRecognizableOptions(paragraphs[i + 1])) {
+      questions.push(currentQ);
+      currentQ = p;
+    }
+    // 6. Otherwise it's continuation/explanation of current question
+    else {
+      currentQ += '\n\n' + p;
+    }
+  }
+
+  if (currentQ) {
+    questions.push(currentQ);
+  }
+
+  return questions;
 }
 
 /**
@@ -143,10 +224,10 @@ function parseSingleQuestionBlock(
     body = body.replace(/^(?:प्रश्न|Q(?:uestion)?\.?)?\s*[:\-]?\s*\d+[\.:\)\-\]\}\s]*/i, '').trim();
   }
 
-  // 2. Extract Answer Key
+  // 2. Extract Answer Key (safe against Hindi option text like 'उत्तर नहीं देना चाहते')
   let correctOption: 'a' | 'b' | 'c' | 'd' | 'e' = 'a';
-  const ansRegex = /(?:उत्तर|Ans(?:wer)?|Key|Correct|सही उत्तर)\s*[:\-]?\s*\(?\s*([a-eA-E1-5अ-यक-ङ])\s*\)?/i;
-  const ansMatch = body.match(ansRegex);
+  const safeAnsRegex = /(?:^|\n)\s*(?:उत्तर|Ans(?:wer)?|Key|Correct|सही उत्तर)\s*(?:[:\-]\s*\(?|\s*\()\s*([a-eA-E1-5]|अ|ब|स|द|य|क|ख|ग|घ|ङ)\s*\)?/i;
+  const ansMatch = body.match(safeAnsRegex);
 
   if (ansMatch) {
     const keyStr = ansMatch[1].toLowerCase();
@@ -161,19 +242,22 @@ function parseSingleQuestionBlock(
 
   // 3. Extract Explanation / Solution
   let explanation = '';
-  const expRegex = /(?:व्याख्या|हल|Explanation|Solution|Reason|तर्क)\s*[:\-]?\s*([\s\S]+)$/i;
+  const expRegex = /(?:^|\n)\s*(?:व्याख्या|हल|Explanation|Solution|Reason|तर्क)\s*[:\-]?\s*([\s\S]+)$/i;
   const expMatch = body.match(expRegex);
 
   if (expMatch) {
     explanation = expMatch[1].trim();
-    body = body.replace(expRegex, '').trim();
+    body = body.slice(0, expMatch.index).trim();
   } else if (ansMatch) {
     const afterAns = body.slice((ansMatch.index || 0) + ansMatch[0].length);
     const trimmedAfter = afterAns.replace(/^[:\-\s]+/, '').trim();
     if (trimmedAfter.length > 3) {
       explanation = trimmedAfter;
-      body = body.slice(0, ansMatch.index).trim();
     }
+  }
+
+  if (ansMatch) {
+    body = body.replace(safeAnsRegex, '').trim();
   }
 
   if (!explanation) {
