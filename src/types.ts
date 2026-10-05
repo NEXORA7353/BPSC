@@ -39,8 +39,8 @@ export interface MockTestSet {
   badge2?: string; // 'Basic to Advance', '3 Topics Combined'
   title: string;
   subtitle: string;
-  targetExam: string;
-  category: 'tri_topic' | 'profit_loss' | 'lcm_percentage' | 'custom';
+  targetExam?: string;
+  category: 'tri_topic' | 'profit_loss' | 'lcm_percentage' | 'custom' | 'full_mock';
   categoryTitle: string;
   topicBadges: string[];
   topicBreakdown?: TopicSegment[];
