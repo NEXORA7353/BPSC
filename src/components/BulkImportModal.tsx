@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useRef } from 'react';
 import {
   X,
   Sparkles,
@@ -13,14 +13,19 @@ import {
   Plus,
   Edit2,
   Trash2,
-  BookOpen
+  BookOpen,
+  Wand2,
+  FileUp,
+  Save,
+  Play
 } from 'lucide-react';
-import { Question } from '../types';
-import { parseBulkQuestionText } from '../utils/questionParser';
+import { Question, MockTestSet } from '../types';
+import { parseBulkQuestionText, aiSmartFormatText } from '../utils/questionParser';
 import {
   addQuestionsToBank,
   getAllRegisteredTopics,
-  registerNewTopic
+  registerNewTopic,
+  saveCustomTest
 } from '../utils/questionBankStorage';
 
 interface BulkImportModalProps {
@@ -28,9 +33,10 @@ interface BulkImportModalProps {
   onClose: () => void;
   onSuccess: (addedCount: number) => void;
   defaultTopic?: string;
+  onStartTestImmediately?: (testSet: MockTestSet) => void;
 }
 
-const SAMPLE_BPSC_TEXT = `प्रश्न 1
+const SAMPLE_BPSC_TEXT = `प्रश्न 1.
 a × b = ल.स. (a, b) × म.स. (a, b) यह केवल सत्य है-
 (a) दो संख्याओं के लिए
 (b) तीन संख्याओं के लिए
@@ -43,7 +49,7 @@ a × b = ल.स. (a, b) × म.स. (a, b) यह केवल सत्य ह
 व्याख्या:
 a × b = ल.स.(a,b) × म.स.(a,b) यह केवल दो संख्याओं के लिए सत्य है। क्योंकि दो संख्याओं का गुणनफल, उनके लघुत्तम समापवर्त्य (ल.स.) और महत्तम समापवर्तक (म.स.) के गुणनफल के बराबर होता है।
 
-प्रश्न 2
+प्रश्न 2.
 एक दुकानदार अपनी साड़ियों का मूल्य लागत मूल्य से 20% अधिक निर्धारित करता है तथा खरीददार को 10% बट्टा भी देता है। इस प्रकार दुकानदार को कुल कितने प्रतिशत का लाभ होगा?
 (a) 10%
 (b) 8%
@@ -59,45 +65,38 @@ a × b = ल.स.(a,b) × म.स.(a,b) यह केवल दो संख्�
 10% बट्टे के बाद विक्रय मूल्य = 120 × 90/100 = ₹108
 लाभ% = 108 - 100 = 8%.`;
 
-const SAMPLE_STET_4_OPTIONS = `Q1. 124 तथा 24 का महत्तम समापवर्तक (HCF) होगा-
-(a) 1
-(b) 2
-(c) 3
-(d) 4
-Ans: (d)
-व्याख्या: 124 = 2×2×31, 24 = 2×2×2×3, म.स. = 2×2 = 4
-
-Q2. किसी वस्तु पर छपा हुआ मूल्य ₹900 है, लेकिन एक व्यापारी इसे 40% छूट पर खरीदकर ₹900 में बेचता है। व्यापारी का प्रतिशत लाभ होगा-
-(a) 33⅓% (b) 66% (c) 66⅔% (d) 60%
-Ans: (c)
-व्याख्या: क्रय मूल्य = 900 × 0.60 = ₹540. लाभ = 900 - 540 = 360. लाभ% = (360/540) × 100 = 66⅔%`;
-
 export function BulkImportModal({
   isOpen,
   onClose,
   onSuccess,
-  defaultTopic
+  defaultTopic,
+  onStartTestImmediately
 }: BulkImportModalProps) {
   const [activeTab, setActiveTab] = useState<'bulk_paste' | 'json_mode' | 'single_manual'>('bulk_paste');
   const [rawText, setRawText] = useState('');
   const [jsonText, setJsonText] = useState('');
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Topics
   const [registeredTopics, setRegisteredTopics] = useState(() => getAllRegisteredTopics());
   const [selectedTopic, setSelectedTopic] = useState(defaultTopic || 'profit_loss');
   const [isCreatingNewTopic, setIsCreatingNewTopic] = useState(false);
-  const [newTopicKey, setNewTopicKey] = useState('');
   const [newTopicHindi, setNewTopicHindi] = useState('');
   const [newTopicEnglish, setNewTopicEnglish] = useState('');
 
-  // Parsed Questions state for in-place editing
+  // Parsed Questions & In-Place Editing
   const [previewQuestions, setPreviewQuestions] = useState<Question[]>([]);
   const [parseErrors, setParseErrors] = useState<string[]>([]);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editItemState, setEditItemState] = useState<Question | null>(null);
+
+  // Toast & UX Feedback
   const [isSuccessToast, setIsSuccessToast] = useState(false);
   const [copiedJson, setCopiedJson] = useState(false);
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [testTitleInput, setTestTitleInput] = useState('');
 
-  // Single Question Form State
+  // Single Question Form
   const [singleQ, setSingleQ] = useState({
     text: '',
     optA: '',
@@ -127,7 +126,7 @@ export function BulkImportModal({
   const handleRawTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
     setRawText(val);
-    if (val.trim().length > 15) {
+    if (val.trim().length > 10) {
       handleParseText(val);
     } else {
       setPreviewQuestions([]);
@@ -136,28 +135,42 @@ export function BulkImportModal({
     }
   };
 
-  const handleJsonTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const val = e.target.value;
-    setJsonText(val);
-    try {
-      const parsed = JSON.parse(val);
-      if (Array.isArray(parsed)) {
-        setPreviewQuestions(parsed);
-        setParseErrors([]);
+  // AI Smart Auto-Formatter
+  const handleAiSmartFormat = () => {
+    if (!rawText.trim()) return;
+    const formatted = aiSmartFormatText(rawText);
+    setRawText(formatted);
+    handleParseText(formatted);
+  };
+
+  // File Upload Handler (.txt, .json, .csv)
+  const handleFileUpload = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target?.result as string;
+      if (content) {
+        setRawText(content);
+        handleParseText(content);
       }
-    } catch {
-      // not valid JSON yet
+    };
+    reader.readAsText(file);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFileUpload(e.dataTransfer.files[0]);
     }
   };
 
   const handleCreateNewTopic = () => {
     if (!newTopicHindi.trim()) return;
-    const key = newTopicKey.trim() || newTopicHindi.trim().toLowerCase().replace(/[^a-z0-9]/gi, '_');
+    const key = newTopicHindi.trim().toLowerCase().replace(/[^a-z0-9]/gi, '_');
     const created = registerNewTopic(key, newTopicHindi, newTopicEnglish || newTopicHindi);
     setRegisteredTopics(getAllRegisteredTopics());
     setSelectedTopic(created.key);
     setIsCreatingNewTopic(false);
-    setNewTopicKey('');
     setNewTopicHindi('');
     setNewTopicEnglish('');
   };
@@ -169,11 +182,26 @@ export function BulkImportModal({
 
   const handleCopyJson = () => {
     if (previewQuestions.length === 0) return;
-    const formatted = JSON.stringify(previewQuestions, null, 2);
-    navigator.clipboard.writeText(formatted).then(() => {
+    navigator.clipboard.writeText(JSON.stringify(previewQuestions, null, 2)).then(() => {
       setCopiedJson(true);
       setTimeout(() => setCopiedJson(false), 2000);
     });
+  };
+
+  // In-place Editing Handlers
+  const handleStartEdit = (index: number) => {
+    setEditingIndex(index);
+    setEditItemState({ ...previewQuestions[index] });
+  };
+
+  const handleSaveInlineEdit = () => {
+    if (editingIndex === null || !editItemState) return;
+    const updated = [...previewQuestions];
+    updated[editingIndex] = editItemState;
+    setPreviewQuestions(updated);
+    setJsonText(JSON.stringify(updated, null, 2));
+    setEditingIndex(null);
+    setEditItemState(null);
   };
 
   const handleDeletePreviewItem = (index: number) => {
@@ -182,6 +210,7 @@ export function BulkImportModal({
     setJsonText(JSON.stringify(updated, null, 2));
   };
 
+  // Save to Question Bank
   const handleSaveImport = () => {
     if (previewQuestions.length === 0) return;
     const { count } = addQuestionsToBank(previewQuestions);
@@ -190,7 +219,42 @@ export function BulkImportModal({
       setIsSuccessToast(false);
       onSuccess(count);
       onClose();
-    }, 1000);
+    }, 800);
+  };
+
+  // Save & Create Dedicated Mock Test Set Immediately
+  const handleSaveAndCreateTest = () => {
+    if (previewQuestions.length === 0) return;
+    const { count } = addQuestionsToBank(previewQuestions);
+    const testTitle = testTitleInput.trim() || `Imported Test Set (${previewQuestions.length} Questions)`;
+
+    const newTest: MockTestSet = {
+      id: `custom_test_${Date.now()}`,
+      title: testTitle,
+      subtitle: `Created from bulk import on ${new Date().toLocaleDateString()}`,
+      targetExam: 'BPSC TRE 4.0 Mathematics (Custom Imported)',
+      category: 'custom',
+      categoryTitle: 'Custom Imported Tests',
+      topicBadges: [topicNameHindi, 'Imported Test'],
+      totalQuestions: previewQuestions.length,
+      totalTimeMinutes: previewQuestions.length,
+      questions: previewQuestions,
+      negativeMarkingValue: 0.33,
+      isCustom: true,
+      createdAt: new Date().toISOString()
+    };
+
+    saveCustomTest(newTest);
+    setIsSuccessToast(true);
+
+    setTimeout(() => {
+      setIsSuccessToast(false);
+      onSuccess(count);
+      if (onStartTestImmediately) {
+        onStartTestImmediately(newTest);
+      }
+      onClose();
+    }, 800);
   };
 
   const handleAddSingle = (e: React.FormEvent) => {
@@ -223,24 +287,27 @@ export function BulkImportModal({
       setIsSuccessToast(false);
       onSuccess(count);
       onClose();
-    }, 1000);
+    }, 800);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/75 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-5xl w-full max-h-[94vh] flex flex-col shadow-2xl overflow-hidden text-slate-900 dark:text-slate-100">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-5xl w-full max-h-[94vh] flex flex-col shadow-2xl overflow-hidden text-slate-900 dark:text-slate-100 font-sans">
         {/* Header */}
-        <div className="px-6 py-4.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-900/90 shrink-0">
+        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-900/90 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-indigo-600 dark:bg-indigo-500 text-white flex items-center justify-center shadow-md shadow-indigo-500/20">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/20 font-black">
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-black text-base sm:text-lg leading-tight tracking-tight">
-                Bulk Question Importer & PDF Parser
+              <h3 className="font-black text-base sm:text-lg leading-tight tracking-tight flex items-center gap-2">
+                <span>Smart AI Question Importer & PDF Parser</span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 uppercase tracking-widest">
+                  AI v2.0
+                </span>
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Paste raw questions from exam PDFs — regex automatically extracts 5 options, answer key & Hindi explanation
+                Drag-and-drop PDFs, Word docs or paste raw text. Auto-extracts 5 options, answer key & Hindi explanations.
               </p>
             </div>
           </div>
@@ -253,47 +320,60 @@ export function BulkImportModal({
         </div>
 
         {/* Tabs Bar */}
-        <div className="px-6 pt-3 border-b border-slate-200 dark:border-slate-800 flex items-center gap-4 bg-slate-50/60 dark:bg-slate-900/40 text-xs sm:text-sm font-bold shrink-0">
-          <button
-            onClick={() => setActiveTab('bulk_paste')}
-            className={`pb-3 border-b-2 flex items-center gap-2 transition-all ${
-              activeTab === 'bulk_paste'
-                ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
-                : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
-          >
-            <FileText className="w-4 h-4" />
-            <span>Raw PDF / Text Paste</span>
-          </button>
+        <div className="px-6 pt-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/60 dark:bg-slate-900/40 text-xs sm:text-sm font-bold shrink-0">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setActiveTab('bulk_paste')}
+              className={`pb-3 border-b-2 flex items-center gap-2 transition-all ${
+                activeTab === 'bulk_paste'
+                  ? 'border-amber-500 text-amber-600 dark:text-amber-400'
+                  : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              <span>Smart PDF / Text Drag-Drop</span>
+            </button>
 
-          <button
-            onClick={() => setActiveTab('json_mode')}
-            className={`pb-3 border-b-2 flex items-center gap-2 transition-all ${
-              activeTab === 'json_mode'
-                ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
-                : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
-          >
-            <Code className="w-4 h-4" />
-            <span>JSON Question Bank Format</span>
-          </button>
+            <button
+              onClick={() => setActiveTab('json_mode')}
+              className={`pb-3 border-b-2 flex items-center gap-2 transition-all ${
+                activeTab === 'json_mode'
+                  ? 'border-amber-500 text-amber-600 dark:text-amber-400'
+                  : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              <Code className="w-4 h-4" />
+              <span>JSON Question Schema</span>
+            </button>
 
-          <button
-            onClick={() => setActiveTab('single_manual')}
-            className={`pb-3 border-b-2 flex items-center gap-2 transition-all ${
-              activeTab === 'single_manual'
-                ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
-                : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
-          >
-            <PlusCircle className="w-4 h-4" />
-            <span>Single Question Entry</span>
-          </button>
+            <button
+              onClick={() => setActiveTab('single_manual')}
+              className={`pb-3 border-b-2 flex items-center gap-2 transition-all ${
+                activeTab === 'single_manual'
+                  ? 'border-amber-500 text-amber-600 dark:text-amber-400'
+                  : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              <PlusCircle className="w-4 h-4" />
+              <span>Manual Entry Form</span>
+            </button>
+          </div>
+
+          {activeTab === 'bulk_paste' && rawText.trim().length > 10 && (
+            <button
+              onClick={handleAiSmartFormat}
+              className="mb-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-indigo-600 text-white font-bold text-xs shadow-md transition-all active:scale-95 flex items-center gap-1.5"
+              title="Auto-clean messy line breaks, format option tags and extract keys"
+            >
+              <Wand2 className="w-3.5 h-3.5" />
+              <span>AI Smart Auto-Fix Text</span>
+            </button>
+          )}
         </div>
 
-        {/* Body */}
+        {/* Modal Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
-          {/* Target Topic Bar */}
+          {/* Topic Assignment Bar */}
           <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
               <div className="flex items-center gap-2">
@@ -301,7 +381,7 @@ export function BulkImportModal({
                 <select
                   value={selectedTopic}
                   onChange={(e) => setSelectedTopic(e.target.value)}
-                  className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-1.5 font-bold text-slate-900 dark:text-slate-100 focus:outline-hidden"
+                  className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-1.5 font-bold text-slate-900 dark:text-slate-100 focus:outline-none"
                 >
                   {registeredTopics.map((t) => (
                     <option key={t.key} value={t.key}>
@@ -325,19 +405,19 @@ export function BulkImportModal({
             {isCreatingNewTopic && (
               <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-900 space-y-2 animate-in fade-in">
                 <div className="text-xs font-bold text-indigo-900 dark:text-indigo-300">
-                  New Topic Details (नया अध्याय जोड़ें)
+                  New Topic Details (नया अध्याय)
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <input
                     type="text"
-                    placeholder="Topic Name in Hindi (e.g. साधारण ब्याज / ब्याज)"
+                    placeholder="Hindi Name (e.g. साधारण ब्याज)"
                     value={newTopicHindi}
                     onChange={(e) => setNewTopicHindi(e.target.value)}
                     className="bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs font-semibold"
                   />
                   <input
                     type="text"
-                    placeholder="Topic Name in English (e.g. Simple Interest)"
+                    placeholder="English Name (e.g. Simple Interest)"
                     value={newTopicEnglish}
                     onChange={(e) => setNewTopicEnglish(e.target.value)}
                     className="bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs font-semibold"
@@ -364,64 +444,82 @@ export function BulkImportModal({
             )}
           </div>
 
-          {/* TAB 1: RAW PDF / TEXT PASTE */}
+          {/* TAB 1: RAW PDF / TEXT DRAG & DROP PASTE */}
           {activeTab === 'bulk_paste' && (
             <div className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                  <FileText className="w-4 h-4 text-indigo-500" />
-                  <span>Paste Raw Question Text Below (Exam Paper, PDF or Word)</span>
-                </label>
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDragging(true);
+                }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={handleDrop}
+                className={`border-2 border-dashed rounded-3xl p-4 transition-all ${
+                  isDragging
+                    ? 'border-amber-500 bg-amber-500/10'
+                    : 'border-slate-300 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50'
+                }`}
+              >
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-3">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                    <FileText className="w-4 h-4 text-amber-500" />
+                    <span>Paste or Drag & Drop Question Document / PDF</span>
+                  </label>
 
-                {/* Sample Loaders */}
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] text-slate-400">Load Template:</span>
-                  <button
-                    type="button"
-                    onClick={() => handleLoadSample(SAMPLE_BPSC_TEXT)}
-                    className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
-                  >
-                    5-Option BPSC
-                  </button>
-                  <span className="text-slate-300 dark:text-slate-700">·</span>
-                  <button
-                    type="button"
-                    onClick={() => handleLoadSample(SAMPLE_STET_4_OPTIONS)}
-                    className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
-                  >
-                    STET 4-Option (Auto-E)
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      accept=".txt,.json,.csv,.md,.doc,.docx"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          handleFileUpload(e.target.files[0]);
+                        }
+                      }}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-3 py-1 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 flex items-center gap-1.5"
+                    >
+                      <FileUp className="w-3.5 h-3.5 text-indigo-500" />
+                      <span>Upload File</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleLoadSample(SAMPLE_BPSC_TEXT)}
+                      className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline"
+                    >
+                      Load Sample BPSC Paper
+                    </button>
+                  </div>
                 </div>
+
+                <textarea
+                  rows={9}
+                  value={rawText}
+                  onChange={handleRawTextChange}
+                  placeholder={`Paste raw questions copied from PDF or document.
+Smart parser automatically extracts:
+- Question Number & Question Text in Hindi
+- Options: (a), (b), (c), (d), (e)
+- Answer Key: 'उत्तर: (a)' or 'Ans: (b)'
+- Explanation: 'व्याख्या: ...'`}
+                  className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-2xl p-4 font-mono text-xs sm:text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/50 resize-y leading-relaxed"
+                />
               </div>
 
-              <textarea
-                rows={9}
-                value={rawText}
-                onChange={handleRawTextChange}
-                placeholder={`Paste directly from PDF or notes! Our regex parser will detect:
-- Question Number & Question Text in Hindi
-- 5 Options: (a), (b), (c), (d), and (e)
-- Correct Answer Key: 'उत्तर: (a)' or 'Ans. (b)'
-- Exam Source: 'परीक्षा: Bihar STET 2024'
-- Explanation: 'व्याख्या: ...'
-
-Example:
-प्रश्न 1. दो संख्याओं का म.स. 16 है...
-(a) 100 (b) 200 (c) 300 (d) 400
-उत्तर: (b)
-व्याख्या: म.स. × ल.स. = दो संख्याओं का गुणनफल`}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-2xl p-4 font-mono text-xs sm:text-sm text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/50 resize-y leading-relaxed"
-              />
-
               {/* Extraction Metrics Bar */}
-              {rawText.trim().length > 15 && (
-                <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900/60 text-xs">
+              {rawText.trim().length > 10 && (
+                <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs">
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                    <span className="font-bold text-indigo-950 dark:text-indigo-200">
-                      Extraction Status:
+                    <CheckCircle2 className="w-4.5 h-4.5 text-emerald-500" />
+                    <span className="font-bold text-slate-900 dark:text-white">
+                      AI Parsing Engine:
                     </span>
-                    <span className="px-2.5 py-0.5 rounded-full font-bold bg-indigo-200/80 dark:bg-indigo-900 text-indigo-900 dark:text-indigo-200 font-mono">
+                    <span className="px-3 py-1 rounded-full font-black bg-amber-500 text-slate-950 font-mono text-xs">
                       {previewQuestions.length} Questions Extracted
                     </span>
                   </div>
@@ -430,13 +528,13 @@ Example:
                     {parseErrors.length > 0 && (
                       <span className="text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1">
                         <AlertCircle className="w-3.5 h-3.5" />
-                        <span>{parseErrors.length} blocks skipped</span>
+                        <span>{parseErrors.length} blocks format warning</span>
                       </span>
                     )}
                     <button
                       type="button"
                       onClick={handleCopyJson}
-                      className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline flex items-center gap-1"
+                      className="text-amber-600 dark:text-amber-400 font-bold hover:underline flex items-center gap-1"
                     >
                       {copiedJson ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                       <span>{copiedJson ? 'JSON Copied!' : 'Copy Parsed JSON'}</span>
@@ -447,13 +545,13 @@ Example:
             </div>
           )}
 
-          {/* TAB 2: JSON QUESTION BANK FORMAT */}
+          {/* TAB 2: JSON SCHEMA */}
           {activeTab === 'json_mode' && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                   <Code className="w-4 h-4 text-indigo-500" />
-                  <span>Internal JSON Question Bank Schema</span>
+                  <span>JSON Question Array Schema</span>
                 </label>
                 <button
                   type="button"
@@ -469,19 +567,25 @@ Example:
               <textarea
                 rows={11}
                 value={jsonText}
-                onChange={handleJsonTextChange}
-                placeholder="[ { id, questionText, options: [{ key: 'a', text: '' }, ...], correctOption: 'a', explanation: '' } ]"
-                className="w-full bg-slate-900 text-slate-100 border border-slate-800 rounded-2xl p-4 font-mono text-xs focus:outline-hidden focus:ring-2 focus:ring-indigo-500/50 resize-y leading-relaxed"
+                onChange={(e) => {
+                  setJsonText(e.target.value);
+                  try {
+                    const parsed = JSON.parse(e.target.value);
+                    if (Array.isArray(parsed)) setPreviewQuestions(parsed);
+                  } catch {}
+                }}
+                placeholder="[ { id, questionText, options: [{ key: 'a', text: '' }], correctOption: 'a', explanation: '' } ]"
+                className="w-full bg-slate-950 text-slate-100 border border-slate-800 rounded-2xl p-4 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/50 resize-y leading-relaxed"
               />
             </div>
           )}
 
-          {/* TAB 3: SINGLE MANUAL FORM */}
+          {/* TAB 3: SINGLE MANUAL ENTRY */}
           {activeTab === 'single_manual' && (
             <form onSubmit={handleAddSingle} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Question Text in Hindi (प्रश्न का विवरण) *
+                  Question Text in Hindi *
                 </label>
                 <textarea
                   rows={3}
@@ -489,7 +593,7 @@ Example:
                   placeholder="यहाँ प्रश्न लिखें (e.g. दो संख्याओं का ल.स. 120 तथा म.स. 6 है...)"
                   value={singleQ.text}
                   onChange={(e) => setSingleQ({ ...singleQ, text: e.target.value })}
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-3 text-xs sm:text-sm text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/50"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-3 text-xs sm:text-sm text-slate-900 dark:text-slate-100 focus:outline-none"
                 />
               </div>
 
@@ -522,7 +626,7 @@ Example:
                     onChange={(e) =>
                       setSingleQ({ ...singleQ, correct: e.target.value as any })
                     }
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400 focus:outline-hidden"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400 focus:outline-none"
                   >
                     <option value="a">Option (A) - सही उत्तर</option>
                     <option value="b">Option (B) - सही उत्तर</option>
@@ -548,7 +652,7 @@ Example:
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Step-by-Step Hindi Explanation (विस्तृत हल)
+                    Step-by-Step Hindi Explanation
                   </label>
                   <input
                     type="text"
@@ -570,88 +674,148 @@ Example:
             </form>
           )}
 
-          {/* PARSED PREVIEW & IN-PLACE EDITING CARDS */}
+          {/* PARSED PREVIEW & IN-LINE EDITING CARDS */}
           {previewQuestions.length > 0 && activeTab !== 'single_manual' && (
             <div className="space-y-3 pt-2">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   Extracted Questions Preview ({previewQuestions.length} Questions)
                 </h4>
-                <span className="text-[11px] text-slate-400">
-                  Click on any card to edit before saving
-                </span>
+
+                <input
+                  type="text"
+                  placeholder="Optional Mock Test Title (e.g. TRE 4.0 Special Set 1)"
+                  value={testTitleInput}
+                  onChange={(e) => setTestTitleInput(e.target.value)}
+                  className="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs font-bold w-64 text-slate-900 dark:text-slate-100"
+                />
               </div>
 
               <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-                {previewQuestions.map((q, idx) => (
-                  <div
-                    key={idx}
-                    className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 text-xs space-y-2.5"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-md bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 font-mono font-bold flex items-center justify-center text-[11px]">
-                          Q{idx + 1}
-                        </span>
-                        <span className="font-semibold text-slate-500 dark:text-slate-400">
-                          {q.exam}
-                        </span>
-                      </div>
+                {previewQuestions.map((q, idx) => {
+                  const isEditing = editingIndex === idx;
 
-                      <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 font-bold uppercase">
-                          Correct: ({q.correctOption})
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleDeletePreviewItem(idx)}
-                          className="p-1 rounded-md text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
-                          title="Remove from import"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <p className="font-semibold text-slate-900 dark:text-slate-100 text-sm font-sans leading-relaxed">
-                      {q.questionText}
-                    </p>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
-                      {q.options.map((opt) => (
-                        <div
-                          key={opt.key}
-                          className={`px-3 py-1.5 rounded-lg border text-xs font-medium flex items-center gap-2 ${
-                            opt.key === q.correctOption
-                              ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-400 text-emerald-900 dark:text-emerald-200 font-bold'
-                              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'
-                          }`}
-                        >
-                          <span className="font-bold uppercase shrink-0">({opt.key})</span>
-                          <span className="truncate">{opt.text}</span>
+                  if (isEditing && editItemState) {
+                    return (
+                      <div key={idx} className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/40 space-y-3">
+                        <div className="font-bold text-xs text-amber-500 flex items-center justify-between">
+                          <span>Inline Edit Question #{idx + 1}</span>
+                          <button
+                            onClick={handleSaveInlineEdit}
+                            className="px-3 py-1 bg-amber-500 text-slate-950 font-bold rounded-lg text-xs"
+                          >
+                            Done Editing
+                          </button>
                         </div>
-                      ))}
-                    </div>
 
-                    {q.explanation && (
-                      <div className="p-2.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 text-amber-950 dark:text-amber-200 text-xs leading-relaxed">
-                        <span className="font-bold">व्याख्या: </span>
-                        {q.explanation}
+                        <textarea
+                          rows={2}
+                          value={editItemState.questionText}
+                          onChange={(e) => setEditItemState({ ...editItemState, questionText: e.target.value })}
+                          className="w-full bg-white dark:bg-slate-950 border p-2 text-xs rounded-xl"
+                        />
+
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          {editItemState.options.map((opt, optIdx) => (
+                            <div key={opt.key} className="flex items-center gap-2">
+                              <span className="font-bold uppercase">({opt.key})</span>
+                              <input
+                                type="text"
+                                value={opt.text}
+                                onChange={(e) => {
+                                  const updatedOpts = [...editItemState.options];
+                                  updatedOpts[optIdx] = { ...opt, text: e.target.value };
+                                  setEditItemState({ ...editItemState, options: updatedOpts });
+                                }}
+                                className="w-full bg-white dark:bg-slate-950 border p-1 rounded-lg text-xs"
+                              />
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    )}
-                  </div>
-                ))}
+                    );
+                  }
+
+                  return (
+                    <div
+                      key={idx}
+                      className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 text-xs space-y-2.5"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="w-6 h-6 rounded-md bg-amber-500/20 text-amber-600 dark:text-amber-300 font-mono font-bold flex items-center justify-center text-[11px]">
+                            Q{idx + 1}
+                          </span>
+                          <span className="font-semibold text-slate-500 dark:text-slate-400">
+                            {q.exam}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 font-bold uppercase">
+                            Key: ({q.correctOption})
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={() => handleStartEdit(idx)}
+                            className="p-1 rounded-md text-amber-500 hover:bg-amber-500/10"
+                            title="Edit this question inline"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeletePreviewItem(idx)}
+                            className="p-1 rounded-md text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
+                            title="Remove from import"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <p className="font-semibold text-slate-900 dark:text-slate-100 text-sm font-sans leading-relaxed">
+                        {q.questionText}
+                      </p>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
+                        {q.options.map((opt) => (
+                          <div
+                            key={opt.key}
+                            className={`px-3 py-1.5 rounded-lg border text-xs font-medium flex items-center gap-2 ${
+                              opt.key === q.correctOption
+                                ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-400 text-emerald-900 dark:text-emerald-200 font-bold'
+                                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'
+                            }`}
+                          >
+                            <span className="font-bold uppercase shrink-0">({opt.key})</span>
+                            <span className="truncate">{opt.text}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {q.explanation && (
+                        <div className="p-2.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 text-amber-950 dark:text-amber-200 text-xs leading-relaxed">
+                          <span className="font-bold">व्याख्या: </span>
+                          {q.explanation}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
         </div>
 
-        {/* Footer */}
+        {/* Footer Actions */}
         <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/90 flex flex-wrap items-center justify-between gap-3 shrink-0">
           <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
             {previewQuestions.length > 0
-              ? `${previewQuestions.length} Questions Ready to Save into ${topicNameHindi}`
-              : 'Paste questions text above to auto-extract'}
+              ? `${previewQuestions.length} Questions Extracted for ${topicNameHindi}`
+              : 'Paste or upload document to auto-extract'}
           </div>
 
           <div className="flex items-center gap-2">
@@ -663,23 +827,25 @@ Example:
             </button>
 
             {activeTab !== 'single_manual' && (
-              <button
-                disabled={previewQuestions.length === 0}
-                onClick={handleSaveImport}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed shadow-md transition-all active:scale-95"
-              >
-                {isSuccessToast ? (
-                  <>
-                    <CheckCircle2 className="w-4 h-4 text-emerald-300" />
-                    <span>Saved into Database!</span>
-                  </>
-                ) : (
-                  <>
-                    <Upload className="w-4 h-4" />
-                    <span>Import {previewQuestions.length} Questions to Bank</span>
-                  </>
-                )}
-              </button>
+              <>
+                <button
+                  disabled={previewQuestions.length === 0}
+                  onClick={handleSaveImport}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-slate-900 bg-white border border-slate-300 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700 disabled:opacity-40 disabled:cursor-not-allowed shadow-xs transition-all active:scale-95"
+                >
+                  <Save className="w-4 h-4 text-emerald-500" />
+                  <span>Save to Bank</span>
+                </button>
+
+                <button
+                  disabled={previewQuestions.length === 0}
+                  onClick={handleSaveAndCreateTest}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black text-slate-950 bg-amber-400 hover:bg-amber-300 disabled:opacity-40 disabled:cursor-not-allowed shadow-md transition-all active:scale-95"
+                >
+                  <Play className="w-4 h-4 fill-slate-950" />
+                  <span>Save & Start Test Now ({previewQuestions.length} Qs)</span>
+                </button>
+              </>
             )}
           </div>
         </div>
