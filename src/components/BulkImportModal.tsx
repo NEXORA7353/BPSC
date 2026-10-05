@@ -22,16 +22,20 @@ import {
   ChevronRight,
   Layers,
   RotateCcw,
-  Image as ImageIcon
+  Image as ImageIcon,
+  AlertTriangle
 } from 'lucide-react';
 import { Question, MockTestSet } from '../types';
 import { parseBulkQuestionText, aiSmartFormatText, getFormattedImportDate } from '../utils/questionParser';
 import {
   addQuestionsToBank,
+  getAllQuestionBank,
   getAllRegisteredTopics,
   registerNewTopic,
   saveCustomTest
 } from '../utils/questionBankStorage';
+import { auditQuestionBatch } from '../utils/questionQualityAudit';
+import { SmartQualityReviewModal } from './SmartQualityReviewModal';
 import { MathText } from './MathText';
 import { ImageKitUploadModal } from './ImageKitUploadModal';
 
@@ -222,6 +226,18 @@ export function BulkImportModal({
   const [parseErrors, setParseErrors] = useState<string[]>([]);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editItemState, setEditItemState] = useState<Question | null>(null);
+  const [isQualityReviewOpen, setIsQualityReviewOpen] = useState(false);
+
+  // Quality & Advanced Duplicate Audit
+  const bankQuestions = useMemo(() => (isOpen ? getAllQuestionBank() : []), [isOpen]);
+  const auditReport = useMemo(
+    () => auditQuestionBatch(previewQuestions, bankQuestions),
+    [previewQuestions, bankQuestions]
+  );
+  const questionAuditMap = useMemo(
+    () => new Map(auditReport.items.map((it) => [it.id, it])),
+    [auditReport]
+  );
 
   // Search & Navigation for 100-500 questions
   const [searchQuery, setSearchQuery] = useState('');
@@ -1025,6 +1041,18 @@ export function BulkImportModal({
                 <span className="px-2 py-0.5 rounded-full font-mono font-bold text-[11px] bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/25">
                   {previewQuestions.length} Questions
                 </span>
+
+                {auditReport.problemCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setIsQualityReviewOpen(true)}
+                    className="px-2.5 py-0.5 rounded-full font-mono font-bold text-[11px] bg-amber-500/20 hover:bg-amber-500 text-amber-700 dark:text-amber-300 hover:text-slate-950 border border-amber-500/40 transition-all flex items-center gap-1 cursor-pointer animate-pulse"
+                    title="Click to review and fix issues"
+                  >
+                    <AlertTriangle className="w-3 h-3 text-amber-500" />
+                    <span>{auditReport.problemCount} Attention</span>
+                  </button>
+                )}
               </div>
 
               {/* Search & Quick Filter */}
@@ -1076,6 +1104,49 @@ export function BulkImportModal({
                 </div>
               )}
             </div>
+
+            {/* Attention Required Banner */}
+            {previewQuestions.length > 0 && auditReport.problemCount > 0 && (
+              <div className="mx-3.5 sm:mx-5 mt-3 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-wrap items-center justify-between gap-2.5 animate-in fade-in shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                    <AlertTriangle className="w-4 h-4 animate-bounce" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5 flex-wrap">
+                      <span>⚠️ {auditReport.problemCount} प्रश्नों में सुधार या समीक्षा आवश्यक है</span>
+                      {auditReport.duplicateCount > 0 && (
+                        <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-700 dark:text-purple-300 text-[10px] font-bold">
+                          {auditReport.duplicateCount} डुप्लीकेट
+                        </span>
+                      )}
+                      {auditReport.blankOptionCount > 0 && (
+                        <span className="px-1.5 py-0.5 rounded bg-red-500/20 text-red-700 dark:text-red-300 text-[10px] font-bold">
+                          {auditReport.blankOptionCount} खाली विकल्प
+                        </span>
+                      )}
+                      {auditReport.blankExplanationCount > 0 && (
+                        <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 text-[10px] font-bold">
+                          {auditReport.blankExplanationCount} खाली व्याख्या
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-amber-700 dark:text-amber-300/80">
+                      खाली विकल्प/हल भरने अथवा डुप्लीकेट हटाने के लिए एक क्लिक में समीक्षा करें।
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsQualityReviewOpen(true)}
+                  className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>सुधारें व हटाएं (Review & Fix)</span>
+                </button>
+              </div>
+            )}
 
             {/* Questions Scrollable Canvas */}
             <div
@@ -1180,11 +1251,21 @@ export function BulkImportModal({
                       );
                     }
 
+                    const auditItem = questionAuditMap.get(q.id);
+
                     return (
                       <div
                         key={originalIdx}
                         id={`preview-q-${originalIdx + 1}`}
-                        className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-shadow shadow-xs space-y-3"
+                        className={`p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border transition-shadow shadow-xs space-y-3 ${
+                          auditItem?.hasErrors
+                            ? 'border-red-500/40 ring-1 ring-red-500/20'
+                            : auditItem?.isDuplicate
+                            ? 'border-purple-500/40 ring-1 ring-purple-500/20'
+                            : auditItem?.hasWarnings
+                            ? 'border-amber-500/40'
+                            : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                        }`}
                       >
                         {/* Card Header */}
                         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800/80 pb-2.5">
@@ -1192,6 +1273,25 @@ export function BulkImportModal({
                             <span className="px-2.5 py-0.5 rounded-lg bg-amber-500/15 text-amber-700 dark:text-amber-300 font-mono font-black text-xs">
                               Q{originalIdx + 1}
                             </span>
+
+                            {auditItem && auditItem.issues.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => setIsQualityReviewOpen(true)}
+                                className={`px-2 py-0.5 rounded-md font-bold text-[10px] flex items-center gap-1 cursor-pointer transition-colors ${
+                                  auditItem.hasErrors
+                                    ? 'bg-red-500/15 text-red-700 dark:text-red-300 border border-red-500/30 hover:bg-red-500 hover:text-white'
+                                    : auditItem.isDuplicate
+                                    ? 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30 hover:bg-purple-500 hover:text-white'
+                                    : 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 hover:bg-amber-500 hover:text-slate-950'
+                                }`}
+                                title="Click to review and fix issues"
+                              >
+                                <AlertTriangle className="w-3 h-3" />
+                                <span>{auditItem.issues[0]?.title || 'समीक्षा आवश्यक'}</span>
+                              </button>
+                            )}
+
                             <span className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 font-bold text-[11px]">
                               {q.topicNameHindi || topicNameHindi}
                             </span>
@@ -1340,6 +1440,18 @@ export function BulkImportModal({
 
             {activeTab !== 'single_manual' && (
               <>
+                {auditReport.problemCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setIsQualityReviewOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-amber-700 dark:text-amber-300 bg-amber-500/15 border border-amber-500/35 hover:bg-amber-500/25 transition-all active:scale-95"
+                    title="Review Blank/Duplicate Issues"
+                  >
+                    <AlertTriangle className="w-4 h-4 text-amber-500" />
+                    <span>Review Issues ({auditReport.problemCount})</span>
+                  </button>
+                )}
+
                 <button
                   disabled={previewQuestions.length === 0}
                   onClick={handleSaveImport}
@@ -1377,6 +1489,17 @@ export function BulkImportModal({
           onImageUploaded={(snippet) => {
             handleImageUploaded(snippet);
             setIsImageKitModalOpen(false);
+          }}
+        />
+
+        {/* Smart Quality & Duplicate Attention Modal */}
+        <SmartQualityReviewModal
+          isOpen={isQualityReviewOpen}
+          onClose={() => setIsQualityReviewOpen(false)}
+          auditReport={auditReport}
+          onUpdateQuestions={(updated) => {
+            setPreviewQuestions(updated);
+            setJsonText(JSON.stringify(updated, null, 2));
           }}
         />
       </div>

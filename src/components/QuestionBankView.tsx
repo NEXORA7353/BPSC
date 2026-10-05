@@ -18,7 +18,8 @@ import {
   Edit2,
   Cloud,
   Calendar,
-  Image as ImageIcon
+  Image as ImageIcon,
+  AlertTriangle
 } from 'lucide-react';
 import { Question, RegisteredTopic } from '../types';
 import {
@@ -30,9 +31,12 @@ import {
   getAllRegisteredTopics,
   exportFullDatabaseJson,
   importFullDatabaseJson,
-  clearEntireDatabase
+  clearEntireDatabase,
+  saveCustomQuestions
 } from '../utils/questionBankStorage';
 import { syncFromFirestore, seedAllQuestionsToCloud, clearCloudDatabase } from '../services/firebaseSyncService';
+import { auditQuestionBatch } from '../utils/questionQualityAudit';
+import { SmartQualityReviewModal } from './SmartQualityReviewModal';
 import { MathText } from './MathText';
 import { BackButton } from './BackButton';
 import { ImageKitUploadModal } from './ImageKitUploadModal';
@@ -59,6 +63,12 @@ export function QuestionBankView({
   const [registeredTopics, setRegisteredTopics] = useState<RegisteredTopic[]>(() => getAllRegisteredTopics());
   const [dbNotification, setDbNotification] = useState<string | null>(null);
   const [isImageKitModalOpen, setIsImageKitModalOpen] = useState(false);
+  const [isBankAuditOpen, setIsBankAuditOpen] = useState(false);
+
+  const bankAuditReport = useMemo(
+    () => auditQuestionBatch(allQuestions),
+    [allQuestions]
+  );
 
   const refreshData = () => {
     setAllQuestions(getAllQuestionBank());
@@ -277,6 +287,16 @@ export function QuestionBankView({
           >
             <Shuffle className="w-4 h-4" />
             <span>Create Custom Test</span>
+          </button>
+
+          {/* Smart Quality & Duplicate Audit Button */}
+          <button
+            onClick={() => setIsBankAuditOpen(true)}
+            title="Scan & Clean Duplicates or Blank Explanations (डुप्लीकेट व अधूरी व्याख्या स्कैन व साफ़ करें)"
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors text-xs sm:text-sm font-bold shadow-2xs active:scale-95"
+          >
+            <AlertTriangle className={`w-4 h-4 text-amber-600 dark:text-amber-400 ${bankAuditReport.problemCount > 0 ? 'animate-pulse' : ''}`} />
+            <span>Audit & Clean ({bankAuditReport.problemCount})</span>
           </button>
 
           {/* Backup Export Button */}
@@ -598,6 +618,19 @@ export function QuestionBankView({
       <ImageKitUploadModal
         isOpen={isImageKitModalOpen}
         onClose={() => setIsImageKitModalOpen(false)}
+      />
+
+      {/* Smart Quality & Duplicate Attention Modal */}
+      <SmartQualityReviewModal
+        isOpen={isBankAuditOpen}
+        onClose={() => setIsBankAuditOpen(false)}
+        auditReport={bankAuditReport}
+        onUpdateQuestions={(updated) => {
+          saveCustomQuestions(updated);
+          refreshData();
+          setDbNotification('प्रश्न बैंक सफलतापूर्वक अपडेट किया गया!');
+          setTimeout(() => setDbNotification(null), 3000);
+        }}
       />
     </div>
   );
