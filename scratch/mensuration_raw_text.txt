@@ -1,0 +1,1165 @@
+221 YCT
+24. #es$eefceefle
+(Mensuration)
+1. Ske‚ IeveeYe ke‚er TB¤eeF& ............... nesieer efpemeke‚e DeeŸeleve
+275 mesceer.3 nw Deewj DeeOeej ke‚e #es$eHe‚ue 25 mesceer.2 nw~
+(a) 10 mesceer. (b) 11 mesceer.
+(c) 12 mesceer. (d) 13 mesceer.
+Bihar STET (9 & 10) 23/05/2024 (Shift-II)
+Bihar STET (9 & 10) 05/09/2023 (Shift-I)
+Ans. (b) : efoŸee nw,
+IeveeYe ke‚e DeeŸeleve = 275 mesceer.3
+DeeOeej ke‚e #es$ehe‚ue = 25 mesceer.2
+IeveeYe ke‚e DeeŸeleve = DeeOeej ke‚e #es$ehe‚ue × TB¤eeF&
+TB¤eeF& 2 7 5 1 1
+2 5
+mesceer.
+2. oes ieesues kes‚ DeeŸeleve ke‚e Devegheele 27 : 8 nw, lees
+IegceeJeoej melen ke‚e Devegheele ............... nesiee~
+(a) 9 : 4 (b) 4 : 9
+(c) 3 : 2 (d) 2 : 3
+Bihar STET (9 & 10) 23/05/2024 (Shift-II)
+Ans. (a) : ceevee oes ieesueeW ke‚e DeeŸeleve V1 Deewj V2 nw Deewj ef$epŸee
+r1 Deewj r2 nw~
+1
+2
+V 2 7
+V 8
+3
+1
+3
+2
+4 r 2 7	3
+4 8
+r
+3
+3
+1
+3
+2
+r 2 7
+r 8
+1
+2
+r 3
+r 2
+melen kes‚ #es$ehe‚ue ke‚e Devegheele,
+2 2
+1 1 1
+2 2
+2 2 2
+A 4 r r
+A 4 r r
+2
+1
+2
+A 3 9
+A 2 4
+3. Ske‚ ieesueeke‚ej iegyyeejs ke‚er ef$epŸee 8 mesceer. mes yeÃ{ke‚j 12
+mesceer. nes peeleer nw~ oesveeW efmLeefleÙeeW ceWs iegyyeejs kesâ he=‰erÙe
+#es$ehe‚ue ke‚e Devegheele .............. nesiee~
+(a) 2 : 3 (b) 3 : 2
+(c) 8 : 27 (d) 4 : 9
+Bihar STET (9 & 10) 23/05/2024 (Shift-II)
+Bihar STET (9 & 10) 05/09/2023 (Shift-I)
+Ans. (d) : efoŸee nw,
+iegyyeejs ke‚er ÿeejbefYeke‚ ef$epŸee (r1) = 8cm
+iegyyeejs ke‚er Debeflece ef$epŸee (r2) = 12 cm
+ÿeejbefYeke‚ ef$epŸee hej iegyyeejs ke‚e he=‰erÙe #es. (A1)= 4π(8)2 = 256π
+Debeflece ef$epŸee hej iegyyeejs ke‚e he=‰erÙe #es. (A2) = 4π(12)2 = 576π
+he=‰erÙe #es$ehe‚ue ke‚e Devegheele,
+1
+2
+A 2 5 6 4
+A 5 7 6 9
+4. Ske‚ leej ke‚er ef$epŸee Ske‚-efleneF& leke‚ ke‚ce nes peeleer nw~
+Ÿeefo DeeŸeleve meceeve jnlee nw, lees uebyeeF& efke‚leveer yeÃ{
+peeSieer?
+(a) 3 iegvee (b) 6 iegvee
+(c) 9 iegvee (d) 27 iegvee
+Bihar STET (9 & 10) 23/05/2024 (Shift-II)
+Bihar STET (9 & 10) 04/09/2023 (Shift-II)
+Ans. (c) : yesueve ke‚e DeeŸeleve = πr2h
+yesueve ke‚er veF& ef$epŸee (r) = r
+3
+ceevee yesueve ke‚er veF& uebyeeF& h1 Fke‚eF& nw, lees
+ÿeMve kes‚ Devegmeej DeeŸeleve meceeve jnlee nw~
+2
+2
+1
+r
+r h h
+3
+1	
+h 9 h
+1	
+h 9 h
+Ÿeefo DeeŸeleve meceeve jnlee nw, lees uebyeeF& 9 iegvee yeÃ{ peeSieer~
+5. Ske‚ ke‚ceje Deeke‚ej ceWs DeeŸeleeke‚ej nw Deewj Fmeke‚er Ske‚
+mehee‖ Úle nw~ Ùen 10 ceer‖j ÛeewÌ[e, 13 ceer‖j uebyee Deewj
+5 ceer‖j G@âÛee nw~ Fmes Deboj, yeenj Deewj he‚Me& hej heW‖
+efkeâÙee peevee nw uesefkeâve Úle hej veneR, lees heW‖ efkeâÙee peeves
+Jeeuee keg‚ue #es$ehe‚ue nw-
+(a) 360 Jeie& ceeršj (b) 460 Jeie& ceeršj
+(c) 490 Jeie& ceeršj (d) 590 Jeie& ceeršj
+Bihar STET (9 & 10) 23/05/2024 (Shift-II)
+Bihar STET (9 & 10) 04/09/2023 (Shift-I)
+Ans. (d) : efoŸee nw,
+ke‚ceje ke‚er ¤eewÃ[eF& (b) = 10 ceer.
+ke‚ceje ke‚er uebyeeF& (l) = 13 ceer.
+ke‚ceje ke‚er Tb¤eeF& (h) = 5 ceer.
+Deboj,yeenj Deewj heâMe& hej heWš keâer peeves Jeeueer oerJeej keâe #es$eheâue =
+4 h b h b	 
+= 4(13×5 + 10×5) + 13 ×10
+= 4×115 + 130
+= 590 Jeie& ceeršj
+
+-- 1 of 10 --
+
+222 YCT
+6. Ÿeefo Ske‚ Je=Úe ke‚er heefjefOe Deewj ef$epŸee kes‚ yeer¤e kes‚ Deblej
+37 mesceer. nw, lees Je=Úe ke‚e #es$ehe‚ue nesiee-
+(a) 111 Jeie& mesceer. (b) 148 Jeie& mesceer.
+(c) 259 Jeie& mesceer. (d) 154 Jeie& mesceer.
+Bihar STET (9 & 10) 23/05/2024 (Shift-II)
+Bihar STET (9 & 10) 04/09/2023 (Shift-I)
+Ans. (d) : efoŸee nw,
+Je=Úe ke‚er heefjefOe – Je=Úe ke‚er ef$epŸee = 37 mesceer.
+2πr – r = 37
+r (2π –1) =37
+2 2 2
+r 1 3 7
+7
+4 4 7
+r 3 7
+7
+3 7
+r 3 7
+7
+r = 7 mesceer.
+Je=Úe ke‚e #es$ehe‚ue (A) = πr2
+2 2 7 7 1 5 4
+7
+Jeie& mesceer.
+7. Ske‚ yesueveeke‚ej yee@ke‰me ces ........... IegceeJeoej melen Deewj
+........... Je=Úeeke‚ej he‚ueke‚ nesles nQ, pees meceeve nw~
+(a) Ske‚, Ske‚ (b) Ske‚, oes
+(c) oes, Ske‚ (d) oes, oes
+Bihar STET (9 & 10) 04/09/2023 (Shift-I)
+Bihar STET (9 & 10) 22/05/2024 (Shift-II)
+Ans. (b) : yesueveeke‚ej yee@ke‰me ceW Ske‚ IegceeJeoej melen nesleer nw, pees
+Gmes ¤eejeW Deesj mes Iesjs jnleer nw~ Fmekes‚ DeueeJee, Fmekes‚ oes Je=Úeeke‚ej
+he‚ueke‚ nesles nQ- Ske‚ Thej Deewj Ske‚ veer¤es~
+8. Yegpee ke‚er uebyeeF& 'a' Jeeues Jeie& ke‚e #es$ehe‚ue ........... nw~
+(a) 2a (b) 4a
+(c) a
+2
+(d) a2
+Bihar STET (9 & 10) 23/05/2024 (Shift-II)
+Bihar STET (9 & 10) 04/09/2023 (Shift-I)
+Ans. (d) : efoŸee nw,
+Jeie& ke‚er Yegpee ke‚er uebyeeF& a nw~
+Jeie& ke‚e #es$ehe‚ue = a ×a = a2
+9. Ske‚ Je=Úe ke‚e #es$ehe‚ue pees 10 mesceer. Yegpee Jeeues Jeie& ceW
+Deblee|veefnle efke‚Ÿee pee meke‚lee nw-
+(a) 40 mesceer.2 (b) 30 mesceer.2
+(c) 100 mesceer.2 (d) 25 mesceer.2
+BPSC-Tre 3.0 (6 to 8) 19/07/2024
+Bihar STET (9 & 10) 23/05/2024 (Shift-II)
+Ans. (d) : efoŸee nw,
+2r = d = 10 mesceer.
+Jeie& ke‚er Yegpee = 10 cm
+¤etbefke‚ Je=Úe Jeie& kes‚ Yeerlej nw, FmeefueS Je=Úe ke‚e JŸeeme Jeie& ke‚er Yegpee kes‚
+yejeyej nesiee pees efke‚ 10 cm nw~
+FmeefueS, Je=Úe ke‚er ef$epŸee (r) 1 0 5
+5
+mesceer.
+Je=Úe ke‚e #es$ehe‚ue (A) = πr2
+= π (5)2 = 25π mesceer.2
+10. Ske‚ Je=Úe efpemeke‚e #es$ehe‚ue 24 mesceer. Deewj 7 mesceer.
+ef$epŸee Jeeues oes Je=ÚeeW kes‚ #es$ehe‚ueeW kes‚ Ÿeesie kes‚ yejeyej
+nw, lees DeOe&Je=Úe ke‚e JŸeeme ............. nesiee~
+(a) 31 mesceer. (b) 25 mesceer.
+(c) 62 mesceer. (d) 50 mesceer.
+Bihar STET (9 & 10) 23/05/2024 (Shift-II)
+Ans. (d) : ÿeMveevegmeej,
+24 cm ef$epŸee Jeeues Je=Úe ke‚e #es$ehe‚ue = (24)2 = 576π mesceer.2
+7 cm ef$epŸee Jeeues Je=Úe ke‚e #es$ehe‚ue =π(7)2 = 49π mesceer.2
+oesveeW Je=ÚeeW kes‚ #es$ehe‚ueeW ke‚e Ÿeesie = 576π + 49π = 625π mesceer.2
+Ÿen #es$ehe‚ue Ske‚ veS Je=Úe kes‚ #es$ehe‚ue kes‚ yejeyej nesiee~
+Fme veS Je=Úe ke‚er ef$epŸee r nw~ lees,
+πr2 = 625π
+r 6 2 5 2 5 c m
+Dele: DeÊ&Je=Úe ke‚e JŸeeme = 2 × 25 = 50 mesceer.
+11. ef$epŸee 6 mesceer. Deewj TB¤eeF& 10 mesceer. ke‚er Ske‚
+yesueveeke‚ej yeesleue mes leue ke‚es Keeueer ke‚jves kes‚ efueS
+ef$epŸee 2 mesceer. Deewj TB¤eeF& 3.6 mesceer. ke‚er Mebke‰Jeeke‚ej
+yeesleueeW ke‚er mebKŸee ke‰Ÿee nesieer?
+(a) 100 (b) 9
+(c) 75 (d) 20
+Bihar STET (9 & 10) 09/06/2024 (Shift-I)
+Ans. (c) : yesueveeke‚ej yeesleue ke‚er GB‚¤eeF& (h1) = 10 mesceer.
+yesueveeke‚ej yeesleue ke‚er ef$epŸee (r1) = 6 mesceer.
+Mebke‰Jeeke‚ej yeesleue ke‚er ef$epŸee (r2) = 2 mesceer.
+Mebke‰Jeeke‚ej yeesleue ke‚er GB‚¤eeF& (h2) = 3.6 mesceer.
+ceevee Mebke‰Jeeke‚ej yeesleueeW ke‚er mebKŸee n nw~
+yesueveeke‚ej yeesleue ke‚e DeeŸeleve = Mebke‰Jeeke‚ej yeesleue ke‚e DeeŸeleve × n
+2 2
+1 1 2 2
+1
+r h r h n
+3
+1
+6 6 1 0 2 2 3 .6 n
+3
+1
+6 6 1 0 2 2 3 .6 n
+3
+6 6 1 0 3 n
+2 2 3 .6
+6 6 1 0 1 0 3
+n
+2 2 3 6
+n = 5 × 5 ×3
+n = 75
+Dele: mhe∞ nw efke‚ Mebke‰Jeeke‚ej yeesleueeW ke‚er mebKŸee 75 nesieer~
+
+-- 2 of 10 --
+
+223 YCT
+12. Ÿeefo Ske‚ DeeŸele ke‚er uebyeeF& 1/3 yeÃ{e oer peeleer nw Deewj
+¤eewÃ[eF& 1/3 ke‚ce ke‚j oer peeleer nw, lees DeeŸele ke‚e
+#es$ehe‚ue efYeVe ceW ke‚ce nes peelee nw
+(a) 2/3 (b) 1/6
+(c) 1/9 (d) 1/8
+Bihar STET (9 & 10) 09/06/2024 (Shift-I)
+Bihar STET (9 & 10) 05/09/2023 (Shift-I)
+Ans. (c) : ceevee, henues DeeŸele ke‚er uecyeeF& = 
+leLee henues DeeŸele ke‚er ¤eewÃ[eF& =d
+FmeefueS henues DeeŸele ke‚e #es$ehe‚ue =  ×d
+Deye veŸes DeeŸele ke‚er uecyeeF& = 4
+3 3
+ 
+
+Deye veŸes DeeŸele ke‚er ¤eewÃ[eF& = d 2 d
+d
+3 3
+veŸes DeeŸele ke‚e #es$ehe‚ue = 4 2 d 8 d
+3 3 9
+ 
+DeeŸele kes‚ #es$ehe‚ue ceW ke‚ceer = 8 d
+d –
+9
+
+
+= (9 d – 8 d )
+9
+ 
+= 1 d
+9
+
+Dele: DeeŸele ke‚e #es$ehe‚ue 1
+9
+ke‚ce nes peeŸesiee
+13. Ske‚ ke‚ceje 8 ceer‖j uebyee, 6 ceer‖j ÛeewÌ[e Deewj 10 ceer‖j
+TB¤ee nw, lees ke‚cejs ceW jKes pee meke‚ves Jeeues meyemes uebyes
+KebYes ke‚er uecyeeF& nw
+(a) 12 ceeršj (b) 1 0 6 ceeršj
+(c) 1 0 2 ceeršj (d) GheŸeg&ke‰le ceW mes Ske‚ mes DeefOeke‚
+(e) GheŸeg&ke‰le ceW mes ke‚esF& veneR
+BPSC-Tre 3.0 (6 to 8) 19/07/2024
+Ans. (c) :
+efoŸee nw, uecyeeF& (l) = 8 ceer. ¤eewÃ[eF& (b) = 6ceer. TB¤eeF& (h) = 10
+ceer.
+IeveeYe kes‚ efJeke‚Ce& ke‚er uecyeeF& = 2 2 2	
+b h	l
+= 2 2 2
+8 6 1 0
+= 6 4 3 6 1 0 0
+= 2 0 0
+= 1 0 2 ceeršj
+14. Ÿeefo Ske‚ mece¤elegYeg&pe kes‚ efJeke‚Ce& 24 mesceer. Deewj 10
+mesceer. nw, lees mece¤elegYe&gpe ke‚e heefjceehe nesiee-
+(a) 68 mesceer. (b) 60 mesceer.
+(c) 52 mesceer. (d) 50 mesceer.
+Bihar STET (9 & 10) 09/06/2024 (Shift-I)
+Ans. (c) : mece¤elegYeg&pe ke‚e henuee efJeke‚Ce&, d1 = 24 mesceer.
+mece¤elegYeg&pe ke‚e otmeje efJeke‚Ce&, d2 = 10 mesceer.
+ceevee mece¤elegYeg&pe ke‚er Yegpee a mesceer. nw~
+a2 =
+2 2
+1 2	
+d d
+2 2
+2 2
+2 2 4 1 0
+a
+2 2
+a2 = (12)2 + (5)2
+a2 = 144 + 25
+a2 = 169
+a = 13 mesceer.
+Deye mece¤elegYeg&pe ke‚e heefjceehe = 4a
+= 4 × 13 = 52 mesceer.
+15. Ske‚ ef$eYegpe ke‚er YegpeeDeeW ke‚er uebyeeF& hetCeeÀke‚eW ceW nesleer nw
+Deewj Fmeke‚e #es$ehe‚ue Yeer Ske‚ hetCeeÀke‚ neslee nw~ Ske‚ Yegpee
+21 mesceer. nw Deewj heefjceehe 48 mesceer. nw, lees meyemes Úes‖er
+Yegpee ke‚er uebyeeF& nesieer-
+(a) 8 mesceer. (b) 10 mesceer.
+(c) 12 mesceer. (d) 14 mesceer.
+Bihar STET (9 & 10) 09/06/2024 (Shift-I)
+Ans. (b) : efoŸee nw,
+ef$eYegpe ke‚er Ske‚ Yegpee = 21 mesceer.
+ef$eYegpe ke‚e heefjceehe = 48 mesceer.
+met$e mes,
+a b c
+S
+2
+#es$eHe‚ue s (s a )(s b )(s c )
+ÿeMve mes,
+a + b + c = 48
+a + b = 48 – 21 = 27
+efJeke‚uhe ke‚e GheŸeesie ke‚jves hej,
+a = 8 Deewj b = 19
+S = 48/2 = 24
+#es$eHe‚ue 2 4 ( 2 4 8 )( 2 4 1 9 )( 2 4 2 1)
+2 4 1 6 5 3 5 7 6 0 Ÿen Ske‚ hetCeeÀke‚ ceeve veneR nw~
+Deye, ceevee a = 10 Deewj b = 17 mes,
+#es$eHe‚ue 2 4 ( 2 4 1 0 )( 2 4 1 7 )( 2 4 2 1)
+
+-- 3 of 10 --
+
+224 YCT
+2 4 1 4 7 3
+1 4 4 4 9 8 4 pees hetCeeÀke‚ nw~
+Dele: meyemes Úesšer Yegpeer 10 mesceer. nw~
+16. ef$epŸee 'r' kes‚ meeLe Ske‚ Je=Úe ke‚e #es$ehe‚ue nw-
+(a) πr2 (b) 1/2 πr2
+(c) 2 πr2 (d) 4 πr2
+Bihar STET (9 & 10) 09/06/2024 (Shift-I)
+Ans. (a) : ÿeMveevegmeej, Je=Úe ke‚er ef$epŸee r nw lees
+Je=Úe ke‚e #es$ehe‚ue = πr2
+17. efke‚veejs 'a' kesâ Ieve keâe he=‰erÙe #es$eheâue nw-
+(a) 4a2 (b) 6a2
+(c) 3a2 (d) a2
+Bihar STET (9 & 10) 09/06/2024 (Shift-I)
+Bihar STET (9 & 10) 04/09/2023 (Shift-II)
+Ans. (b) : efke‚veejs 'a' kesâ Ieve keâe he=‰erÙe #es$eheâue 6a2 neslee nw~
+18. Ske‚ mece¤elegYe&gpe kes‚ efJeke‚Ce& 8 mesceer. Deewj 10 mesceer. nw,
+leye mece¤elegYeg&pe ke‚e #es$ehe‚ue .............. nw~
+(a) 64 Jeie& mesceer. (b) 100 Jeie& mesceer.
+(c) 80 Jeie& mesceer. (d) 40 Jeie& mesceer.
+Bihar STET (9 & 10) 09/06/2024 (Shift-I)
+Bihar STET (9 & 10) 04/09/2023 (Shift-I)
+Bihar STET (9 & 10) 18/09/2020 (Shift-I)
+Ans. (d) : efoŸee nw,
+mece¤elegYeg&pe ke‚e henuee efJeke‚Ce& (d1) = 8 mesceer.
+mece¤elegYeg&pe ke‚e otmeje efJeke‚Ce& (d2) = 10 mesceer.
+mece¤elegYeg&pe ke‚e #es$ehe‚ue = 1
+2
+efJeke‚Ceex ke‚e iegCevehe‚ue
+1 2
+1 d d
+2
+1 8 1 0
+2
+= 40 mesceer.2
+19. Ske‚ efmeueW[j Deewj Ske‚ Mebkeg‚ ke‚e meceeve DeeOeej ef$epŸee
+Deewj meceeve TB¤eeF& nw, lees yesueve kes‚ DeeŸeleve ke‚e Mebkeg‚
+kes‚ DeeŸeleve mes Devegheele nw-
+(a) 3 : 1 (b) 1 : 3
+(c) 2 : 3 (d) 1 : 1
+Bihar STET (9 & 10) 09/06/2024 (Shift-I)
+Bihar STET (9 & 10) 05/09/2023 (Shift-II)
+Ans. (a) : Mebkeg‚ ke‚er ef$epŸee = efmeuesv[j ke‚er ef$epŸee = r
+Mebkeg‚ ke‚er TB¤eeF& = efmeuesv[j ke‚er TB¤eeF& = h
+yesueve ke‚e DeeŸeleve, V1 = πr2h
+Mebkeg‚ ke‚e DeeŸeleve, V2 = 2	1 r h
+3
+Deye yesueve kes‚ DeeŸeleve ke‚e Mebkeg‚ kes‚ DeeŸeleve mes Devegheele = 1
+2
+V
+V
+s 2
+2
+r h
+1 r h
+3
+1
+1
+3
+3
+1
+Ÿee 3 : 1
+20. ABC Deewj BDE oes meceyeeng ef$eYegpe Fme ÿeke‚ej nQ efke‚
+D, BC ke‚e ceOŸe-efyebog nw~ ef$eYegpe ABC Deewj BDE kes‚
+#es$ehe‚ueeW ke‚e Devegheele nw-
+(a) 2 : 1 (b) 4 : 1
+(c) 1 : 2 (d) 1 : 4
+Bihar STET (9 & 10) 09/06/2024 (Shift-I)
+Ans. (b) : ceevee ABC ke‚er Yegpee ke‚er uecyeeF& a nw lees BDE ke‚er
+Yegpee ke‚er uecyeeF& a
+2
+nesieer~
+ ABC ke‚e #es$ehe‚ue 2	3 a
+4
+BDE ke‚e #es$ehe‚ue =
+2 2
+2	3 a 3 a 3 a
+4 2 4 4 1 6
+#es$ehe‚ueeW ke‚e Devegheele A B C
+B D E
+2
+2
+3 1
+a 1 6	4 4
+1 4	3 a 1 6	1 6
+= 4 : 1
+21. Ske‚ "esme ke‚er keg‚ue efke‚leveer efJeceeSB nesleer nw?
+(a) 4 (b) 1
+(c) 2 (d) 3
+Bihar STET (9 & 10) 09/06/2024 (Shift-I)
+Ans. (d) : Ske‚ "esme ke‚er keg‚ue leerve efJeceeSB nesleer nw~ uecyeeF&,
+¤eewÃ[eF& Deewj TB¤eeF&~
+22. Ske‚ mece¤elegYeg&pe ke‚e #es$ehe‚ue 240 mesceer.2 Deewj Ske‚
+efJeke‚Ce& 16 mesceer. nw~ otmeje efJeke‚Ce& ...... nesiee~
+(a) 16 mesceer. (b) 20 mesceer.
+(c) 30 mesceer. (d) 36 mesceer.
+Bihar STET (9 & 10) 04/09/2023 (Shift-II)
+Bihar STET (9 & 10) 23/05/2024 (Shift-I)
+Ans. (c) : mece¤elegYeg&pe ke‚e #es$ehe‚ue (A) 1 2	
+d d
+2
+efoŸee nw,
+A = 240 mesceer2
+d1 = 16 mesceer
+d2 = ?
+1	
+1 6 d
+2 4 0
+2
+1	
+3 0 d
+d1 = 30 mesceer
+23. Ske‚ Ieve kes‚ meYeer ⁄n he‚ueke‚ ..... nesles nQ~
+(a) meceeve (b) efYeVe
+(c) Je=Úeeke‚ej (d) DeeŸeleeke‚ej
+Bihar STET (9 & 10) 18/09/2020 (Shift-I)
+Bihar STET (9 & 10) 23/05/2024 (Shift-I)
+Ans. (a) : Ske‚ Ieve kes‚ meYeer 6 he‚ueke‚ meceeve nesles nw~
+
+-- 4 of 10 --
+
+225 YCT
+24. Ske‚ yesueve ke‚er TB¤eeF&......nesieer efpemeke‚er ef$epŸee 7 mesceer.
+nw Deewj kegâue he=‰erÙe #es$eheâue 968 mesceer.2 nw~
+(a) 15 mesceer. (b) 19 mesceer.
+(c) 17 mesceer. (d) 21 mesceer.
+Bihar STET (9 & 10) 04/09/2023 (Shift-II)
+Bihar STET (9 & 10) 23/05/2024 (Shift-I)
+Ans. (a) : efoŸee nw,
+yesueve ke‚er ef$epŸee (r) = 7 mesceer
+kegâue he=‰erÙe #es$eheâue = 968 mesceer2
+TB¤eeF& (h) = ?
+yesueve keâe kegâue he=‰erÙe #es$eheâue = 2 r(h+r)
+2 2 2 7
+9 6 8 h 7
+7
+2 2 h 7
+h = 15 mesceer
+25. Ske‚ meceeblej ¤elegYe&gpe ke‚er Ske‚ Yegpee 8 mesceer. nw~ Ÿeefo
+mebiele TB¤eeF& 6 mesceer. nw, lees Fmeke‚e #es$ehe‚ue nw-
+(a) 24 Jeie& mesceer. (b) 36 Jeie& mesceer.
+(c) 40 Jeie& mesceer. (d) 48 Jeie& mesceer.
+Bihar STET (9 & 10) 23/05/2024 (Shift-I)
+Bihar STET (9 & 10) 05/09/2023 (Shift-II)
+Bihar STET (9 & 10) 18/09/2020 (Shift-I)
+Ans. (d) : ÿeMve mes,
+meceevlej ¤elegYeg&pe ke‚e #es$ehe‚ue = DeeOeej × TB¤eeF&
+=8 × 6 = 48 mesceer2
+26. Ske‚ mece¤elegYeg&pe ke‚e #es$ehe‚ue, efpemekes‚ efJeke‚CeeX ke‚er
+uebyeeF& 10 mesceer. Deewj 8.2 mesceer. nes .... nw~
+(a) 41 mesceer.2 (b) 82 mesceer.2
+(c) 410 mesceer.2 (d) 820 mesceer.2
+Bihar STET (9 & 10) 23/05/2024 (Shift-I)
+Ans. (a) : efoŸee nw ,
+d1 = 10 mesceer.
+d2 = 8.2 mesceer.
+#es$ehe‚ue 1 2
+1
+A d d
+2
+1 0 8 .2
+2 5 8.2
+= 41.0 mesceer.2
+27. IeÌ[er keâer efceve‖ keâer megF& keâer ueyeeF& 14 mesceer. nesleer nw~ 5
+efceve‖ ceW efceve‖ keâer metF& Éeje IegceeÙee ieÙee #es$eheâue .....
+kes‚ yejeyej neslee nw~
+(a) 88 mesceer.2 (b) 145/3 mesceer.2
+(c) 154/3 mesceer.2 (d) 154 mesceer.2
+Bihar STET (9 & 10) 23/05/2024 (Shift-I)
+Ans. (c) : IeÌ[er keâer efceveš Jeeueer megF& keâer uecyeeF& = 14 mesceer.
+Je=Úe ke‚er ef$epŸee (r) = 14 mesceer.
+ 60 efceveš ceW efceveš Jeeueer megF& Éeje leÙe keâesCe = 3600
+5 efceveš ceW efceveš Jeeueer megF& Éeje leÙe keâesCe = 300
+meskeäšj keâe #es$eheâue 2	3 0 (1 4 )
+3 6 0
+1 2 2 1 9 6
+1 2 7
+1 2 2 2 8
+1 2
+2 2 2 8
+1 2
+6 1 6
+1 2
+1 5 4
+3
+Jeie& mesceer.
+5 efceveš ceW efceveš keâer megF& Éeje IegceeŸee ieŸee #es. 1 5 4
+3
+Jeie& mesceer.
+28. 5 mesceer. ef$epŸee Jeeues Ske‚ Je=Úe kes‚ keW‚ı O mes 13 mesceer.
+ke‚er otjer hej efmLele Ske‚ efyebog P mes Je=Úe hej mheMe& jsKee
+Ÿegice PQ Deewj PR KeeR¤es peeles nQ~ leye ¤elegYeg&pe PQOR
+ke‚e #es$ehe‚ue nw-
+(a) 60 mesceer.2 (b) 65 mesceer.2
+(c) 30 mesceer.2 (d) 32.5 mesceer.2
+Bihar STET (9 & 10) 23/05/2024 (Shift-II)
+Bihar STET (9 & 10) 23/05/2024 (Shift-I)
+Ans. (a) : Ske‚ Je=Úe efpemeke‚e kes‚vı O nw Deewj ef$epŸee 5 mesceer. nw~
+efyevog P Je=Úe kes‚ kes‚vı mes 13 mesceer. otj nw~ PQ Deewj PR Je=Úe hej
+mheMe& jsKeeSB nQ
+ef$eYegpe OPQ Deewj OPR meceke‚esCe nw~ ke‰ŸeeWefke‚ ef$epŸee mheMe&
+jsKee kes‚ uebyeJele nesleer nw~
+OP = 13 mesceer. OQ = OR = 5 mesceer.
+heeFLeeieesjme ÿecesŸe mes,
+2 2 2 2
+P Q P R O P O Q 1 3 5
+1 6 9 2 5
+1 4 4
+= 12 mesceer.
+OPQ ke‚e #es$ehe‚ue = 1
+2
+× DeeOeej × TB¤eeF&
+1 O Q Q P
+2
+1 5 1 2 3 0
+2
+mesceer.2
+PQOR ke‚e #es$ehe‚ue = 2 × OPQ ke‚e #es$ehe‚ue
+= 2 × 30 = 60 mesceer.2
+
+-- 5 of 10 --
+
+226 YCT
+29. efhejefce[ ke‚e DeeOeej nes meke‚lee nw-
+(a) kes‚Jeue ef$eYegpe (b) kes‚Jeue ¤elegYeg&pe
+(c) ke‚esF& Yeer yengYegpe (d) FveceW mes ke‚esF& veneR
+Bihar STET (9 & 10) 23/05/2024 (Shift-I)
+Ans. (c) : efhejeefceÃ[ ke‚e DeeOeej ke‚esF& Yeer yengYegpe nes meke‚lee nw~ Ÿen
+ef$eYegpe, ¤elegYeg&pe Ÿee ke‚esF& DevŸe yengYegpe nes meke‚lee nw~
+30. Ske‚ meceyeeng ef$eYegpe ke‚er YegpeeSB (2a – b) mesceer. (a +
+3b) mesceer. Deewj (2a – 2b + 1) mesceer. nw, lees ef$eYegpe ke‚e
+heefjceehe nw–
+(a) 3 mesceer (b) 12 mesceer.
+(c) 15 mesceer (d) 21 mesceer.
+Bihar STET (9 & 10) 24/05/2024 (Shift-I)
+Ans. (d) : ABC Ske‚ meceyeeng ef$eYegpe nw
+leye
+AB = AC
+AB = BC
+AC = BC
+leye,
+AB = AC
+2a–b = a+3b
+2a – a = 3b + b
+a= 4b
+a 4
+b 1
+ef$eYegpe ke‚e heefjceehe = 2a – b + a + 3b + 2a – 2b + 1
+= 2 × 4 – 1 + 4 + 3 × 1 + 2 × 4 – 2 × 1 + 1
+= 7 + 4 + 3 + 8 – 2 +1
+= 20 + 1
+= 21
+31. Ske‚ ef$eYegpe ke‚er YegpeeSB 5 mesceer., 12 mesceer. Deewj 13
+mesceer. nQ~ lees Fmeke‚e #es$ehe‚ue nQ-
+(a) 0.0024 Jeie& ceer. (b) 0.0026 Jeie& ceer.
+(c) 0.003 Jeie& ceer. (d) 0.0015 Jeie& ceer.
+Bihar STET (9 & 10) 24/05/2024 (Shift-I)
+Bihar STET (9 & 10) 05/09/2023 (Shift-II)
+Ans. (c) :
+ef$eYegpe ke‚e #es$ehe‚ue 1
+2 × DeeOeej × TB¤eeF&
+1 5 1 2
+2
+= 30 mesceer2
+3 0
+1 0 0 0 0
+m2
+= 0.003 Jeie& ceer.
+32. Ske‚ DeeŸele ke‚er uebyeeF& Gmeke‚er ¤eewÃ[eF& mes 1 mesceer.
+DeefOeke‚ nw Deewj Fmeke‚er heefjceehe 14 mesceer. nw, lees DeeŸele
+ke‚e #es$ehe‚ue nQ–
+(a) 16 Jeie& mesceer (b) 14 Jeie& mesceer.
+(c) 12 Jeie& mesceer (d) 10 Jeie& mesceer.
+Bihar STET (9 & 10) 24/05/2024 (Shift-I)
+Bihar STET (9 & 10) 05/09/2023 (Shift-I)
+Ans. (c) : ceevee DeeŸele ke‚er ¤eewÃ[eF& = x mesceer.
+DeeŸele ke‚er uebyeeF& = (x+1) mesceer.
+DeeŸele ke‚e heefjceehe = 14 mesceer.
+2 x 1 x 1 4
+4 x 2 1 4
+4x = 12
+x = 3 mesceer.
+DeeŸele ke‚er ¤eewÃ[eF& = 3 mesceer.
+DeeŸele ke‚er uebyeeF& = 4 mesceer.
+DeeŸele ke‚e #es$ehe‚ue = uebyeeF& × ¤eewÃ[eF&
+= 4×3
+= 12 Jeie& mesceer.
+33. Ske‚ mece¤elegYeg&pe ke‚e heefjceehe 100 mesceer. Deewj Ske‚
+efJeke‚Ce& 40 mesceer. nw~ leye mece¤elegYeg&pe ke‚e #es$ehe‚ue nQ-
+(a) 1000 Jeie& mesceer. (b) 500 Jeie& mesceer.
+(c) 1200 Jeie& mesceer. (d) 600 Jeie& mesceer.
+Bihar STET (9 & 10) 24/05/2024 (Shift-I)
+Ans. (d) : ÿeMve mes,
+d1 = 40 mesceer
+mece¤elegYeg&pe ke‚e heefjceehe = 100mesceer
+4a = 100
+1 0 0
+a 2 5
+4 mesceer
+2 2 2
+A D A O O D
+2 2 2
+2 5 A O 2 0
+2
+A O 6 2 5 4 0 0
+2
+A O 2 2 5
+A O 2 2 5 1 5 mesceer
+
+-- 6 of 10 --
+
+227 YCT
+2	
+A C d 2 A O
+2 15
+= 30 mesceer
+mece¤elegYeg&pe ke‚e #es. = 1 2
+1 d d
+2
+1 4 0 3 0
+2
+= 20 × 30
+= 600 Jeie& mesceer.
+34. uebyeeF& () Deewj ¤eewÃ[eF& (w) kes‚ Ske‚ DeeŸele ke‚e
+heefjceehe......... nw~
+(a)  + w (b) 2( + w)
+(c) ( + w) +2 (d) w
+Bihar STET (9 & 10) 24/05/2024 (Shift-I)
+Bihar STET (9 & 10) 05/09/2023 (Shift-I)
+Ans. (b) : Ÿeefo uecyeeF&  leLee ¤eewÃ[eF& w nw lees
+DeeŸele ke‚e heefjceehe = 2 (+w)
+35. Ÿeefo Ske‚ IeveeYeekeâej hes‖er keâer TBÛeeF&, uebyeeF& Deewj
+¤eewÃ[eF& ‗eâceMe: 20 mesceer. 15 mesceer. Deewj 10 mesceer. nQ, lees
+Fmekeâe kegâue he=‰erÙe #es$eheâue ........ nesiee~
+(a) 1100 mesceer.2 (b) 1200 mesceer.2
+(c) 1300 mesceer.2 (d) 1400 mesceer.2
+Bihar STET (9 & 10) 24/05/2024 (Shift-I)
+Ans. (c) : efoŸee nw, uecyeeF& () = 15mesceer
+¤eewÃ[eF& (b)= 10 mesceer
+TB¤eeF& (h)= 20 mesceer
+IeveeYe keâe kegâue he=‰erÙe #es$eheâue = 2(b+h + bh)
+= 2 (150+300+200)
+= 1300 mesceer2
+36. efke‚meer efhejeefce[ kes‚ hee’e& he‚ueke‚ nesles nQ-
+(a) Jeie& (b) ef$eYegpe
+(c) DeeŸele (d) meceuebye ¤eleg&Yegpe
+Bihar STET (9 & 10) 24/05/2024 (Shift-I)
+Ans. (b) : efhejeefce[ kes‚ hee’e& he‚ueke‚ ncesMee ef$eYegpe nesles nQ, DeeOeej
+ke‚esF& Yeer yengYegpe nes meke‚lee nw~
+37. 4.2 mesceer. efkeâveejs kesâ Ieve mes keâe‖ pee mekeâves meyemes yeÃ[s
+ieesues ke‚e DeeŸeleve nw-
+(a) 9.7 (b) 77.6
+(c) 58.2 (d) 38.8
+Bihar STET (9 & 10) 22/05/2024 (Shift-I)
+Ans. (d) : efoŸee nw-
+Ieve ke‚er Yegpee = 4.2 mesceer.
+nceW Gme meyemes yeÃ[s ieesues ke‚e DeeŸeleve %eele ke‚jvee nw efpemes 4.2 mesceer.
+Yegpee Jeeues Ieve mes keâeše pee mekeâlee nw~
+ieesues ke‚e JŸeeme, d = Ieve ke‚er Yegpee = 4.2 mesceer.
+ieesues ke‚er ef$epŸee, 4 .2
+r 2 .1
+2
+mesceer.
+Deye ieesues ke‚e DeeŸeleve, 3	4
+V r
+3
+3	4 2 2
+V ( 2 .1)
+3 7
+4 2 2
+V 2 .1 2 .1 2 .1
+3 7
+V = 38.808 mesceer.3
+Ÿee V = 38.8 mesceer.3
+38. meyemes yeÃ[s Je=Úeeke‚ej Mebkeg‚ ke‚e DeeŸeleve (mesceer.3 ceW) efpemes
+4.2 mesceer. efkeâveejs Jeeues Ieve mes keâe‖e pee mekeâlee nw, Jen
+nw-
+(a) 9.7 (b) 72.6
+(c) 58.2 (d) 19.4
+Bihar STET (9 & 10) 22/05/2024 (Shift-I)
+Bihar STET (9 & 10) 05/09/2023 (Shift-II)
+Bihar STET (9 & 10) 05/09/2023 (Shift-I)
+Ans. (d) : efoŸee nw-
+Ieve ke‚er Yegpee = 4.2 mesceer.
+nceW Gme meyemes yeÃ[s uebyeJe=ÚeerŸe Mebkeg‚ ke‚e DeeŸeleve %eele ke‚jvee nw efpemes
+4.2 mesceer. efke‚veejs (Ÿee Yegpee) Jeeues Ieve mes keâeše pee mekeâlee nw~
+Mebkeg‚ ke‚e JŸeeme, d = Ieve ke‚er Yegpee = 4.2 mesceer.
+Mebkeg‚ ke‚er ef$epŸee, 4 .2
+r 2 .1
+2
+mesceer.
+Mebkeg‚ ke‚er Gb¤eeF&, h = 4.2 mesceer.
+Deye, Mebkeg‚ ke‚e DeeŸeleve, 2	1
+V r h
+3
+1 2 2
+V 2 .1 2 .1 4 .2
+3 7
+V = 19.404 mesceer.3
+Ÿee V = 19.4 mesceer.3
+39. oes ieesueeW kesâ he=‰erÙe #es$eheâue 1:2 kes‚ Devegheele ceW nQ lees
+Gvekes‚ DeeŸeleve ke‚e Devegheele ........... nw~
+(a) 2 : 1 (b) 1 : 2 2
+(c) 1:8 (d) 1:4
+Bihar STET (9 & 10) 22/05/2024 (Shift-I)
+Bihar STET (9 & 10) 04/09/2023 (Shift-II)
+Ans. (b) : efoŸee nw,
+oes ieesueeW kesâ he=‰erÙe #es$eheâueeW keâe Devegheele = 1:2
+DeLee&le A1 : A2 = 1:2
+Gvekes‚ DeeŸeleveeW ke‚e Devegheele = ?
+nce peeveles nQ,
+ieesues keâe he=‰erÙe #es$eheâue, (A) = 4 r2
+peneb, r = ieesues ke‚er ef$epŸee
+henues ieesues keâe he=‰erÙe #es$eheâue (A1) = 4 r12
+leLee otmejs ieesues keâe he=‰erÙe #es$eheâue (A2) = 4 r22
+2
+1 1
+2
+2 2
+A 4 r
+A 4 r
+2
+1
+2
+2
+r	1
+2 r
+
+-- 7 of 10 --
+
+228 YCT
+Ÿee 2
+1
+2
+2
+r 1
+2	r
+1
+2
+r 1 1
+r 2 2
+henues ieesues ke‚e DeeŸeleve (V1) 3
+1
+4 r
+3
+leLee otmejs ieesues ke‚e DeeŸeleve 3
+2 2
+4
+( V ) r
+3
+Deye, oesveeW ieesues kes‚ DeeŸeleveeW ke‚e Devegheele = 1
+2
+V
+V
+=
+3
+1
+3
+2
+4 r
+3
+4 r
+3
+3
+1
+3
+2
+3
+1
+2
+r
+r
+r
+r
+3
+1
+2
+r	1 1
+r	2 2
+
+1
+2 2
+Ÿee 1 : 2 2
+40. Ÿeefo oes ieesueeW kesâ he=‰erÙe #es$eheâue 16:9 kes‚ Devegheele ceW
+nQ, lees Gvekes‚ DeeŸeleve ........... Devegheele ceW neWies~
+(a) 27 : 64 (b) 64 : 27
+(c) 4: 3 (d) 3 : 4
+Bihar STET (9 & 10) 22/05/2024 (Shift-I)
+Ans. (b) : efoŸee nw–
+oes ieesueeW kesâ he=‰erÙe #es$ehe‚ueeW ke‚e Devegheele = 16:9
+DeLee&le A1 : A2 = 16:9
+Gvekes‚ DeeŸeleveeW ke‚e Devegheele = ?
+nce peeveles nw,
+ieesues keâe he=‰erÙe #es$eheâue A = 4 r2
+peneb, r = ieesues ke‚er ef$epŸee
+henues ieesues keâe he=‰erÙe #es$eheâue A1 = 4 r12
+leLee otmejs ieesues keâe he=‰erÙe #es$eheâue A2 = 4 r22
+2
+1 1
+2
+2 2
+A 4 r
+A 4 r
+2
+1
+2
+2
+r	1 6
+9 r
+Ÿee 2
+1
+2
+2
+r 1 6
+9	r
+1
+2
+r 1 6
+r 9
+1
+2
+r 4
+r 3
+henues ieessues ke‚e DeeŸeleve 3
+1 1
+4
+V r
+3
+leLee otmejs ieesues ke‚e DeeŸeleve 3
+2 2
+4
+V r
+3
+Deye, oesveeW ieesues kes‚ DeeŸeleveeW ke‚e Devegheele = 1
+2
+V
+V
+=
+3
+1
+3
+2
+4 r
+3
+4 r
+3
+=
+3
+1
+3
+2
+r
+r
+=
+3
+1
+2
+r
+r
+=
+3
+1
+2
+r	4 4
+3 r 3
+
+= 6 4
+2 7
+Ÿee 64:27
+41. oes meceyeeng ef$eYegpeeW kes‚ #es$ehe‚ueeW ke‚e Devegheele 9:4 nw,
+lees Gveke‚er mebiele YegpeeDeeW ceW .......... ke‚e Devegheele nesiee~
+(a) 3: 2 (b) 2: 3
+(c) 5:3 (d) 3:5
+Bihar STET (9 & 10) 22/05/2024 (Shift-I)
+Ans. (a) : efoŸee nw-
+oes meceyeeng ef$eYegpeeW kes‚ #es$ehe‚ueeW ke‚e Devegheele = 9:4
+Gveke‚er mebiele YegpeeDeeW ke‚e Devegheele = ?
+nce peeveles nw,
+meceyeeng ef$eYegpe ke‚e #es$ehe‚ue, 2	3
+A a
+4
+peneb, a = meceyeeng ef$eYegpe ke‚er Yegpee ke‚er uebyeeF&
+Deye, henues meceyeeng ef$eYegpe kes‚ efueS,
+2
+1 1
+3
+A a
+4
+......(i)
+leLee otmejs meceyeeng ef$eYegpe kes‚ efueS,
+2
+2 2
+3
+A a
+4
+......(ii)
+meceer. (i) leLee meceer. (ii) mes,
+2
+1
+1
+2 2
+2
+3 a
+A 4
+A 3 a
+4
+2
+1
+2
+2
+3 a	9 4
+4 4 3 a
+2
+1
+2
+2
+a	9
+4 a
+Ÿee 2
+1
+2
+2
+a 9
+4	a
+1
+2
+a 9
+a 4
+1
+2
+a 3
+a 2
+Ÿee a1 : a2 = 3 : 2
+
+-- 8 of 10 --
+
+229 YCT
+42. ef$epŸee 10.5 mesceer. Deewj ef$epŸeKeb[ ke‚esCe 60º Jeeues
+ef$epŸeKeb[ ke‚e heefjceehe nw-
+(a) 32 mesceer. (b) 23 mesceer.
+(c) 41 mesceer. (d) 11 mesceer.
+Bihar STET (9 & 10) 22/05/2024 (Shift-I)
+Ans. (a) : efoŸee nw,
+Je=Úe ke‚er ef$epŸee, r = 10.5 mesceer.
+ef$epŸeKeb[ ke‚esCe Ÿee kes‚vıerŸe ke‚esCe, = 60º
+ef$epŸeKeb[ ke‚e heefjceehe = ?
+ef$epŸeKeb[ ke‚e heefjceehe = OA + OB + ¤eehe APB ke‚er uebyeeF&
+= r r 2 r
+3 6 0 º
+= 6 0 º 2 2
+1 0 .5 1 0 .5 2 1 0 .5
+3 6 0 º 7
+= 21 + 11 = 32 mesceer.
+43. Ske‚ mece¤elegYe&gpe ceW Ÿeefo d1 = 16 Deewj d2 =12 mesceer.
+lees Gmeke‚e #es$ehe‚ue nesiee~
+(a) 16 12 mesceer.2 (b) 96 mesceer.2
+(c) 8 6 mesceer.2 (d) 144 mesceer.2
+Bihar STET (9 & 10) 22/05/2024 (Shift-I)
+Ans. (b) : mece¤elegYeg&pe ke‚e henuee efJeke‚Ce&, (d1) = 16 mesceer.
+mece¤elegYeg&pe ke‚e otmeje efJeke‚Ce&, (d2) = 12 mesceer.
+mece¤elegYeg&pe ke‚e #es$ehe‚ue, (A) = ?
+nce peeveles nQ,
+mece¤elegYeg&pe ke‚e #es$ehe‚ue = 1
+2
+× efJeke‚CeeX ke‚e iegCevehe‚ue
+Ÿee 1 2
+1
+A d d
+2
+1
+A 1 6 1 2 9 6
+2
+mesceer.2
+44. Ÿeefo Je=Úe ke‚er heefjefOe Ske‚ Jeie& ke‚er heefjefOe kes‚ yejeyej nes,
+lees Gvekes‚ #es$eHe‚ue ke‚e Devegheele nw
+(a) 11 : 14
+(b) 13 : 10
+(c) 14 : 11
+(d) GheŸeg&ke‰le ceW mes Ske‚ mes DeefOeke‚
+(e) GheŸeg&ke‰le ceW mes ke‚esF& veneR
+BPSC-Tre 3.0 (6 to 8) 19/07/2024
+BPSC Tre 3.0 (9 & 10) 21/07/2024
+Ans. (c) : ceevee Je=Úe ke‚er ef$epŸee 'r' Deewj Jeie& ke‚er Yegpee x nw~
+ÿeMveevegmeej,
+Je=Úe ke‚er heefjefOe = Jeie& ke‚e heefjceehe
+2 r = 4x
+r 4 2
+x ( 2 )
+____(1)
+Deye Je=Úe ke‚e #es$eHe‚ue Deewj Jeie& kes‚ #es$eHe‚ue ke‚e Devegheele
+=
+2
+2
+r
+x
+( meceer. (1) mes)
+=
+2
+r
+x
+=
+2
+2
+= 2
+4
+= 4 4 7 1 4
+2 2 1 1
+Dele: efJeke‚uhe (c) mener nw~
+45. Ske‚ Mebkeg‚ ke‚er TB¤eeF& 4.8 cm Deewj Fmekes‚ DeeOeej ke‚e
+JŸeeme 4 cm nw, lees Fmeke‚er eflej⁄er TB¤eeF& nw
+(a) 6.2 mesceer.
+(b) 5.2 mesceer.
+(c) 4.2 mesceer.
+(d) GheŸeg&ke‰le ceW mes Ske‚ mes DeefOeke‚
+(e) GheŸeg&ke‰le ceW mes ke‚esF& veneR
+BPSC Tre 3.0 (9 & 10) 21/07/2024
+Ans. (b) : efoŸee nw,
+TB¤eeF& (h) = 4.8 mesceer.
+ef$epŸee (r) = 4/2 mesceer.= 2 mesceer.
+eflej⁄er TB¤eeF& (l) (AC) = ?
+AOC ceW,
+heeFLeeieesjme ÿecesŸe …eje
+AC2 = AO2 + OC2
+AC2 = (4.8)2 + (2)2
+AC2 = 23.04 + 4
+AC = 2 7 .0 4
+AC = 5.2 mesceer.
+eflej⁄er TB¤eeF& (l) = 5.2 mesceer.
+46. Ÿeefo ÿelŸeske‚ Je=Úe ke‚er ef$epŸee 1 mesceer nw, ⁄eŸeebefke‚le #es$e
+ke‚e #es$eHe‚ue %eele ke‚jW
+
+-- 9 of 10 --
+
+230 YCT
+(a) 2	
+5 – 3 c m
+(b) 2	
+2 – 3 c m
+(c) 2	
+4 – c m
+(d) GheŸeg&ke‰le ceW mes Ske‚ mes DeefOeke‚
+(e) GheŸeg&ke‰le ceW mes ke‚esF& veneR
+BPSC Tre 3.0 (9 & 10) 21/07/2024
+Ans. (c) :
+⁄eŸebeefke‚le Yeeie ke‚e #es$eHe‚ue =
+Jeie& ke‚e #es$eHe‚ue – 1
+4
+4
+Je=ÚeeW ke‚e #es$eHe‚ue
+2
+2 (1)
+( 2 ) 4
+4
+= ( 4 – ) mesceer.2
+47. 280 ceer. ienjs leLee 3 ceer. JŸeeme Jeeues veueket‚he ke‚er
+KegoeF& ke‚er ke‚ercele `3.60 ÿeefle ceer3 ke‚er oj mes ke‰Ÿee
+nesieer?
+(a) ` 7,282
+(b) ` 2,728
+(c) ` 7,128
+(d) GheŸeg&ke‰le ceW mes Ske‚ mes DeefOeke‚
+(e) GheŸeg&ke‰le ceW mes ke‚esF& veneR
+BPSC Tre 3.0 (9 & 10) 21/07/2024
+Ans. (c) : efoŸee nw,
+r = 3
+2
+ceer., h = 280 ceer.
+veueket‚he ke‚e DeeŸeleve (V) = r2h
+V = 2 2 3 3 2 8 0
+7 2 2
+V = 1980 ceer.3
+ 1 ceer.3 kes‚ KegoeF& ke‚er ke‚ercele = 3.6 §.
+lees 1980 ceer.3 KegoeF& ke‚er ke‚ercele = (1980 × 3.6 §.)
+= §. 7128
+48. Ske‚ leebyes kes‚ leej ke‚es ceesÃ[ke‚j Jeiee&ke‚ej yeveeŸee ieŸee nw,
+efpemeke‚e #es]$eHe‚ue 121 mesceer2 nw~ Ÿeefo Gmeer leej ke‚es
+ceesÃ[ke‚j Je=Úe yeveeŸee peeS, lees Gme Je=Úe ke‚er ef$epŸee
+efke‚leveer mesceer nesieer?
+(a) 11 mesceer. (b) 10 mesceer.
+(c) 7 mesceer. (d) GheŸeg&ke‰le ceW mes Ske‚ mes DeefOeke‚
+(e) GheŸeg&ke‰le ceW mes ke‚esF& veneR
+BPSC Tre 3.0 (9 & 10) 21/07/2024
+Ans. (c) : efoŸee nw,
+Jeie& ke‚e #es$eHe‚ue = 121 mesceer.2
+ceevee Jeie& ke‚er Yegpee = x mesceer.
+Jeie& ke‚e #es$eHe‚ue = (Yegpee)2
+121 = x2
+x = 11 mesceer.
+leej ke‚er uecyeeF& = Jeie& ke‚e heefjceehe
+= 4 × Yegpee
+= 4 × 11
+= 44 mesceer.
+leej ke‚er uecyeeF& = Je=Úe ke‚er heefjefOe
+Je=Úe ke‚e heefjefOe = 2 r
+44 = 2 r
+4 4
+r
+2
+r = 4 4 7
+2 2 2
+r = 7 mesceer.
+Dele: Je=Úe ke‚er ef$epŸee 7 mesceer. nesiee~
+49. leerve ieesueerŸe ieWoeW ke‚er ef$epŸeeSb 6, 8 Deewj r mesceer nw,
+Fveke‚es efheIeueeke‚j 12 mesceer Jeeuee Ske‚ yeÃ[e ieesuee
+yeveeŸee ieŸee nw, lees r ke‚e ceeve nw
+(a) 8 mesceer. (b) 9 mesceer.
+(c) 10 mesceer. (d) GheŸeg&ke‰le ceW mes Ske‚ mes DeefOeke‚
+(e) GheŸeg&ke‰le ceW mes ke‚esF& veneR
+BPSC Tre 3.0 (9 & 10) 21/07/2024
+Ans. (c) : efoŸee nw,
+leerveeW ieesueerÙe ieWoeW keâer ef$epÙeeSb ›eâceMe: r1= 6 mesceer. r2 = 8 mesceer.
+Deewj r3 = r mesceer.
+efheIeueeke‚j yeÃ[e ieesues ke‚er ef$epŸee (R) = 12 mesceer.
+ieesueerŸeeW ke‚e DeeŸeleve = yeÃ[s ieesuee ke‚e DeeŸeleve
+3 3 3 3
+1 2 3
+4 4 4 4
+r r r R
+3 3 3 3
+3 3 3 3
+1 2 3
+4 4
+r r r R
+3 3
+3 3 3 3	4 4
+6 8 r 1 2
+3 3
+216 + 512 + r3 = 1728
+728 + r3 = 1728
+r3 = 1728 – 728 = 1000
+r = 10 mesceer.
+
+-- 10 of 10 --
+

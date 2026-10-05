@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 300" width="100%" height="100%">
+  <defs>
+    <style>
+      .rhomb-edge { fill: #f8fafc; stroke: #3b82f6; stroke-width: 2.5; stroke-linejoin: round; }
+      .diag-1 { stroke: #ef4444; stroke-width: 2; }
+      .diag-2 { stroke: #10b981; stroke-width: 2; }
+      .rhomb-text { font-family: system-ui, -apple-system, sans-serif; font-size: 13px; font-weight: bold; fill: #1e293b; }
+      .half-dim { font-family: monospace; font-size: 12px; font-weight: bold; }
+      @media (prefers-color-scheme: dark) {
+        .rhomb-edge { fill: #0f172a; stroke: #60a5fa; }
+        .rhomb-text { fill: #f8fafc; }
+      }
+    </style>
+  </defs>
+
+  <!-- Rhombus vertices: Top (160, 40), Right (260, 150), Bottom (160, 260), Left (60, 150) -->
+  <polygon points="160,40 260,150 160,260 60,150" class="rhomb-edge" />
+
+  <!-- Diagonal 1 (Vertical d1 = 24 => half = 12) -->
+  <line x1="160" y1="40" x2="160" y2="260" class="diag-1" />
+
+  <!-- Diagonal 2 (Horizontal d2 = 10 => half = 5) -->
+  <line x1="60" y1="150" x2="260" y2="150" class="diag-2" />
+
+  <!-- Center intersection point -->
+  <circle cx="160" cy="150" r="3.5" fill="#1e293b" />
+
+  <!-- Right angle mark in upper right quadrant -->
+  <polyline points="160,135 175,135 175,150" fill="none" stroke="#64748b" stroke-width="1.5" />
+
+  <!-- Half Dimensions -->
+  <text x="166" y="100" class="half-dim" style="fill: #dc2626;">12</text>
+  <text x="166" y="210" class="half-dim" style="fill: #dc2626;">12</text>
+  <text x="195" y="142" class="half-dim" style="fill: #059669;">5</text>
+  <text x="105" y="142" class="half-dim" style="fill: #059669;">5</text>
+
+  <!-- Side labels 'a' -->
+  <text x="215" y="85" class="rhomb-text">a = 13</text>
+  <text x="215" y="220" class="rhomb-text">a = 13</text>
+  <text x="85" y="220" class="rhomb-text">a = 13</text>
+  <text x="85" y="85" class="rhomb-text">a = 13</text>
+
+  <!-- Perimeter formula note -->
+  <rect x="65" y="268" width="190" height="26" rx="6" fill="#f0fdf4" stroke="#86efac" />
+  <text x="73" y="285" style="font-family: system-ui; font-size: 11.5px; font-weight: bold; fill: #15803d;">परिमाप = 4 × a = 52 सेमी</text>
+</svg>

@@ -11,6 +11,7 @@ import { lcmHcfQuestions } from '../data/lcmQuestions';
 import { percentageQuestions } from '../data/percentageQuestions';
 import { profitLossQuestions } from '../data/profitLossQuestions';
 import { coordinateGeometryQuestions } from '../data/coordinateGeometryQuestions';
+import { mensurationQuestions } from '../data/mensurationQuestions';
 import { mockTestSets as defaultMockSets } from '../data/mockSets';
 
 const STORAGE_KEYS = {
@@ -121,7 +122,13 @@ export function sanitizeTestSet(t: any): MockTestSet {
 }
 
 export function getDefaultQuestions(): Question[] {
-  return [...lcmHcfQuestions, ...percentageQuestions, ...profitLossQuestions, ...coordinateGeometryQuestions].map(sanitizeQuestion);
+  return [
+    ...lcmHcfQuestions,
+    ...percentageQuestions,
+    ...profitLossQuestions,
+    ...coordinateGeometryQuestions,
+    ...mensurationQuestions
+  ].map(sanitizeQuestion);
 }
 
 export function generateTopicKey(labelHindi: string, labelEnglish?: string, keyHint?: string): string {
