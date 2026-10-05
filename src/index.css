@@ -244,4 +244,11 @@
 .math-rendered-container .katex {
   color: inherit;
 }
+/* Suppress harsh red error styling from KaTeX fallback */
+.katex-error {
+  color: inherit !important;
+  font-family: inherit !important;
+  border: none !important;
+  background: transparent !important;
+}
 

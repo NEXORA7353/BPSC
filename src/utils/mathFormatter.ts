@@ -4,11 +4,14 @@
  * 
  * Automatically formats:
  * - Natural typing: (1/5)^(3x), (0.25)^x, (0.03125)^(2/5), (-343 × 512)^(1/3)
+ * - Polynomials & multiple powers: 5x^2yz^2, 25x^3y^2z, 125x^2yz^2
+ * - Nth roots & unicode roots: ⁵√(3125x¹⁰y⁵z¹⁰), ^{5}√(5^{5}...), sqrt(x), \sqrt[3]{x}
  * - Tall bracket fractions: (1/5)^(3x) -> \left(\frac{1}{5}\right)^{3x}
  * - Fractional exponents: base^(a/b) -> base^{\frac{a}{b}}
- * - Square roots & nth roots: sqrt(x), \sqrt{x}, \sqrt[3]{x}
  * - Equations & proofs: (0.2)^(3x) = 0.008 = (0.2)^3 => 3x = 3 => x = 1
  * - Unicode math & superscripts: ˣ, ³, ², ¹, ⅕, ⅖, ×, ÷, ±, ≤, ≥, ≠
+ * - Middle dot: · -> \cdot
+ * - Auto-heals broken double-superscripts from OCR / previous imports
  * - LaTeX syntax: \frac{a}{b}, \( ... \), \[ ... \], $ ... $, $$ ... $$
  * - Seamless integration with Hindi & English text
  */
@@ -41,23 +44,36 @@ export function normalizeMathSyntax(raw: string): string {
   if (!raw) return '';
   let str = raw;
 
-  // Normalize Unicode fractions
+  // 1. Normalize Unicode fractions
   for (const [k, v] of Object.entries(UNICODE_FRACTIONS)) {
     str = str.split(k).join(v);
   }
 
-  // Normalize Unicode superscripts
+  // 2. Handle unicode root indices like ⁵√ or ³√ BEFORE general superscripts
+  // ⁵√(expr) -> \sqrt[5]{expr}
+  str = str.replace(/([⁰¹²³⁴⁵⁶⁷⁸⁹]+)\s*(?:√|\\sqrt)\s*(?:\(([^()]+)\)|\{([^{}]+)\}|([a-zA-Z0-9]+))/g, (_, supDigits, p1, p2, p3) => {
+    let num = '';
+    for (const ch of supDigits) {
+      if (UNICODE_SUPERSCRIPTS[ch]) num += UNICODE_SUPERSCRIPTS[ch].replace('^', '');
+      else num += ch;
+    }
+    const body = p1 || p2 || p3;
+    return `\\sqrt[${num}]{${body}}`;
+  });
+
+  // 3. Normalize Unicode superscripts
   for (const [k, v] of Object.entries(UNICODE_SUPERSCRIPTS)) {
     str = str.split(k).join(v);
   }
 
-  // Merge consecutive superscripts e.g. ^x^y -> ^{xy}
-  str = str.replace(/\^([a-zA-Z0-9+\-])(?:\^([a-zA-Z0-9+\-]))+/g, (match) => {
+  // 4. Merge consecutive numeric superscripts e.g. ^1^0 -> ^{10}
+  str = str.replace(/\^(\d+)(?:\^(\d+))+/g, (match) => {
     return '^{' + match.replace(/\^/g, '') + '}';
   });
 
-  // Normalize common unicode math operators
+  // 5. Normalize common unicode math operators and middle dot
   str = str
+    .replace(/[·•]/g, ' \\cdot ')
     .replace(/×/g, ' \\times ')
     .replace(/÷/g, ' \\div ')
     .replace(/±/g, ' \\pm ')
@@ -94,28 +110,43 @@ export function toLatex(expr: string): string {
   s = s.replace(/!=/g, ' \\neq ');
   s = s.replace(/\+-/g, ' \\pm ');
 
-  // 3. Roots: sqrt(x), sqrt[n](x), cbrt(x)
+  // 3. Roots:
+  // Root with index: ^5√(expr) or ^{5}√(expr) or \sqrt[5](expr)
+  s = s.replace(/\^\{?(\d+)\}?\s*(?:√|\\sqrt)\s*(?:\(([^()]+)\)|\{([^{}]+)\})/g, (_, nth, p1, p2) => {
+    return `\\sqrt[${nth}]{${p1 || p2}}`;
+  });
   s = s.replace(/sqrt\[([^\]]+)\]\(([^()]+)\)/gi, '\\sqrt[$1]{$2}');
   s = s.replace(/sqrt\(([^()]+)\)/gi, '\\sqrt{$1}');
   s = s.replace(/cbrt\(([^()]+)\)/gi, '\\sqrt[3]{$1}');
+  s = s.replace(/(?:√|\\surd)\s*(?:\(([^()]+)\)|\{([^{}]+)\})/g, (_, p1, p2) => `\\sqrt{${p1 || p2}}`);
 
-  // 4. Multiplication operator: e.g. 2 * 3 or x * y -> \times
+  // 4. Heal broken/double superscripts (e.g. from OCR or past imports)
+  // e.g. 5x^{2yz}^{2} -> 5x^{2} y z^{2}
+  // e.g. 25x^{3y}^{2z} -> 25x^{3} y^{2} z
+  s = s.replace(/([a-zA-Z])\^\{(\d+)([a-zA-Z])([a-zA-Z])\}\^\{(\d+)\}/g, '$1^{$2} $3 $4^{$5}');
+  s = s.replace(/([a-zA-Z])\^\{(\d+)([a-zA-Z])\}\^\{(\d+)([a-zA-Z])\}/g, '$1^{$2} $3^{$4} $5');
+  s = s.replace(/(\^\{[^{}]+\})\^\{([^{}]+)\}/g, '$1^{$2}');
+
+  // 5. Multiplication operator: e.g. 2 * 3 or x * y -> \times
   s = s.replace(/(\d|[a-zA-Z\)])\s*\*\s*(\d|[a-zA-Z\(])/g, '$1 \\times $2');
 
-  // 5. POWERS (Processed before fraction parens to preserve base)
-  // 5a. Caret with fractional parenthesized power: ^(a/b) or ^(-a/b)
+  // 6. POWERS:
+  // 6a. Caret with fractional parenthesized power: ^(a/b) or ^(-a/b)
   s = s.replace(/\^\s*\(\s*(-?[0-9a-zA-Z\.\+\-]+)\s*\/\s*([0-9a-zA-Z\.\+\-]+)\s*\)/g, '^{\\frac{$1}{$2}}');
 
-  // 5b. Caret with parenthesized expression: ^(3x) or ^(n-1) or ^(-3)
+  // 6b. Caret with parenthesized expression: ^(3x) or ^(n-1) or ^(-3)
   s = s.replace(/\^\s*\(\s*([^()]+)\s*\)/g, '^{$1}');
 
-  // 5c. Caret with bare identifier/number: ^3x or ^x or ^2
-  s = s.replace(/\^\s*(-?[a-zA-Z0-9]+)/g, '^{$1}');
+  // 6c. Bare numeric exponent: ^2, ^10, ^-1 (matches ONLY digits so adjacent variables y, z are preserved!)
+  s = s.replace(/\^\s*(-?\d+)/g, '^{$1}');
 
-  // 6. FRACTIONS in round brackets: (a/b) -> \left(\frac{a}{b}\right)
+  // 6d. Bare single variable exponent: ^x, ^y, ^n
+  s = s.replace(/\^\s*([a-zA-Z])(?![a-zA-Z0-9])/g, '^{$1}');
+
+  // 7. FRACTIONS in round brackets: (a/b) -> \left(\frac{a}{b}\right)
   s = s.replace(/\(\s*([0-9a-zA-Z\.\+\-]+)\s*\/\s*([0-9a-zA-Z\.\+\-]+)\s*\)/g, '\\left(\\frac{$1}{$2}\\right)');
 
-  // 7. Standalone fractions: a/b (e.g. 1/5 or 25/16)
+  // 8. Standalone fractions: a/b (e.g. 1/5 or 25/16)
   s = s.replace(/(^|[\s=+\-*(\[])([0-9a-zA-Z]+)\/([0-9a-zA-Z]+)(?=[\s=+\-*)\],.;]|$)/g, '$1\\frac{$2}{$3}');
 
   return s;
@@ -175,7 +206,7 @@ export function renderMathToHtml(input: string): string {
     if (!trimmed) return segment;
 
     // Check if this segment contains mathematical indicators
-    const hasMathIndicators = /[\^\\_=+*±×÷√≤≥≠⇒⇔→~]|\d+\s*\/\s*\d+|\(\s*[0-9a-zA-Z.\-+]+\s*\/\s*[0-9a-zA-Z.\-+]+\s*\)|(?:sqrt|cbrt|sin|cos|tan|log)\b/i.test(trimmed);
+    const hasMathIndicators = /[\^\\_=+*±×÷√≤≥≠⇒⇔→~·•]|\d+\s*\/\s*\d+|\(\s*[0-9a-zA-Z.\-+]+\s*\/\s*[0-9a-zA-Z.\-+]+\s*\)|(?:sqrt|cbrt|sin|cos|tan|log)\b/i.test(trimmed);
 
     // Exclude strings that are just labels or dates like "15/09/2020", "(a)", "(b)", etc.
     const isJustDate = /^\(?\d{1,2}\/\d{1,2}\/\d{2,4}\)?$/.test(trimmed);
