@@ -30,7 +30,7 @@ export function RapidDrillModal({ isOpen, onClose, onStartTest }: RapidDrillModa
 
   const handleStartRapidDrill = () => {
     const config: CustomTestConfig = {
-      title: `⚡ 5-Min Rapid Sprint - ${topicNameHindi.split('(')[0].trim()}`,
+      title: `Rapid Sprint (5-Min) - ${topicNameHindi.split('(')[0].trim()}`,
       creationMode: 'topic_distribution',
       selectedTopics: [selectedTopicKey],
       topicDistribution: { [selectedTopicKey]: drillCount },
@@ -111,7 +111,10 @@ export function RapidDrillModal({ isOpen, onClose, onStartTest }: RapidDrillModa
                       : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
                   }`}
                 >
-                  ⚡ {cnt} Questions (5 Min)
+                  <span className="flex items-center justify-center gap-1.5">
+                    <Zap className="w-3.5 h-3.5" />
+                    <span>{cnt} Questions (5 Min)</span>
+                  </span>
                 </button>
               ))}
             </div>

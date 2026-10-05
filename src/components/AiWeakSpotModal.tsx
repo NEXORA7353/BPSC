@@ -148,7 +148,7 @@ export function AiWeakSpotModal({ isOpen, onClose, onStartTest }: AiWeakSpotModa
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black text-slate-950 bg-amber-400 hover:bg-amber-300 shadow-md transition-all active:scale-95"
             >
               <Zap className="w-4 h-4 fill-slate-950" />
-              <span>🚀 1-Click Generate Weak Spot Fixer Test ({Math.min(15, weakTopics.length * 5)} Qs)</span>
+              <span>1-Click Generate Weak Spot Fixer Test ({Math.min(15, weakTopics.length * 5)} Qs)</span>
             </button>
           </div>
 

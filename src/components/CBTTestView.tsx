@@ -546,29 +546,41 @@ export function CBTTestView({
                     className={`w-full text-left p-4 rounded-2xl border transition-all flex items-start gap-4 ${
                       isOptionE
                         ? isSelected
-                          ? 'bg-amber-500/20 border-amber-500 text-amber-950 dark:text-amber-100 font-bold shadow-md ring-2 ring-amber-400'
-                          : 'bg-amber-50/40 dark:bg-amber-950/20 border-dashed border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 hover:bg-amber-50'
+                          ? 'bg-amber-500/25 border-amber-500 text-amber-950 dark:text-amber-100 font-bold shadow-md ring-2 ring-amber-400'
+                          : 'bg-amber-50/40 dark:bg-amber-950/20 border-dashed border-amber-300 dark:border-amber-700/80 text-amber-900 dark:text-amber-200 hover:bg-amber-100/60 dark:hover:bg-amber-900/40'
                         : isSelected
-                        ? 'bg-indigo-600 dark:bg-indigo-600 text-white border-indigo-600 shadow-md font-bold'
-                        : 'bg-white dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50/80'
+                        ? 'bg-blue-600 dark:bg-blue-600 text-white dark:text-white border-blue-600 shadow-md font-bold ring-2 ring-blue-400'
+                        : 'bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700/80 text-slate-900 dark:text-slate-100 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-slate-50 dark:hover:bg-slate-800'
                     }`}
                   >
                     <div
                       className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 font-bold text-xs uppercase transition-colors ${
                         isSelected
                           ? isOptionE
-                            ? 'bg-amber-600 text-white'
-                            : 'bg-white text-indigo-950'
-                          : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600'
+                            ? 'bg-amber-600 text-white font-black'
+                            : 'bg-white text-blue-900 font-black shadow-xs'
+                          : isOptionE
+                          ? 'bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700'
+                          : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600'
                       }`}
                     >
                       {opt.key}
                     </div>
 
-                    <div className="flex-1 text-sm sm:text-base font-medium leading-relaxed font-sans">
+                    <div
+                      className={`flex-1 text-sm sm:text-base font-semibold leading-relaxed font-sans ${
+                        isSelected
+                          ? isOptionE
+                            ? 'text-amber-950 dark:text-amber-100'
+                            : 'text-white'
+                          : isOptionE
+                          ? 'text-amber-900 dark:text-amber-200'
+                          : 'text-slate-900 dark:text-slate-100'
+                      }`}
+                    >
                       <MathText text={opt.text} />
                       {isOptionE && (
-                        <span className="block text-[11px] font-bold text-amber-600 dark:text-amber-400 mt-1">
+                        <span className="block text-[11px] font-bold text-amber-700 dark:text-amber-300 mt-1">
                           (Safe Skip Option E - No Penalty)
                         </span>
                       )}

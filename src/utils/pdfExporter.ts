@@ -223,7 +223,7 @@ export function exportTestToPrintablePdf(testSet: MockTestSet): void {
     <div>
       <strong>BPSC TRE 4.0 Printable Exam Generator</strong> — ${testSet.title}
     </div>
-    <button class="btn-print" onclick="window.print()">🖨️ Print Exam Paper (PDF)</button>
+    <button class="btn-print" onclick="window.print()">Print Exam Paper (PDF)</button>
   </div>
 
   <div style="padding: 10px 0;">

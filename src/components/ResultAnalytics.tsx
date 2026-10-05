@@ -449,77 +449,124 @@ export function ResultAnalytics({
 
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                 {/* UR */}
-                <div className={`p-2.5 rounded-xl border text-center ${
+                <div className={`p-2.5 rounded-xl border text-center transition-all ${
                   normAnalysis.categoryCutoffs.generalUR.qualified
-                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                    : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                    ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
+                    : 'bg-rose-500/15 border-rose-500/40 text-rose-300'
                 }`}>
-                  <div className="text-[10px] uppercase font-bold text-slate-400">General (UR) 40%</div>
-                  <div className="text-xs font-black font-mono mt-0.5">
+                  <div className="text-[10px] uppercase font-bold text-slate-300 dark:text-slate-300">General (UR) 40%</div>
+                  <div className="text-xs font-black font-mono mt-0.5 text-white">
                     {normAnalysis.categoryCutoffs.generalUR.requiredMarks} Marks
                   </div>
-                  <div className="text-[10px] font-bold mt-1">
-                    {normAnalysis.categoryCutoffs.generalUR.qualified ? '✅ Qualified' : '❌ Missed'}
+                  <div className="text-[10px] font-bold mt-1 inline-flex items-center justify-center gap-1">
+                    {normAnalysis.categoryCutoffs.generalUR.qualified ? (
+                      <>
+                        <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                        <span className="text-emerald-300 font-extrabold">Qualified</span>
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="w-3 h-3 text-rose-400" />
+                        <span className="text-rose-300 font-extrabold">Missed</span>
+                      </>
+                    )}
                   </div>
                 </div>
 
                 {/* BC */}
-                <div className={`p-2.5 rounded-xl border text-center ${
+                <div className={`p-2.5 rounded-xl border text-center transition-all ${
                   normAnalysis.categoryCutoffs.bc.qualified
-                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                    : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                    ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
+                    : 'bg-rose-500/15 border-rose-500/40 text-rose-300'
                 }`}>
-                  <div className="text-[10px] uppercase font-bold text-slate-400">BC (पिछड़ा) 36.5%</div>
-                  <div className="text-xs font-black font-mono mt-0.5">
+                  <div className="text-[10px] uppercase font-bold text-slate-300 dark:text-slate-300">BC (पिछड़ा) 36.5%</div>
+                  <div className="text-xs font-black font-mono mt-0.5 text-white">
                     {normAnalysis.categoryCutoffs.bc.requiredMarks} Marks
                   </div>
-                  <div className="text-[10px] font-bold mt-1">
-                    {normAnalysis.categoryCutoffs.bc.qualified ? '✅ Qualified' : '❌ Missed'}
+                  <div className="text-[10px] font-bold mt-1 inline-flex items-center justify-center gap-1">
+                    {normAnalysis.categoryCutoffs.bc.qualified ? (
+                      <>
+                        <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                        <span className="text-emerald-300 font-extrabold">Qualified</span>
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="w-3 h-3 text-rose-400" />
+                        <span className="text-rose-300 font-extrabold">Missed</span>
+                      </>
+                    )}
                   </div>
                 </div>
 
                 {/* EBC */}
-                <div className={`p-2.5 rounded-xl border text-center ${
+                <div className={`p-2.5 rounded-xl border text-center transition-all ${
                   normAnalysis.categoryCutoffs.ebc.qualified
-                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                    : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                    ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
+                    : 'bg-rose-500/15 border-rose-500/40 text-rose-300'
                 }`}>
-                  <div className="text-[10px] uppercase font-bold text-slate-400">EBC (अत्यंत पिछड़ा) 34%</div>
-                  <div className="text-xs font-black font-mono mt-0.5">
+                  <div className="text-[10px] uppercase font-bold text-slate-300 dark:text-slate-300">EBC (अत्यंत पिछड़ा) 34%</div>
+                  <div className="text-xs font-black font-mono mt-0.5 text-white">
                     {normAnalysis.categoryCutoffs.ebc.requiredMarks} Marks
                   </div>
-                  <div className="text-[10px] font-bold mt-1">
-                    {normAnalysis.categoryCutoffs.ebc.qualified ? '✅ Qualified' : '❌ Missed'}
+                  <div className="text-[10px] font-bold mt-1 inline-flex items-center justify-center gap-1">
+                    {normAnalysis.categoryCutoffs.ebc.qualified ? (
+                      <>
+                        <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                        <span className="text-emerald-300 font-extrabold">Qualified</span>
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="w-3 h-3 text-rose-400" />
+                        <span className="text-rose-300 font-extrabold">Missed</span>
+                      </>
+                    )}
                   </div>
                 </div>
 
                 {/* SC/ST/Women */}
-                <div className={`p-2.5 rounded-xl border text-center ${
+                <div className={`p-2.5 rounded-xl border text-center transition-all ${
                   normAnalysis.categoryCutoffs.scStWomen.qualified
-                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                    : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                    ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
+                    : 'bg-rose-500/15 border-rose-500/40 text-rose-300'
                 }`}>
-                  <div className="text-[10px] uppercase font-bold text-slate-400">SC/ST/महिला 32%</div>
-                  <div className="text-xs font-black font-mono mt-0.5">
+                  <div className="text-[10px] uppercase font-bold text-slate-300 dark:text-slate-300">SC/ST/महिला 32%</div>
+                  <div className="text-xs font-black font-mono mt-0.5 text-white">
                     {normAnalysis.categoryCutoffs.scStWomen.requiredMarks} Marks
                   </div>
-                  <div className="text-[10px] font-bold mt-1">
-                    {normAnalysis.categoryCutoffs.scStWomen.qualified ? '✅ Qualified' : '❌ Missed'}
+                  <div className="text-[10px] font-bold mt-1 inline-flex items-center justify-center gap-1">
+                    {normAnalysis.categoryCutoffs.scStWomen.qualified ? (
+                      <>
+                        <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                        <span className="text-emerald-300 font-extrabold">Qualified</span>
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="w-3 h-3 text-rose-400" />
+                        <span className="text-rose-300 font-extrabold">Missed</span>
+                      </>
+                    )}
                   </div>
                 </div>
 
                 {/* Merit Safe Zone */}
-                <div className={`p-2.5 rounded-xl border text-center ${
+                <div className={`p-2.5 rounded-xl border text-center transition-all ${
                   normAnalysis.categoryCutoffs.meritSafeZone.qualified
                     ? 'bg-amber-500/15 border-amber-500/40 text-amber-300 ring-1 ring-amber-500/30'
-                    : 'bg-white/5 border-white/10 text-slate-400'
+                    : 'bg-slate-800/60 border-slate-700/60 text-slate-300'
                 }`}>
                   <div className="text-[10px] uppercase font-bold text-amber-400">Safe Merit Zone 65%</div>
-                  <div className="text-xs font-black font-mono mt-0.5">
+                  <div className="text-xs font-black font-mono mt-0.5 text-amber-200">
                     {normAnalysis.categoryCutoffs.meritSafeZone.requiredMarks} Marks
                   </div>
-                  <div className="text-[10px] font-bold mt-1">
-                    {normAnalysis.categoryCutoffs.meritSafeZone.qualified ? '🏆 High Merit' : 'Adv. Target'}
+                  <div className="text-[10px] font-bold mt-1 inline-flex items-center justify-center gap-1">
+                    {normAnalysis.categoryCutoffs.meritSafeZone.qualified ? (
+                      <>
+                        <Trophy className="w-3 h-3 text-amber-400" />
+                        <span className="text-amber-300 font-extrabold">High Merit</span>
+                      </>
+                    ) : (
+                      <span className="text-slate-400 font-bold">Adv. Target</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -528,18 +575,18 @@ export function ResultAnalytics({
             {/* Verdict Banner */}
             <div className={`p-3.5 rounded-2xl border flex items-center justify-between gap-3 text-xs font-bold ${
               normAnalysis.verdictColor === 'emerald'
-                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-200'
                 : normAnalysis.verdictColor === 'indigo'
-                ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300'
+                ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-200'
                 : normAnalysis.verdictColor === 'amber'
-                ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
-                : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                ? 'bg-amber-500/15 border-amber-500/40 text-amber-200'
+                : 'bg-rose-500/15 border-rose-500/40 text-rose-200'
             }`}>
               <div className="flex items-center gap-2">
-                <Award className="w-4 h-4 shrink-0" />
+                <Award className="w-4 h-4 text-amber-400 shrink-0" />
                 <span>निर्णय (Verdict): {normAnalysis.verdictHindi}</span>
               </div>
-              <span className="hidden sm:inline font-normal text-[11px] text-slate-400">
+              <span className="hidden sm:inline font-semibold text-[11px] text-slate-300/80">
                 {normAnalysis.verdictEnglish}
               </span>
             </div>

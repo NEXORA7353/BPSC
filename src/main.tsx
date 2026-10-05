@@ -91,11 +91,13 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              margin: '0 auto 16px auto',
-              fontSize: '26px',
-              fontWeight: 'bold'
+              margin: '0 auto 16px auto'
             }}>
-              ⚠️
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
             </div>
             <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '8px', color: '#FFFFFF', textAlign: 'center' }}>
               पोर्टल रिकवरी एवं सहायता (Portal Recovery)
@@ -153,7 +155,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
                   cursor: 'pointer'
                 }}
               >
-                🔄 पुनः लोड करें (Reload Portal)
+                पुनः लोड करें (Reload Portal)
               </button>
               <button
                 onClick={this.handleAutoRepair}
@@ -169,7 +171,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
                   cursor: 'pointer'
                 }}
               >
-                🛠️ स्वचालित मरम्मत एवं रीस्टार्ट (Auto-Repair Storage)
+                स्वचालित मरम्मत एवं रीस्टार्ट (Auto-Repair Storage)
               </button>
               <button
                 onClick={this.handleReset}
@@ -185,7 +187,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
                   cursor: 'pointer'
                 }}
               >
-                🧹 डेटा रीसेट एवं फ्रेश स्टार्ट (Reset Cache)
+                डेटा रीसेट एवं फ्रेश स्टार्ट (Reset Cache)
               </button>
             </div>
           </div>

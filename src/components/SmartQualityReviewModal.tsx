@@ -15,7 +15,8 @@ import {
   ChevronRight,
   ArrowRight,
   RefreshCw,
-  FileText
+  FileText,
+  Lightbulb
 } from 'lucide-react';
 import { Question } from '../types';
 import {
@@ -194,22 +195,25 @@ export function SmartQualityReviewModal({
             </span>
 
             {auditReport.duplicateCount > 0 && (
-              <span className="px-3 py-1 rounded-xl bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30 font-bold flex items-center gap-1">
-                <span>🔄 डुप्लीकेट:</span>
+              <span className="px-3 py-1 rounded-xl bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30 font-bold flex items-center gap-1.5">
+                <Copy className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                <span>डुप्लीकेट:</span>
                 <strong className="font-mono">{auditReport.duplicateCount}</strong>
               </span>
             )}
 
             {auditReport.blankOptionCount > 0 && (
-              <span className="px-3 py-1 rounded-xl bg-red-500/15 text-red-700 dark:text-red-300 border border-red-500/30 font-bold flex items-center gap-1">
-                <span>⚠️ खाली विकल्प:</span>
+              <span className="px-3 py-1 rounded-xl bg-red-500/15 text-red-700 dark:text-red-300 border border-red-500/30 font-bold flex items-center gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
+                <span>खाली विकल्प:</span>
                 <strong className="font-mono">{auditReport.blankOptionCount}</strong>
               </span>
             )}
 
             {auditReport.blankExplanationCount > 0 && (
-              <span className="px-3 py-1 rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 font-bold flex items-center gap-1">
-                <span>💡 खाली व्याख्या:</span>
+              <span className="px-3 py-1 rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 font-bold flex items-center gap-1.5">
+                <Lightbulb className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                <span>खाली व्याख्या:</span>
                 <strong className="font-mono">{auditReport.blankExplanationCount}</strong>
               </span>
             )}
@@ -449,8 +453,8 @@ export function SmartQualityReviewModal({
                                   Option ({opt.key}):
                                 </span>
                                 {isBlank && (
-                                  <span className="text-red-500 text-[10px]">
-                                    ⚠️ Required (खाली है)
+                                  <span className="text-red-500 text-[10px] inline-flex items-center gap-1">
+                                    <AlertTriangle className="w-3 h-3 text-red-500" /> Required (खाली है)
                                   </span>
                                 )}
                               </div>
@@ -557,8 +561,14 @@ export function SmartQualityReviewModal({
                               <span className="font-mono font-bold uppercase shrink-0">
                                 ({optKey || '?'})
                               </span>
-                              <span className="truncate">
-                                {isEmpty ? '⚠️ [खाली विकल्प - Empty]' : String(opt?.text || '')}
+                              <span className="truncate flex items-center gap-1">
+                                {isEmpty ? (
+                                  <span className="inline-flex items-center gap-1 text-red-500">
+                                    <AlertTriangle className="w-3 h-3" /> [खाली विकल्प - Empty]
+                                  </span>
+                                ) : (
+                                  String(opt?.text || '')
+                                )}
                               </span>
                             </div>
                           );
@@ -576,7 +586,9 @@ export function SmartQualityReviewModal({
                           व्याख्या:
                         </span>
                         {!item.question.explanation || item.question.explanation.trim() === '' ? (
-                          <span>⚠️ कोई व्याख्या नहीं है (Explanation is Empty)</span>
+                          <span className="inline-flex items-center gap-1 text-red-500">
+                            <AlertTriangle className="w-3.5 h-3.5" /> कोई व्याख्या नहीं है (Explanation is Empty)
+                          </span>
                         ) : (
                           <MathText text={item.question.explanation} />
                         )}

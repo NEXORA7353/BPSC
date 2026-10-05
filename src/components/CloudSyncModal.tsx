@@ -69,7 +69,7 @@ export function CloudSyncModal({ isOpen, onClose, onDataRefreshed }: CloudSyncMo
     setSeedError(null);
     try {
       const res = await seedAllQuestionsToCloud();
-      setSeedSuccessMsg(`✅ क्लाउड में कुल ${res.count} प्रश्न और ${res.testsCount} टेस्ट सफलतापूर्वक सिंक हो गए हैं!`);
+      setSeedSuccessMsg(`क्लाउड में कुल ${res.count} प्रश्न और ${res.testsCount} टेस्ट सफलतापूर्वक सिंक हो गए हैं!`);
       if (onDataRefreshed) onDataRefreshed();
     } catch (err: any) {
       console.error(err);
@@ -83,12 +83,12 @@ export function CloudSyncModal({ isOpen, onClose, onDataRefreshed }: CloudSyncMo
   const handleClearAll = async () => {
     if (
       window.confirm(
-        '⚠️ चेतावनी: क्या आप पूरा डेटाबेस खाली (Clear All Data) करना चाहते हैं?\n(WARNING: This will erase all stored questions, mock tests, attempt records, and cloud items.)'
+        'चेतावनी: क्या आप पूरा डेटाबेस खाली (Clear All Data) करना चाहते हैं?\n(WARNING: This will erase all stored questions, mock tests, attempt records, and cloud items.)'
       )
     ) {
       await clearCloudDatabase();
       clearEntireDatabase();
-      setSeedSuccessMsg('🧹 पूरा डेटाबेस सफलतापूर्वक साफ़ (Clear) हो गया!');
+      setSeedSuccessMsg('पूरा डेटाबेस सफलतापूर्वक साफ़ (Clear) हो गया!');
       if (onDataRefreshed) onDataRefreshed();
     }
   };

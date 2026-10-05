@@ -22,8 +22,8 @@ export function ShareModal({ isOpen, onClose, testTitle }: ShareModalProps) {
     : currentUrl;
 
   const shareText = testTitle
-    ? `🎯 BPSC TRE 4.0 गणित मॉक टेस्ट: "${testTitle}" - Solve 150+ Previous Year Questions (STET & TRE) with authentic CBT interface and Hindi solutions! Check out:`
-    : `🎯 BPSC TRE 4.0 गणित परीक्षा पोर्टल - Solve 150+ Previous Year Questions (STET & TRE) with authentic CBT interface, Hindi solutions, and Question Bank! Check out:`;
+    ? `BPSC TRE 4.0 गणित मॉक टेस्ट: "${testTitle}" - Solve 150+ Previous Year Questions (STET & TRE) with authentic CBT interface and Hindi solutions! Check out:`
+    : `BPSC TRE 4.0 गणित परीक्षा पोर्टल - Solve 150+ Previous Year Questions (STET & TRE) with authentic CBT interface, Hindi solutions, and Question Bank! Check out:`;
 
   const handleCopy = () => {
     if (navigator.clipboard) {

@@ -97,7 +97,7 @@ export function QuestionBankView({
     try {
       await syncFromFirestore();
       refreshData();
-      setDbNotification('☁️ Successfully synced with Firestore Cloud Database!');
+      setDbNotification('Successfully synced with Firestore Cloud Database!');
     } catch {
       setDbNotification('Cloud sync failed.');
     } finally {
@@ -144,7 +144,7 @@ export function QuestionBankView({
       const count = selectedIds.length;
       setSelectedIds([]);
       refreshData();
-      setDbNotification(`✅ Successfully deleted ${count} questions from Question Bank!`);
+      setDbNotification(`Successfully deleted ${count} questions from Question Bank!`);
       setTimeout(() => setDbNotification(null), 3500);
     }
   };
@@ -194,13 +194,13 @@ export function QuestionBankView({
   const handleClearDatabase = async () => {
     if (
       window.confirm(
-        '⚠️ चेतावनी: क्या आप पूरा डेटाबेस खाली (Wipe/Clear All Data) करना चाहते हैं?\n(WARNING: This will permanently delete all custom questions, mock tests, attempt history, and bookmarks. This action cannot be undone!)'
+        'चेतावनी: क्या आप पूरा डेटाबेस खाली (Wipe/Clear All Data) करना चाहते हैं?\n(WARNING: This will permanently delete all custom questions, mock tests, attempt history, and bookmarks. This action cannot be undone!)'
       )
     ) {
       await clearCloudDatabase();
       clearEntireDatabase();
       refreshData();
-      setDbNotification('🧹 पूरा डेटाबेस सफलतापूर्वक साफ़ (Database Cleared) हो गया है!');
+      setDbNotification('पूरा डेटाबेस सफलतापूर्वक साफ़ (Database Cleared) हो गया है!');
       setTimeout(() => setDbNotification(null), 4000);
     }
   };

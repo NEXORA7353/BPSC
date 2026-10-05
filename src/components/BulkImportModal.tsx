@@ -777,9 +777,10 @@ export function BulkImportModal({
                       <button
                         type="button"
                         onClick={() => handleLoadSample(SAMPLE_BPSC_TEXT)}
-                        className="px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-[11px] font-bold hover:bg-amber-500/20 transition-colors"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-[11px] font-bold hover:bg-amber-500/20 transition-colors"
                       >
-                        ⚡ Sample
+                        <Sparkles className="w-3 h-3 text-amber-500" />
+                        <span>Sample</span>
                       </button>
 
                       {rawText && (
@@ -1114,7 +1115,7 @@ export function BulkImportModal({
                   </div>
                   <div>
                     <div className="text-xs font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5 flex-wrap">
-                      <span>⚠️ {auditReport.problemCount} प्रश्नों में सुधार या समीक्षा आवश्यक है</span>
+                      <span>{auditReport.problemCount} प्रश्नों में सुधार या समीक्षा आवश्यक है</span>
                       {auditReport.duplicateCount > 0 && (
                         <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-700 dark:text-purple-300 text-[10px] font-bold">
                           {auditReport.duplicateCount} डुप्लीकेट
@@ -1173,7 +1174,8 @@ export function BulkImportModal({
                     onClick={() => handleLoadSample(SAMPLE_BPSC_TEXT)}
                     className="px-4 py-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-xs font-bold hover:bg-amber-500/20 transition-all flex items-center gap-1.5"
                   >
-                    <span>⚡ Load Sample 8 BPSC Questions to See Magic</span>
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Load Sample 8 BPSC Questions to See Magic</span>
                   </button>
                 </div>
               ) : (
