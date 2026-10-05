@@ -12,11 +12,19 @@ export const MathText: React.FC<MathTextProps> = ({
   className = '',
   as: Component = 'span'
 }) => {
-  const formattedHtml = useMemo(() => renderMathToHtml(text), [text]);
+  const formattedHtml = useMemo(() => {
+    try {
+      return renderMathToHtml(text || '');
+    } catch {
+      return text || '';
+    }
+  }, [text]);
+
+  if (!text) return null;
 
   return (
     <Component
-      className={`math-rendered-container inline-block ${className}`}
+      className={`math-rendered-container ${className}`}
       dangerouslySetInnerHTML={{ __html: formattedHtml }}
     />
   );

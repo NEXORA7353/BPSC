@@ -591,20 +591,36 @@ export async function saveAttemptRecordToCloud(record: TestAttemptRecord): Promi
  */
 export async function clearCloudDatabase(): Promise<void> {
   try {
-    const collectionsToClear = ['questions', 'custom_tests', 'deleted_question_ids', 'deleted_test_ids', 'topics'];
+    const collectionsToClear = ['questions', 'custom_tests', 'deleted_question_ids', 'deleted_test_ids', 'topics', 'attempt_records'];
     for (const colName of collectionsToClear) {
-      const snap = await getDocs(collection(db, colName)).catch(() => null);
-      if (snap && !snap.empty) {
-        const batch = writeBatch(db);
-        snap.forEach((d) => batch.delete(d.ref));
-        await batch.commit().catch((e) => console.warn(`Error batch clearing ${colName}:`, e));
+      try {
+        const snap = await getDocs(collection(db, colName));
+        if (snap && !snap.empty) {
+          // Firestore batch limit is 500 operations, chunk accordingly
+          const docs = snap.docs;
+          for (let i = 0; i < docs.length; i += 400) {
+            const chunk = docs.slice(i, i + 400);
+            const batch = writeBatch(db);
+            chunk.forEach((d) => batch.delete(d.ref));
+            await batch.commit();
+          }
+          console.log(`[ClearDB] Cleared ${docs.length} docs from ${colName}`);
+        }
+      } catch (colErr) {
+        console.warn(`[ClearDB] Error clearing collection ${colName}:`, colErr);
       }
     }
   } catch (err) {
     console.warn('Failed to clear cloud database:', err);
-  } finally {
+  }
+  
+  // Always clear local database regardless of cloud errors
+  try {
     const { clearEntireDatabase } = await import('../utils/questionBankStorage');
     clearEntireDatabase();
+    console.log('[ClearDB] Local database cleared successfully');
+  } catch (localErr) {
+    console.warn('[ClearDB] Error clearing local database:', localErr);
   }
 }
 
