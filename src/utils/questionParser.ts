@@ -192,7 +192,7 @@ function parseSingleQuestionBlock(
   // 5. Multi-Pattern Options Extractor
   const { questionText, optA, optB, optC, optD, optE } = extractOptionsAndText(body);
 
-  const finalOptE = optE || 'उपर्युक्त में से कोई नहीं / उपर्युक्त में से एक से अधिक';
+  const finalOptE = optE || 'अनुत्तरित प्रश्न (यदि किसी प्रश्न का उत्तर नहीं देना चाहते, तो विकल्प E चुनें — इससे न अंक मिलेगा, न कटेगा।)';
 
   return {
     id: `custom_${Date.now()}_${index}_${Math.random().toString(36).substring(2, 7)}`,
@@ -210,7 +210,7 @@ function parseSingleQuestionBlock(
     ],
     correctOption,
     explanation,
-    isCustomE: finalOptE.includes('उपर्युक्त में से कोई नहीं'),
+    isCustomE: finalOptE.includes('उपर्युक्त में से कोई नहीं') || finalOptE.includes('अनुत्तरित') || finalOptE.includes('उत्तर नहीं देना चाहते'),
     isUserAdded: true,
     createdAt: dateFormatted
   };
@@ -226,8 +226,8 @@ function extractOptionsAndText(body: string) {
       a: /(?:\((?:a|A|अ|क)\)|(?:^|\s)(?:a|A|अ|क)[\.\)])\s*([\s\S]*?)(?=(?:\((?:b|B|ब|ख)\)|(?:^|\s)(?:b|B|ब|ख)[\.\)]))/i,
       b: /(?:\((?:b|B|ब|ख)\)|(?:^|\s)(?:b|B|ब|ख)[\.\)])\s*([\s\S]*?)(?=(?:\((?:c|C|स|ग)\)|(?:^|\s)(?:c|C|स|ग)[\.\)]))/i,
       c: /(?:\((?:c|C|स|ग)\)|(?:^|\s)(?:c|C|स|ग)[\.\)])\s*([\s\S]*?)(?=(?:\((?:d|D|द|घ)\)|(?:^|\s)(?:d|D|द|घ)[\.\)]))/i,
-      d: /(?:\((?:d|D|द|घ)\)|(?:^|\s)(?:d|D|द|घ)[\.\)])\s*([\s\S]*?)(?=(?:\((?:e|E|य|ङ)\)|(?:^|\s)(?:e|E|य|ङ)[\.\)]|(?:उत्तर|Ans|Answer|Key|व्याख्या|Solution)|$))/i,
-      e: /(?:\((?:e|E|य|ङ)\)|(?:^|\s)(?:e|E|य|ङ)[\.\)])\s*([\s\S]*?)(?=(?:उत्तर|Ans|Answer|Key|व्याख्या|Solution)|$)/i,
+      d: /(?:\((?:d|D|द|घ)\)|(?:^|\s)(?:d|D|द|घ)[\.\)])\s*([\s\S]*?)(?=(?:\((?:e|E|य|ङ)\)|(?:^|\s)(?:e|E|य|ङ)[\.\)]|(?:\n\s*(?:परीक्षा|Exam)|(?:उत्तर|Ans|Answer|Key)\s*[:\-]|(?:व्याख्या|Solution|हल)\s*[:\-]|$)))/i,
+      e: /(?:\((?:e|E|य|ङ)\)|(?:^|\s)(?:e|E|य|ङ)[\.\)])\s*([\s\S]*?)(?=(?:\n\s*(?:परीक्षा|Exam)|(?:उत्तर|Ans|Answer|Key)\s*[:\-]|(?:व्याख्या|Solution|हल)\s*[:\-]|$))/i,
       splitRegex: /(?:\((?:a|A|अ|क)\)|(?:^|\s)(?:a|A|अ|क)[\.\)])/i
     },
     // (1) (2) (3) (4) (5) or 1) 2) 3) 4) 5) (excluding fractions like (1/3) or (2/5))
@@ -235,8 +235,8 @@ function extractOptionsAndText(body: string) {
       a: /(?:\((?:1)\)(?!\/)|(?:^|\s)(?:1)[\.\)](?!\/))\s*([\s\S]*?)(?=(?:\((?:2)\)(?!\/)|(?:^|\s)(?:2)[\.\)](?!\/)))/i,
       b: /(?:\((?:2)\)(?!\/)|(?:^|\s)(?:2)[\.\)](?!\/))\s*([\s\S]*?)(?=(?:\((?:3)\)(?!\/)|(?:^|\s)(?:3)[\.\)](?!\/)))/i,
       c: /(?:\((?:3)\)(?!\/)|(?:^|\s)(?:3)[\.\)](?!\/))\s*([\s\S]*?)(?=(?:\((?:4)\)(?!\/)|(?:^|\s)(?:4)[\.\)](?!\/)))/i,
-      d: /(?:\((?:4)\)(?!\/)|(?:^|\s)(?:4)[\.\)](?!\/))\s*([\s\S]*?)(?=(?:\((?:5)\)(?!\/)|(?:^|\s)(?:5)[\.\)](?!\/)|(?:उत्तर|Ans|Answer|Key|व्याख्या|Solution)|$))/i,
-      e: /(?:\((?:5)\)(?!\/)|(?:^|\s)(?:5)[\.\)](?!\/))\s*([\s\S]*?)(?=(?:उत्तर|Ans|Answer|Key|व्याख्या|Solution)|$)/i,
+      d: /(?:\((?:4)\)(?!\/)|(?:^|\s)(?:4)[\.\)](?!\/))\s*([\s\S]*?)(?=(?:\((?:5)\)(?!\/)|(?:^|\s)(?:5)[\.\)](?!\/)|(?:\n\s*(?:परीक्षा|Exam)|(?:उत्तर|Ans|Answer|Key)\s*[:\-]|(?:व्याख्या|Solution|हल)\s*[:\-]|$)))/i,
+      e: /(?:\((?:5)\)(?!\/)|(?:^|\s)(?:5)[\.\)](?!\/))\s*([\s\S]*?)(?=(?:\n\s*(?:परीक्षा|Exam)|(?:उत्तर|Ans|Answer|Key)\s*[:\-]|(?:व्याख्या|Solution|हल)\s*[:\-]|$))/i,
       splitRegex: /(?:\((?:1)\)(?!\/)|(?:^|\s)(?:1)[\.\)](?!\/))/i
     }
   ];
@@ -287,7 +287,9 @@ function cleanOptionText(str: string): string {
   return str
     .replace(/\n/g, ' ')
     .replace(/\s+/g, ' ')
-    .replace(/(?:उत्तर|Ans|Answer|Key|व्याख्या|Solution).*$/i, '')
+    .replace(/(?:\n\s*(?:परीक्षा|Exam):?.*$)/i, '')
+    .replace(/(?:उत्तर|Ans|Answer|Key)\s*[:\-]\s*\(?[a-eA-E1-5].*$/i, '')
+    .replace(/(?:व्याख्या|Solution|हल|Explanation)\s*[:\-].*$/i, '')
     .trim();
 }
 

@@ -44,7 +44,7 @@ const SAMPLE_BPSC_TEXT = `प्रश्न 1.
 (b) 4.0
 (c) 0.25
 (d) उपर्युक्त में से एक से अधिक
-(e) उपर्युक्त में से कोई नहीं
+(e) अनुत्तरित प्रश्न (यदि किसी प्रश्न का उत्तर नहीं देना चाहते, तो विकल्प E चुनें — इससे न अंक मिलेगा, न कटेगा।)
 
 परीक्षा: BPSC-TRE 3.0 (6 to 8) 19/07/2024
 उत्तर: (c)
@@ -60,7 +60,7 @@ const SAMPLE_BPSC_TEXT = `प्रश्न 1.
 (b) 25x^3y^2z
 (c) 125x^2yz^2
 (d) उपर्युक्त में से एक से अधिक
-(e) उपर्युक्त में से कोई नहीं
+(e) उत्तर नहीं देना चाहते (कोई अंक नहीं कटेगा)
 
 परीक्षा: BPSC-TRE 2.0 (6 to 8) 9/12/2023
 उत्तर: (a)
@@ -73,7 +73,7 @@ const SAMPLE_BPSC_TEXT = `प्रश्न 1.
 (b) 0.04
 (c) 0.5
 (d) 0.125
-(e) उपर्युक्त में से कोई नहीं / उपर्युक्त में से एक से अधिक
+(e) अनुत्तरित प्रश्न
 
 परीक्षा: BPSC TRE 4.0 Real Mock Question
 उत्तर: (b)
@@ -87,7 +87,7 @@ const SAMPLE_BPSC_TEXT = `प्रश्न 1.
 (b) 25/16
 (c) 4/5
 (d) 5/4
-(e) उपर्युक्त में से कोई नहीं
+(e) अनुत्तरित प्रश्न (यदि किसी प्रश्न का उत्तर नहीं देना चाहते, तो विकल्प E चुनें — इससे न अंक मिलेगा, न कटेगा।)
 
 परीक्षा: BPSC Mathematics Specialist
 उत्तर: (b)
@@ -100,7 +100,7 @@ const SAMPLE_BPSC_TEXT = `प्रश्न 1.
 (b) 25
 (c) 27
 (d) उपर्युक्त में से एक से अधिक
-(e) उपर्युक्त में से कोई नहीं
+(e) उत्तर नहीं देना चाहते (कोई अंक नहीं कटेगा)
 
 परीक्षा: BPSC TRE Mathematics Algebra
 उत्तर: (a)
@@ -113,7 +113,7 @@ x + 1/x = 5 => (x + 1/x)^2 = 5^2 => x^2 + 1/x^2 + 2 = 25 => x^2 + 1/x^2 = 23.
 (b) -42
 (c) -84
 (d) 56
-(e) उपर्युक्त में से कोई नहीं / उपर्युक्त में से एक से अधिक
+(e) अनुत्तरित प्रश्न
 
 परीक्षा: Bihar STET 15/09/2020 (Shift-I)
 उत्तर: (a)
@@ -126,7 +126,7 @@ x + 1/x = 5 => (x + 1/x)^2 = 5^2 => x^2 + 1/x^2 + 2 = 25 => x^2 + 1/x^2 = 23.
 (b) 64
 (c) 80
 (d) 96
-(e) उपर्युक्त में से कोई नहीं
+(e) उपर्युक्त में से कोई नहीं / उपर्युक्त में से एक से अधिक
 
 परीक्षा: STET Mathematics
 उत्तर: (a)
@@ -140,7 +140,7 @@ x + 1/x = 5 => (x + 1/x)^2 = 5^2 => x^2 + 1/x^2 + 2 = 25 => x^2 + 1/x^2 = 23.
 (b) -2, -3
 (c) 1, 6
 (d) -1, -6
-(e) उपर्युक्त में से कोई नहीं
+(e) अनुत्तरित प्रश्न (यदि किसी प्रश्न का उत्तर नहीं देना चाहते, तो विकल्प E चुनें — इससे न अंक मिलेगा, न कटेगा।)
 
 परीक्षा: BPSC TRE 3.0 Algebra
 उत्तर: (a)
@@ -157,7 +157,7 @@ const SAMPLE_BPSC_JSON = JSON.stringify([
       { "key": "b", "text": "4.0" },
       { "key": "c", "text": "0.25" },
       { "key": "d", "text": "उपर्युक्त में से एक से अधिक" },
-      { "key": "e", "text": "उपर्युक्त में से कोई नहीं" }
+      { "key": "e", "text": "अनुत्तरित प्रश्न (यदि किसी प्रश्न का उत्तर नहीं देना चाहते, तो विकल्प E चुनें — इससे न अंक मिलेगा, न कटेगा।)" }
     ],
     "correctOption": "c",
     "explanation": "(1/5)^(3x) = 0.008 => (0.2)^(3x) = (0.2)^3 => 3x = 3 => x = 1 अतः (0.25)^x = (0.25)^1 = 0.25"
@@ -171,7 +171,7 @@ const SAMPLE_BPSC_JSON = JSON.stringify([
       { "key": "b", "text": "25x^3y^2z" },
       { "key": "c", "text": "125x^2yz^2" },
       { "key": "d", "text": "उपर्युक्त में से एक से अधिक" },
-      { "key": "e", "text": "उपर्युक्त में से कोई नहीं" }
+      { "key": "e", "text": "उत्तर नहीं देना चाहते (कोई अंक नहीं कटेगा)" }
     ],
     "correctOption": "a",
     "explanation": "⁵√(3125x¹⁰y⁵z¹⁰) = ⁵√(5⁵ · x¹⁰ · y⁵ · z¹⁰) = 5 · x² · y · z² = 5x²yz²"
@@ -185,7 +185,7 @@ const SAMPLE_BPSC_JSON = JSON.stringify([
       { "key": "b", "text": "0.04" },
       { "key": "c", "text": "0.5" },
       { "key": "d", "text": "0.125" },
-      { "key": "e", "text": "उपर्युक्त में से कोई नहीं" }
+      { "key": "e", "text": "अनुत्तरित प्रश्न" }
     ],
     "correctOption": "b",
     "explanation": "0.03125 = (0.5)^5. अतः (0.03125)^(2/5) = ((0.5)^5)^(2/5) = (0.5)^2 = 0.04."
@@ -231,7 +231,7 @@ export function BulkImportModal({
     optB: '',
     optC: '',
     optD: '',
-    optE: 'उपर्युक्त में से कोई नहीं / उपर्युक्त में से एक से अधिक',
+    optE: 'अनुत्तरित प्रश्न (यदि किसी प्रश्न का उत्तर नहीं देना चाहते, तो विकल्प E चुनें — इससे न अंक मिलेगा, न कटेगा।)',
     correct: 'a' as 'a' | 'b' | 'c' | 'd' | 'e',
     exam: 'BPSC TRE 4.0 / Bihar STET',
     explanation: ''
@@ -674,7 +674,10 @@ export function BulkImportModal({
                     { label: '×', snippet: '×' },
                     { label: '÷', snippet: '÷' },
                     { label: '≤', snippet: '≤' },
-                    { label: '≥', snippet: '≥' }
+                    { label: '≥', snippet: '≥' },
+                    { label: 'Option (E) अनुत्तरित (विस्तृत)', snippet: '\n(e) अनुत्तरित प्रश्न (यदि किसी प्रश्न का उत्तर नहीं देना चाहते, तो विकल्प E चुनें — इससे न अंक मिलेगा, न कटेगा।)' },
+                    { label: 'Option (E) उत्तर नहीं देना', snippet: '\n(e) उत्तर नहीं देना चाहते (कोई अंक नहीं कटेगा)' },
+                    { label: 'Option (E) अनुत्तरित प्रश्न', snippet: '\n(e) अनुत्तरित प्रश्न' }
                   ].map((chip) => (
                     <button
                       key={chip.label}
@@ -846,6 +849,31 @@ Smart parser automatically extracts:
                         placeholder={`विकल्प (${key}) का मान`}
                         className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs sm:text-sm font-semibold"
                       />
+                      {key === 'e' && (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setSingleQ({ ...singleQ, optE: 'अनुत्तरित प्रश्न (यदि किसी प्रश्न का उत्तर नहीं देना चाहते, तो विकल्प E चुनें — इससे न अंक मिलेगा, न कटेगा।)' })}
+                            className="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/25 text-[10px] font-bold hover:bg-amber-500/20"
+                          >
+                            अनुत्तरित (विस्तृत)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSingleQ({ ...singleQ, optE: 'उत्तर नहीं देना चाहते (कोई अंक नहीं कटेगा)' })}
+                            className="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/25 text-[10px] font-bold hover:bg-amber-500/20"
+                          >
+                            उत्तर नहीं देना चाहते
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSingleQ({ ...singleQ, optE: 'अनुत्तरित प्रश्न' })}
+                            className="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/25 text-[10px] font-bold hover:bg-amber-500/20"
+                          >
+                            अनुत्तरित प्रश्न
+                          </button>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
