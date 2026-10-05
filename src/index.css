@@ -229,3 +229,19 @@
   padding-right: 2px;
 }
 
+/* --- KATEX MATH STYLING & PORTAL INTEGRATION --- */
+.katex {
+  font-size: 1.12em !important;
+  text-rendering: auto;
+  line-height: 1.25;
+}
+.katex-display {
+  margin: 0.6em 0 !important;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px 0;
+}
+.math-rendered-container .katex {
+  color: inherit;
+}
+

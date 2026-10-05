@@ -1,259 +1,221 @@
 /**
- * Smart Math Text Formatter & Parser for BPSC Mathematics Portal
- * Converts LaTeX math expressions, caret powers, fractional exponents,
- * square roots, and fractions into clean, styled HTML for instant rendering.
+ * Smart Universal Math Formatter & Parser for BPSC Mathematics Portal
+ * Powered by KaTeX + Universal Mathematical Auto-Detector
  * 
- * Supports:
- * - LaTeX \frac{a}{b}, ^{\frac{a}{b}} (fractional exponents)
- * - Caret notation: x^(2/5), x^2, x^{10}
- * - Square roots: \sqrt{x}, \sqrt[3]{x}, sqrt(x)
- * - Subscripts: x_{1}, x_n
- * - Greek letters: \pi, \theta, \alpha, \beta
- * - Operators: \times, \div, \pm, \le, \ge, \neq
- * - Unicode math: ², ³, ×, ÷
- * - Mixed Hindi + Math content
+ * Automatically formats:
+ * - Natural typing: (1/5)^(3x), (0.25)^x, (0.03125)^(2/5), (-343 × 512)^(1/3)
+ * - Tall bracket fractions: (1/5)^(3x) -> \left(\frac{1}{5}\right)^{3x}
+ * - Fractional exponents: base^(a/b) -> base^{\frac{a}{b}}
+ * - Square roots & nth roots: sqrt(x), \sqrt{x}, \sqrt[3]{x}
+ * - Equations & proofs: (0.2)^(3x) = 0.008 = (0.2)^3 => 3x = 3 => x = 1
+ * - Unicode math & superscripts: ˣ, ³, ², ¹, ⅕, ⅖, ×, ÷, ±, ≤, ≥, ≠
+ * - LaTeX syntax: \frac{a}{b}, \( ... \), \[ ... \], $ ... $, $$ ... $$
+ * - Seamless integration with Hindi & English text
  */
 
-export function renderMathToHtml(text: string): string {
-  if (!text) return '';
+import katex from 'katex';
 
-  let html = text;
+const UNICODE_SUPERSCRIPTS: Record<string, string> = {
+  '⁰': '^0', '¹': '^1', '²': '^2', '³': '^3', '⁴': '^4',
+  '⁵': '^5', '⁶': '^6', '⁷': '^7', '⁸': '^8', '⁹': '^9',
+  '⁺': '^+', '⁻': '^-', '⁼': '^=', '⁽': '^(', '⁾': '^)',
+  'ᵃ': '^a', 'ᵇ': '^b', 'ᶜ': '^c', 'ᵈ': '^d', 'ᵉ': '^e',
+  'ᶠ': '^f', 'ᵍ': '^g', 'ʰ': '^h', 'ⁱ': '^i', 'ʲ': '^j',
+  'ᵏ': '^k', 'ˡ': '^l', 'ᵐ': '^m', 'ⁿ': '^n', 'ᵒ': '^o',
+  'ᵖ': '^p', 'ʳ': '^r', 'ˢ': '^s', 'ᵗ': '^t', 'ᵘ': '^u',
+  'ᵛ': '^v', 'ʷ': '^w', 'ˣ': '^x', 'ʸ': '^y', 'ᶻ': '^z'
+};
 
-  // Step 0: Extract and protect LaTeX delimiters before HTML escaping
-  // Mark LaTeX blocks so HTML escaping doesn't destroy them
-  const latexBlocks: string[] = [];
-  
-  // Protect \(...\) blocks
-  html = html.replace(/\\\((.+?)\\\)/g, (_, content) => {
-    const idx = latexBlocks.length;
-    latexBlocks.push(content);
-    return `%%LATEX_INLINE_${idx}%%`;
-  });
-  
-  // Protect \[...\] blocks
-  html = html.replace(/\\\[(.+?)\\\]/g, (_, content) => {
-    const idx = latexBlocks.length;
-    latexBlocks.push(content);
-    return `%%LATEX_BLOCK_${idx}%%`;
-  });
-  
-  // Protect $...$ blocks (but not $$)
-  html = html.replace(/\$\$(.+?)\$\$/g, (_, content) => {
-    const idx = latexBlocks.length;
-    latexBlocks.push(content);
-    return `%%LATEX_DISPLAY_${idx}%%`;
-  });
-  html = html.replace(/\$(.+?)\$/g, (_, content) => {
-    const idx = latexBlocks.length;
-    latexBlocks.push(content);
-    return `%%LATEX_DOLLAR_${idx}%%`;
-  });
-
-  // Step 1: HTML-escape only in non-LaTeX text
-  html = html
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-
-  // Step 2: Restore LaTeX blocks (they were protected from escaping)
-  html = html.replace(/%%LATEX_INLINE_(\d+)%%/g, (_, idx) => latexBlocks[parseInt(idx)]);
-  html = html.replace(/%%LATEX_BLOCK_(\d+)%%/g, (_, idx) => latexBlocks[parseInt(idx)]);
-  html = html.replace(/%%LATEX_DISPLAY_(\d+)%%/g, (_, idx) => latexBlocks[parseInt(idx)]);
-  html = html.replace(/%%LATEX_DOLLAR_(\d+)%%/g, (_, idx) => latexBlocks[parseInt(idx)]);
-
-  // Step 3: Replace LaTeX command operators & symbols
-  html = html
-    .replace(/\\times\b/g, ' &times; ')
-    .replace(/\\div\b/g, ' &divide; ')
-    .replace(/\\pm\b/g, ' &plusmn; ')
-    .replace(/\\mp\b/g, ' &#x2213; ')
-    .replace(/\\le\b|\\leq\b/g, ' &le; ')
-    .replace(/\\ge\b|\\geq\b/g, ' &ge; ')
-    .replace(/\\neq\b|\\ne\b/g, ' &ne; ')
-    .replace(/\\approx\b/g, ' &asymp; ')
-    .replace(/\\infty\b/g, '&infin;')
-    .replace(/\\degree\b/g, '&deg;')
-    .replace(/\\circ\b/g, '&deg;')
-    .replace(/\\pi\b/g, '&pi;')
-    .replace(/\\theta\b/g, '&theta;')
-    .replace(/\\alpha\b/g, '&alpha;')
-    .replace(/\\beta\b/g, '&beta;')
-    .replace(/\\gamma\b/g, '&gamma;')
-    .replace(/\\delta\b/g, '&delta;')
-    .replace(/\\sigma\b/g, '&sigma;')
-    .replace(/\\lambda\b/g, '&lambda;')
-    .replace(/\\mu\b/g, '&mu;')
-    .replace(/\\omega\b/g, '&omega;')
-    .replace(/\\phi\b/g, '&phi;')
-    .replace(/\\epsilon\b/g, '&epsilon;')
-    .replace(/\\rightarrow\b|\\to\b/g, ' &rarr; ')
-    .replace(/\\leftarrow\b/g, ' &larr; ')
-    .replace(/\\Rightarrow\b|\\implies\b/g, ' &rArr; ')
-    .replace(/\\therefore\b/g, '&there4;')
-    .replace(/\\because\b/g, '&because;')
-    .replace(/\\forall\b/g, '&forall;')
-    .replace(/\\exists\b/g, '&exist;')
-    .replace(/\\in\b/g, ' &isin; ')
-    .replace(/\\notin\b/g, ' &notin; ')
-    .replace(/\\subset\b/g, ' &sub; ')
-    .replace(/\\cup\b/g, ' &cup; ')
-    .replace(/\\cap\b/g, ' &cap; ')
-    .replace(/\\sum\b/g, '&sum;')
-    .replace(/\\prod\b/g, '&prod;')
-    .replace(/\\int\b/g, '&int;')
-    .replace(/\\cdot\b/g, ' &middot; ')
-    .replace(/\\ldots\b|\\dots\b/g, '&hellip;')
-    .replace(/\\triangle\b/g, '&#9651;')
-    .replace(/\\angle\b/g, '&#8736;')
-    .replace(/\\perp\b/g, '&#8869;')
-    .replace(/\\parallel\b/g, '&#8741;');
-
-  // Step 4: Handle fractional exponents in LaTeX syntax: (base)^{\frac{n}{d}}
-  html = html.replace(
-    /(\([^)]*\)|[a-zA-Z0-9.\-]+)\^\{\\frac\{([^{}]+)\}\{([^{}]+)\}\}/g,
-    (_, base, num, den) => {
-      return `<span class="math-expr-inline">${base}<sup class="math-exponent-frac"><span class="math-frac-container"><span class="math-num">${num}</span><span class="math-den">${den}</span></span></sup></span>`;
-    }
-  );
-
-  // Step 5: Handle caret fractional exponents: (base)^(n/d)
-  html = html.replace(
-    /(\([^)]*\)|[a-zA-Z0-9.\-]+)\^\(\s*(-?[0-9a-zA-Z]+)\s*\/\s*([0-9a-zA-Z]+)\s*\)/g,
-    (_, base, num, den) => {
-      return `<span class="math-expr-inline">${base}<sup class="math-exponent-frac"><span class="math-frac-container"><span class="math-num">${num}</span><span class="math-den">${den}</span></span></sup></span>`;
-    }
-  );
-
-  // Step 6: Handle standard LaTeX fractions: \frac{a}{b}
-  html = html.replace(
-    /\\frac\{([^{}]+)\}\{([^{}]+)\}/g,
-    (_, num, den) => {
-      return `<span class="math-frac-container"><span class="math-num">${num}</span><span class="math-den">${den}</span></span>`;
-    }
-  );
-
-  // Step 7: Handle nth roots: \sqrt[n]{x}
-  html = html.replace(
-    /\\sqrt\[([^\]]+)\]\{([^{}]+)\}/g,
-    (_, nth, body) => {
-      return `<span class="math-sqrt"><sup class="math-root-index">${nth}</sup><span class="math-sqrt-symbol">&radic;</span><span class="math-sqrt-body">${body}</span></span>`;
-    }
-  );
-
-  // Step 8: Handle square roots: \sqrt{x} or sqrt(x)
-  html = html.replace(
-    /\\sqrt\{([^{}]+)\}/g,
-    (_, body) => {
-      return `<span class="math-sqrt"><span class="math-sqrt-symbol">&radic;</span><span class="math-sqrt-body">${body}</span></span>`;
-    }
-  );
-  html = html.replace(
-    /sqrt\(([^)]+)\)/g,
-    (_, body) => {
-      return `<span class="math-sqrt"><span class="math-sqrt-symbol">&radic;</span><span class="math-sqrt-body">${body}</span></span>`;
-    }
-  );
-
-  // Step 9: Handle general superscripts: x^{expr} or x^2
-  html = html.replace(
-    /(\([^)]*\)|[a-zA-Z0-9.\-]+)\^\{([^{}]+)\}/g,
-    '$1<sup>$2</sup>'
-  );
-  html = html.replace(
-    /(\([^)]*\)|[a-zA-Z0-9.\-]+)\^([a-zA-Z0-9+\-]+)/g,
-    '$1<sup>$2</sup>'
-  );
-
-  // Step 10: Handle subscripts: x_{expr} or x_n
-  html = html.replace(
-    /([a-zA-Z0-9]+)_\{([^{}]+)\}/g,
-    '$1<sub>$2</sub>'
-  );
-  html = html.replace(
-    /([a-zA-Z0-9]+)_([a-zA-Z0-9]+)/g,
-    '$1<sub>$2</sub>'
-  );
-
-  // Step 11: Handle \text{} and \textbf{} commands
-  html = html.replace(/\\textbf\{([^{}]+)\}/g, '<strong>$1</strong>');
-  html = html.replace(/\\text\{([^{}]+)\}/g, '<span>$1</span>');
-
-  // Step 12: Handle \left( and \right) - just render as parentheses
-  html = html.replace(/\\left\s*([(\[{])/g, '$1');
-  html = html.replace(/\\right\s*([)\]}])/g, '$1');
-
-  // Step 13: Handle \overline{x} (used for repeating decimals)
-  html = html.replace(
-    /\\overline\{([^{}]+)\}/g,
-    '<span style="text-decoration:overline">$1</span>'
-  );
-
-  // Step 14: Handle \bar{x}
-  html = html.replace(
-    /\\bar\{([^{}]+)\}/g,
-    '<span style="text-decoration:overline">$1</span>'
-  );
-
-  // Step 15: Clean up remaining backslashes from LaTeX commands that were not matched
-  html = html.replace(/\\(?:quad|;|,|!|\s)/g, ' ');
-
-  return html;
-}
+const UNICODE_FRACTIONS: Record<string, string> = {
+  '½': '\\frac{1}{2}', '⅓': '\\frac{1}{3}', '⅔': '\\frac{2}{3}',
+  '¼': '\\frac{1}{4}', '¾': '\\frac{3}{4}', '⅕': '\\frac{1}{5}',
+  '⅖': '\\frac{2}{5}', '⅗': '\\frac{3}{5}', '⅘': '\\frac{4}{5}',
+  '⅙': '\\frac{1}{6}', '⅚': '\\frac{5}{6}', '⅛': '\\frac{1}{8}',
+  '⅜': '\\frac{3}{8}', '⅝': '\\frac{5}{8}', '⅞': '\\frac{7}{8}'
+};
 
 /**
  * Normalizes input text during parsing or pasting so power fractions are clean
  */
 export function normalizeMathSyntax(raw: string): string {
   if (!raw) return '';
-  return raw
-    // Normalize unicode superscripts
-    .replace(/⁰/g, '^0')
-    .replace(/¹/g, '^1')
-    .replace(/²/g, '^2')
-    .replace(/³/g, '^3')
-    .replace(/⁴/g, '^4')
-    .replace(/⁵/g, '^5')
-    .replace(/⁶/g, '^6')
-    .replace(/⁷/g, '^7')
-    .replace(/⁸/g, '^8')
-    .replace(/⁹/g, '^9')
-    // Normalize unicode fractions
-    .replace(/½/g, '\\frac{1}{2}')
-    .replace(/⅓/g, '\\frac{1}{3}')
-    .replace(/⅔/g, '\\frac{2}{3}')
-    .replace(/¼/g, '\\frac{1}{4}')
-    .replace(/¾/g, '\\frac{3}{4}')
-    .replace(/⅕/g, '\\frac{1}{5}')
-    .replace(/⅖/g, '\\frac{2}{5}')
-    .replace(/⅗/g, '\\frac{3}{5}')
-    // Normalize unicode subscripts
-    .replace(/₀/g, '_0')
-    .replace(/₁/g, '_1')
-    .replace(/₂/g, '_2')
-    .replace(/₃/g, '_3')
-    .replace(/₄/g, '_4')
-    .replace(/₅/g, '_5')
-    .replace(/₆/g, '_6')
-    .replace(/₇/g, '_7')
-    .replace(/₈/g, '_8')
-    .replace(/₉/g, '_9')
-    // Normalize unicode operators
-    .replace(/×/g, '\\times ')
-    .replace(/÷/g, '\\div ')
-    .replace(/±/g, '\\pm ')
-    .replace(/≤/g, '\\leq ')
-    .replace(/≥/g, '\\geq ')
-    .replace(/≠/g, '\\neq ')
-    .replace(/≈/g, '\\approx ')
-    .replace(/∞/g, '\\infty ')
-    .replace(/π/g, '\\pi ')
-    .replace(/θ/g, '\\theta ')
-    .replace(/α/g, '\\alpha ')
-    .replace(/β/g, '\\beta ')
-    .replace(/√/g, '\\sqrt')
-    // Normalize arrow symbols
-    .replace(/→/g, '\\rightarrow ')
-    .replace(/⇒/g, '\\Rightarrow ')
-    .replace(/∴/g, '\\therefore ')
-    .replace(/∵/g, '\\because ');
+  let str = raw;
+
+  // Normalize Unicode fractions
+  for (const [k, v] of Object.entries(UNICODE_FRACTIONS)) {
+    str = str.split(k).join(v);
+  }
+
+  // Normalize Unicode superscripts
+  for (const [k, v] of Object.entries(UNICODE_SUPERSCRIPTS)) {
+    str = str.split(k).join(v);
+  }
+
+  // Merge consecutive superscripts e.g. ^x^y -> ^{xy}
+  str = str.replace(/\^([a-zA-Z0-9+\-])(?:\^([a-zA-Z0-9+\-]))+/g, (match) => {
+    return '^{' + match.replace(/\^/g, '') + '}';
+  });
+
+  // Normalize common unicode math operators
+  str = str
+    .replace(/×/g, ' \\times ')
+    .replace(/÷/g, ' \\div ')
+    .replace(/±/g, ' \\pm ')
+    .replace(/≤/g, ' \\le ')
+    .replace(/≥/g, ' \\ge ')
+    .replace(/≠/g, ' \\neq ')
+    .replace(/≈/g, ' \\approx ')
+    .replace(/∞/g, ' \\infty ')
+    .replace(/π/g, ' \\pi ')
+    .replace(/θ/g, ' \\theta ')
+    .replace(/°/g, '^\\circ ');
+
+  return str;
+}
+
+/**
+ * Converts natural math text / shorthand into clean, valid LaTeX for KaTeX
+ */
+export function toLatex(expr: string): string {
+  if (!expr) return '';
+  let s = expr.trim();
+
+  // Normalize unicodes first
+  s = normalizeMathSyntax(s);
+
+  // 1. Arrows & Implication
+  s = s.replace(/<=>|<==>/g, ' \\Leftrightarrow ');
+  s = s.replace(/=>|==>/g, ' \\Rightarrow ');
+  s = s.replace(/->|-->/g, ' \\rightarrow ');
+
+  // 2. Comparisons & Relations
+  s = s.replace(/<=/g, ' \\le ');
+  s = s.replace(/>=/g, ' \\ge ');
+  s = s.replace(/!=/g, ' \\neq ');
+  s = s.replace(/\+-/g, ' \\pm ');
+
+  // 3. Roots: sqrt(x), sqrt[n](x), cbrt(x)
+  s = s.replace(/sqrt\[([^\]]+)\]\(([^()]+)\)/gi, '\\sqrt[$1]{$2}');
+  s = s.replace(/sqrt\(([^()]+)\)/gi, '\\sqrt{$1}');
+  s = s.replace(/cbrt\(([^()]+)\)/gi, '\\sqrt[3]{$1}');
+
+  // 4. Multiplication operator: e.g. 2 * 3 or x * y -> \times
+  s = s.replace(/(\d|[a-zA-Z\)])\s*\*\s*(\d|[a-zA-Z\(])/g, '$1 \\times $2');
+
+  // 5. POWERS (Processed before fraction parens to preserve base)
+  // 5a. Caret with fractional parenthesized power: ^(a/b) or ^(-a/b)
+  s = s.replace(/\^\s*\(\s*(-?[0-9a-zA-Z\.\+\-]+)\s*\/\s*([0-9a-zA-Z\.\+\-]+)\s*\)/g, '^{\\frac{$1}{$2}}');
+
+  // 5b. Caret with parenthesized expression: ^(3x) or ^(n-1) or ^(-3)
+  s = s.replace(/\^\s*\(\s*([^()]+)\s*\)/g, '^{$1}');
+
+  // 5c. Caret with bare identifier/number: ^3x or ^x or ^2
+  s = s.replace(/\^\s*(-?[a-zA-Z0-9]+)/g, '^{$1}');
+
+  // 6. FRACTIONS in round brackets: (a/b) -> \left(\frac{a}{b}\right)
+  s = s.replace(/\(\s*([0-9a-zA-Z\.\+\-]+)\s*\/\s*([0-9a-zA-Z\.\+\-]+)\s*\)/g, '\\left(\\frac{$1}{$2}\\right)');
+
+  // 7. Standalone fractions: a/b (e.g. 1/5 or 25/16)
+  s = s.replace(/(^|[\s=+\-*(\[])([0-9a-zA-Z]+)\/([0-9a-zA-Z]+)(?=[\s=+\-*)\],.;]|$)/g, '$1\\frac{$2}{$3}');
+
+  return s;
+}
+
+/**
+ * Renders a single math expression using KaTeX with zero crash guarantee
+ */
+export function renderMathSegment(mathText: string, displayMode: boolean = false): string {
+  if (!mathText || !mathText.trim()) return '';
+  try {
+    const latex = toLatex(mathText);
+    return katex.renderToString(latex, {
+      throwOnError: false,
+      displayMode,
+      output: 'htmlAndMathml'
+    });
+  } catch {
+    return `<span class="math-fallback">${mathText}</span>`;
+  }
+}
+
+/**
+ * Universal Master Renderer
+ * Handles mixed Hindi, English, and Math with professional textbook typography
+ */
+export function renderMathToHtml(input: string): string {
+  if (!input) return '';
+
+  let text = normalizeMathSyntax(input);
+
+  const placeholders: string[] = [];
+  function savePlaceholder(html: string): string {
+    const key = `@@MATH_BLOCK_${placeholders.length}@@`;
+    placeholders.push(html);
+    return key;
+  }
+
+  // 1. Process explicit LaTeX blocks:
+  // Display math: $$...$$ or \[...\]
+  text = text.replace(/\$\$([\s\S]+?)\$\$/g, (_, math) => savePlaceholder(renderMathSegment(math, true)));
+  text = text.replace(/\\\[([\s\S]+?)\\\]/g, (_, math) => savePlaceholder(renderMathSegment(math, true)));
+
+  // Inline math: \(...\) or $...$
+  text = text.replace(/\\\(([\s\S]+?)\\\)/g, (_, math) => savePlaceholder(renderMathSegment(math, false)));
+  text = text.replace(/\$([^\$\n]+?)\$/g, (_, math) => savePlaceholder(renderMathSegment(math, false)));
+
+  // 2. Process implicit math segments between Hindi text:
+  // Non-Devanagari segments containing mathematical formulas or operations
+  const nonHindiMathRegex = /([^\u0900-\u097F\n\r]+)/g;
+
+  text = text.replace(nonHindiMathRegex, (segment) => {
+    // If it already contains our placeholders, don't modify
+    if (segment.includes('@@MATH_BLOCK_')) return segment;
+
+    const trimmed = segment.trim();
+    if (!trimmed) return segment;
+
+    // Check if this segment contains mathematical indicators
+    const hasMathIndicators = /[\^\\_=+*±×÷√≤≥≠⇒⇔→~]|\d+\s*\/\s*\d+|\(\s*[0-9a-zA-Z.\-+]+\s*\/\s*[0-9a-zA-Z.\-+]+\s*\)|(?:sqrt|cbrt|sin|cos|tan|log)\b/i.test(trimmed);
+
+    // Exclude strings that are just labels or dates like "15/09/2020", "(a)", "(b)", etc.
+    const isJustDate = /^\(?\d{1,2}\/\d{1,2}\/\d{2,4}\)?$/.test(trimmed);
+    const isJustOptionLabel = /^\(?[a-eA-E1-5]\)?\.?$/.test(trimmed);
+
+    if (hasMathIndicators && !isJustDate && !isJustOptionLabel) {
+      // Preserve whitespace
+      const leadingSpace = segment.match(/^\s*/)?.[0] || '';
+      const trailingSpace = segment.match(/\s*$/)?.[0] || '';
+
+      // Preserve leading punctuation from Hindi labels (e.g. "व्याख्या:" -> leading ":")
+      let mathContent = trimmed;
+      let leadingPunct = '';
+      const leadPunctMatch = mathContent.match(/^[:\-\.,।]+/);
+      if (leadPunctMatch) {
+        leadingPunct = leadPunctMatch[0];
+        mathContent = mathContent.slice(leadingPunct.length).trim();
+      }
+
+      // Preserve trailing punctuation (e.g. "?" or "." at sentence end)
+      let trailingPunct = '';
+      const trailPunctMatch = mathContent.match(/[:\-\?,\.।]+$/);
+      if (trailPunctMatch && !/=\s*$/.test(mathContent)) {
+        trailingPunct = trailPunctMatch[0];
+        mathContent = mathContent.slice(0, -trailingPunct.length).trim();
+      }
+
+      if (!mathContent) return segment;
+
+      const renderedHtml = renderMathSegment(mathContent, false);
+      return leadingSpace + leadingPunct + (leadingPunct ? ' ' : '') + savePlaceholder(renderedHtml) + trailingPunct + trailingSpace;
+    }
+
+    return segment;
+  });
+
+  // 3. Restore all rendered KaTeX blocks
+  placeholders.forEach((ph, i) => {
+    text = text.replace(`@@MATH_BLOCK_${i}@@`, ph);
+  });
+
+  return text;
 }

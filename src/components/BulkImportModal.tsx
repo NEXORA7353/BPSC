@@ -39,17 +39,20 @@ interface BulkImportModalProps {
 }
 
 const SAMPLE_BPSC_TEXT = `प्रश्न 1.
-मूल्यांकित करें : (-343 × 512)^(1/3)
-(a) -56
-(b) -42
-(c) -84
-(d) 56
-(e) उपर्युक्त में से कोई नहीं / उपर्युक्त में से एक से अधिक
+यदि (1/5)^(3x) = 0.008 हो, तो (0.25)^x का मान है-
+(a) 1.0
+(b) 4.0
+(c) 0.25
+(d) उपर्युक्त में से एक से अधिक
+(e) उपर्युक्त में से कोई नहीं
 
-परीक्षा: Bihar STET 15/09/2020 (Shift-I)
-उत्तर: (a)
+परीक्षा: BPSC-TRE 3.0 (6 to 8) 19/07/2024
+उत्तर: (c)
 व्याख्या:
-(-343 × 512)^(1/3) = ((-7)^3 × 8^3)^(1/3) = -7 × 8 = -56.
+(1/5)^(3x) = 0.008
+=> (0.2)^(3x) = (0.2)^3
+=> 3x = 3 => x = 1
+अतः (0.25)^x = (0.25)^1 = 0.25. अतः विकल्प (c) सही है।
 
 प्रश्न 2.
 (0.03125)^(2/5) का मान ज्ञात कीजिए:
@@ -92,6 +95,19 @@ const SAMPLE_BPSC_TEXT = `प्रश्न 1.
 x^2 - 5x + 6 = 0 => (x - 2)(x - 3) = 0 => x = 2, 3.
 
 प्रश्न 5.
+मूल्यांकित करें : (-343 × 512)^(1/3)
+(a) -56
+(b) -42
+(c) -84
+(d) 56
+(e) उपर्युक्त में से कोई नहीं / उपर्युक्त में से एक से अधिक
+
+परीक्षा: Bihar STET 15/09/2020 (Shift-I)
+उत्तर: (a)
+व्याख्या:
+(-343 × 512)^(1/3) = ((-7)^3 × 8^3)^(1/3) = -7 × 8 = -56.
+
+प्रश्न 6.
 \\sqrt{144} + \\sqrt[3]{512} \\times 2^3 का मान क्या है?
 (a) 76
 (b) 64
@@ -562,11 +578,48 @@ export function BulkImportModal({
                     <button
                       type="button"
                       onClick={() => handleLoadSample(SAMPLE_BPSC_TEXT)}
-                      className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline"
+                      className="px-3 py-1 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-xs font-bold hover:bg-amber-500/20 transition-colors"
                     >
-                      Load Sample BPSC Paper
+                      ⚡ Load Sample BPSC Paper
                     </button>
                   </div>
+                </div>
+
+                {/* Quick Math Format Toolbar */}
+                <div className="flex flex-wrap items-center gap-1.5 mb-2.5 p-2 bg-slate-100/80 dark:bg-slate-900/80 rounded-xl border border-slate-200 dark:border-slate-800 text-xs">
+                  <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mr-1 flex items-center gap-1">
+                    <span>Quick Insert:</span>
+                  </span>
+                  {[
+                    { label: '(1/5)^(3x)', snippet: '(1/5)^(3x)' },
+                    { label: 'x^(2/5)', snippet: 'x^(2/5)' },
+                    { label: '√x', snippet: '\\sqrt{x}' },
+                    { label: '∛x', snippet: '\\sqrt[3]{x}' },
+                    { label: 'a/b', snippet: '\\frac{a}{b}' },
+                    { label: 'x²', snippet: 'x^2' },
+                    { label: '⇒', snippet: '=> ' },
+                    { label: '±', snippet: '±' },
+                    { label: '×', snippet: '×' },
+                    { label: '÷', snippet: '÷' },
+                    { label: '≤', snippet: '≤' },
+                    { label: '≥', snippet: '≥' }
+                  ].map((chip) => (
+                    <button
+                      key={chip.label}
+                      type="button"
+                      onClick={() => {
+                        const next = rawText ? rawText + ' ' + chip.snippet : chip.snippet;
+                        setRawText(next);
+                        handleParseText(next);
+                      }}
+                      className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 hover:bg-amber-50 dark:hover:bg-amber-950/50 hover:border-amber-400 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-mono text-[11px] font-semibold transition-all active:scale-95"
+                    >
+                      {chip.label}
+                    </button>
+                  ))}
+                  <span className="ml-auto text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                    ✓ KaTeX Smart Math Active
+                  </span>
                 </div>
 
                 <textarea
