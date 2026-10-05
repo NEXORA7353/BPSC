@@ -30,6 +30,82 @@ d = \\sqrt{(x_2 - x_1)^2 + (y_2 - y_1)^2}
 = \\sqrt{3^2 + 1^2} = \\sqrt{9 + 1} = \\sqrt{10}
 
 अतः माध्यिका AD की लम्बाई \\sqrt{10} इकाई होगी। सही उत्तर विकल्प (c) है।`,
+    isCustomE: true,
+    imageUrl: '/images/triangle_q39.svg'
+  },
+  {
+    id: 'circle_geom_184',
+    originalNumber: 184,
+    topic: 'geometry',
+    topicNameHindi: 'ज्यामिति (Geometry - Circle)',
+    exam: 'Bihar STET (9 & 10) 14/09/2020 (Shift-I)',
+    questionText: 'दी गई आकृति में, PT तथा PBA एक वृत्त पर खींची गई क्रमशः स्पर्श रेखा तथा छेदक रेखा है। यदि PT = 12 सेमी, PB = 8 सेमी है, तब जीवा AB का मान होगा:\n\n![वृत्त पर स्पर्श रेखा PT तथा छेदक रेखा PBA](/images/circle_q184.svg)',
+    imageUrl: '/images/circle_q184.svg',
+    options: [
+      { key: 'a', text: '16 सेमी' },
+      { key: 'b', text: '10 सेमी' },
+      { key: 'c', text: '\\sqrt{5} सेमी' },
+      { key: 'd', text: '18 सेमी' },
+      { key: 'e', text: 'अनुत्तरित प्रश्न (यदि किसी प्रश्न का उत्तर नहीं देना चाहते, तो विकल्प E चुनें — इससे न अंक मिलेगा, न कटेगा।)' }
+    ],
+    correctOption: 'b',
+    explanation: `स्पर्श रेखा-छेदक रेखा प्रमेय (Tangent-Secant Power Theorem) से:
+PA \\times PB = (PT)^2
+
+दिए गए मान रखने पर:
+PA \\times 8 = (12)^2 = 144
+\\Rightarrow PA = \\frac{144}{8} = 18\\text{ सेमी}
+
+चूँकि PA = PB + AB
+\\Rightarrow AB = PA - PB = 18 - 8 = 10\\text{ सेमी}
+
+अतः सही उत्तर विकल्प (b) 10 सेमी है।`,
+    isCustomE: true
+  },
+  {
+    id: 'circle_geom_182',
+    originalNumber: 182,
+    topic: 'geometry',
+    topicNameHindi: 'ज्यामिति (Geometry - Trapezium & Semicircle)',
+    exam: 'Bihar STET (9 & 10) 14/09/2020 (Shift-I)',
+    questionText: 'यदि व्यास AD के साथ एक अर्द्धवृत्त के अन्दर एक समद्विबाहु समलम्ब ABCD बनाया जाए तथा AB = CD = 2 सेमी तथा अर्द्धवृत्त की त्रिज्या 5 सेमी है, तब BC की लम्बाई ज्ञात कीजिए।',
+    options: [
+      { key: 'a', text: '6 सेमी' },
+      { key: 'b', text: '7 सेमी' },
+      { key: 'c', text: '8 सेमी' },
+      { key: 'd', text: 'इनमें से कोई नहीं' },
+      { key: 'e', text: 'अनुत्तरित प्रश्न' }
+    ],
+    correctOption: 'd',
+    explanation: `अर्द्धवृत्त की त्रिज्या R = 5 सेमी => व्यास AD = 10 सेमी।
+शीर्ष B से व्यास AD पर लम्ब BE खींचा।
+माना AE = x, तो OE = 5 - x.
+समकोण त्रिभुज ABE और EBO में पाइथागोरस प्रमेय से:
+BE^2 = AB^2 - AE^2 = OB^2 - OE^2
+2^2 - x^2 = 5^2 - (5 - x)^2
+4 - x^2 = 25 - (25 - 10x + x^2) => 10x = 4 => x = 0.4\\text{ सेमी}
+
+अतः BC = EF = AD - 2x = 10 - 2(0.4) = 9.2\\text{ सेमी}।
+अतः सही उत्तर विकल्प (d) इनमें से कोई नहीं (9.2 सेमी) है।`,
+    isCustomE: true
+  },
+  {
+    id: 'circle_geom_183',
+    originalNumber: 183,
+    topic: 'geometry',
+    topicNameHindi: 'ज्यामिति (Geometry - Circles)',
+    exam: 'Bihar STET (9 & 10) 14/09/2020 (Shift-I)',
+    questionText: 'एक दिए हुए त्रिभुज के सभी शीर्षों से होकर जाने वाली वृत्तों की संख्या है-',
+    options: [
+      { key: 'a', text: 'एक' },
+      { key: 'b', text: 'दो' },
+      { key: 'c', text: 'तीन' },
+      { key: 'd', text: 'अनन्त' },
+      { key: 'e', text: 'अनुत्तरित प्रश्न' }
+    ],
+    correctOption: 'a',
+    explanation: `प्रमेय: किन्हीं तीन असंरेखीय (Non-collinear) बिन्दुओं से होकर केवल और केवल एक ही वृत्त (परिवृत्त - Circumcircle) खींचा जा सकता है।
+अतः किसी त्रिभुज के तीनों शीर्षों से होकर जाने वाले वृत्तों की संख्या 'एक' (1) होती है। अतः विकल्प (a) सही है।`,
     isCustomE: true
   },
   {

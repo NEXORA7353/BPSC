@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 230" width="100%" height="100%" className="max-w-md mx-auto">
+  <defs>
+    <style>
+      .tri-edge { stroke: #1e293b; stroke-width: 2.5; stroke-linejoin: round; fill: none; }
+      .tri-median { stroke: #ef4444; stroke-width: 2.5; stroke-dasharray: 5,4; }
+      .tri-vertex { fill: #3b82f6; }
+      .tri-mid { fill: #ef4444; }
+      .tri-label { font-family: system-ui, -apple-system, sans-serif; font-size: 13px; font-weight: 700; fill: #0f172a; }
+      .tri-coord { font-family: monospace; font-size: 11px; font-weight: 600; fill: #64748b; }
+      @media (prefers-color-scheme: dark) {
+        .tri-edge { stroke: #94a3b8; }
+        .tri-label { fill: #f8fafc; }
+        .tri-coord { fill: #cbd5e1; }
+      }
+    </style>
+  </defs>
+
+  <!-- Background Card -->
+  <rect width="380" height="230" rx="16" fill="#f8fafc" class="dark:fill-slate-900" stroke="#e2e8f0" stroke-width="1.5" />
+
+  <!-- Triangle Polygon -->
+  <polygon points="190,40 70,185 310,185" class="tri-edge" />
+
+  <!-- Median Line AD -->
+  <line x1="190" y1="40" x2="190" y2="185" class="tri-median" />
+
+  <!-- Vertex A -->
+  <circle cx="190" cy="40" r="5" class="tri-vertex" />
+  <text x="180" y="24" class="tri-label">A</text>
+  <text x="195" y="24" class="tri-coord">(-2, -1)</text>
+
+  <!-- Vertex B -->
+  <circle cx="70" cy="185" r="5" class="tri-vertex" />
+  <text x="45" y="190" class="tri-label">B</text>
+  <text x="25" y="208" class="tri-coord">(3, -2)</text>
+
+  <!-- Vertex C -->
+  <circle cx="310" cy="185" r="5" class="tri-vertex" />
+  <text x="325" y="190" class="tri-label">C</text>
+  <text x="295" y="208" class="tri-coord">(-1, 2)</text>
+
+  <!-- Midpoint D -->
+  <circle cx="190" cy="185" r="4.5" class="tri-mid" />
+  <text x="185" y="205" class="tri-label" style="fill: #dc2626;">D (x, y)</text>
+  <text x="165" y="220" class="tri-coord" style="fill: #dc2626; font-weight: bold;">(1, 0)</text>
+
+  <!-- Median Label -->
+  <rect x="200" y="105" width="130" height="24" rx="6" fill="#fee2e2" stroke="#fca5a5" />
+  <text x="206" y="122" class="tri-coord" style="fill: #b91c1c; font-weight: bold;">माध्यिका AD = √10</text>
+</svg>

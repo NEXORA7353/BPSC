@@ -185,6 +185,12 @@ export function renderMathToHtml(input: string): string {
     return key;
   }
 
+  // 0. Process markdown image tags: ![caption](url)
+  text = text.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, caption, url) => {
+    const imgHtml = `<div class="my-3 flex flex-col items-center justify-center p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs max-w-sm sm:max-w-md mx-auto"><img src="${url}" alt="${caption || 'Question Diagram'}" class="max-h-56 w-auto object-contain rounded-xl" />${caption ? `<span class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-semibold">${caption}</span>` : ''}</div>`;
+    return savePlaceholder(imgHtml);
+  });
+
   // 1. Process explicit LaTeX blocks:
   // Display math: $$...$$ or \[...\]
   text = text.replace(/\$\$([\s\S]+?)\$\$/g, (_, math) => savePlaceholder(renderMathSegment(math, true)));

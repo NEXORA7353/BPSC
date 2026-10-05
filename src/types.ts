@@ -11,6 +11,7 @@ export interface Question {
   }[];
   correctOption: 'a' | 'b' | 'c' | 'd' | 'e';
   explanation: string;
+  imageUrl?: string;
   isCustomE?: boolean;
   isUserAdded?: boolean;
   createdAt?: string;
