@@ -1,0 +1,258 @@
+{
+  "entities": {
+    "Question": {
+      "title": "Question",
+      "description": "Examination question for BPSC TRE 4.0 mathematics with bilingual content",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the question"
+        },
+        "originalNumber": {
+          "type": "number",
+          "description": "Sequential display or source question number"
+        },
+        "questionText": {
+          "type": "string",
+          "description": "Question statement in Hindi/English"
+        },
+        "options": {
+          "type": "array",
+          "description": "Options list for the question"
+        },
+        "correctOption": {
+          "type": "string",
+          "description": "Key of the correct option ('a', 'b', 'c', 'd', 'e')"
+        },
+        "explanation": {
+          "type": "string",
+          "description": "Step-by-step mathematical explanation"
+        },
+        "topic": {
+          "type": "string",
+          "description": "Topic key category"
+        },
+        "topicNameHindi": {
+          "type": "string",
+          "description": "Topic display name in Hindi"
+        },
+        "exam": {
+          "type": "string",
+          "description": "Exam source tag"
+        },
+        "isCustomE": {
+          "type": "boolean",
+          "description": "Flag for custom option E"
+        },
+        "isUserAdded": {
+          "type": "boolean",
+          "description": "Flag indicating if added by user/educator"
+        },
+        "authorId": {
+          "type": "string",
+          "description": "UID of the creator or system"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp ISO string"
+        }
+      },
+      "required": ["id", "questionText", "options", "correctOption"]
+    },
+    "RegisteredTopic": {
+      "title": "RegisteredTopic",
+      "description": "Syllabus topic category for organizing questions",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Normalized unique slug for the topic"
+        },
+        "labelHindi": {
+          "type": "string",
+          "description": "Topic title in Hindi"
+        },
+        "labelEnglish": {
+          "type": "string",
+          "description": "Topic title in English"
+        },
+        "isUserCreated": {
+          "type": "boolean",
+          "description": "Whether registered by user"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp"
+        }
+      },
+      "required": ["key", "labelHindi"]
+    },
+    "MockTestSet": {
+      "title": "MockTestSet",
+      "description": "Custom or shared mock test set",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique test set ID"
+        },
+        "title": {
+          "type": "string",
+          "description": "Test set title"
+        },
+        "subtitle": {
+          "type": "string",
+          "description": "Sub-heading or topics included"
+        },
+        "targetExam": {
+          "type": "string",
+          "description": "Target exam name"
+        },
+        "category": {
+          "type": "string",
+          "description": "Category identifier"
+        },
+        "categoryTitle": {
+          "type": "string",
+          "description": "Category heading"
+        },
+        "topicBadges": {
+          "type": "array",
+          "description": "Array of topic badge tags"
+        },
+        "totalQuestions": {
+          "type": "number",
+          "description": "Number of questions in test"
+        },
+        "totalTimeMinutes": {
+          "type": "number",
+          "description": "Time limit in minutes"
+        },
+        "questions": {
+          "type": "array",
+          "description": "List of questions in test set"
+        },
+        "negativeMarkingValue": {
+          "type": "number",
+          "description": "Negative marks deduction"
+        },
+        "isCustom": {
+          "type": "boolean",
+          "description": "Custom flag"
+        },
+        "authorId": {
+          "type": "string",
+          "description": "Author UID"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp"
+        }
+      },
+      "required": ["id", "title", "totalQuestions", "totalTimeMinutes"]
+    },
+    "TestAttemptRecord": {
+      "title": "TestAttemptRecord",
+      "description": "User test attempt score and analytics record",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique attempt record ID"
+        },
+        "testId": {
+          "type": "string",
+          "description": "Associated test set ID"
+        },
+        "testTitle": {
+          "type": "string",
+          "description": "Title of the test attempted"
+        },
+        "date": {
+          "type": "string",
+          "description": "Attempt date format"
+        },
+        "score": {
+          "type": "number",
+          "description": "Net score obtained"
+        },
+        "totalMarks": {
+          "type": "number",
+          "description": "Maximum marks possible"
+        },
+        "totalQuestions": {
+          "type": "number",
+          "description": "Total number of questions"
+        },
+        "correctCount": {
+          "type": "number",
+          "description": "Count of correct answers"
+        },
+        "incorrectCount": {
+          "type": "number",
+          "description": "Count of incorrect answers"
+        },
+        "accuracy": {
+          "type": "number",
+          "description": "Accuracy percentage"
+        },
+        "userId": {
+          "type": "string",
+          "description": "User UID who attempted the test"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp ISO string"
+        }
+      },
+      "required": ["id", "testId", "score", "totalQuestions"]
+    },
+    "DeletedQuestionRecord": {
+      "title": "DeletedQuestionRecord",
+      "description": "Tombstone record for deleted questions to sync removal across clients",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Document ID"
+        },
+        "questionId": {
+          "type": "string",
+          "description": "ID of question deleted"
+        },
+        "deletedAt": {
+          "type": "string",
+          "description": "Timestamp of deletion"
+        },
+        "deletedBy": {
+          "type": "string",
+          "description": "User UID who performed deletion"
+        }
+      },
+      "required": ["id", "questionId"]
+    }
+  },
+  "firestore": {
+    "/questions/{questionId}": {
+      "schema": "Question",
+      "description": "Cloud repository of public and user-contributed examination questions"
+    },
+    "/topics/{topicKey}": {
+      "schema": "RegisteredTopic",
+      "description": "Syllabus topic categories registered for the question bank"
+    },
+    "/custom_tests/{testId}": {
+      "schema": "MockTestSet",
+      "description": "Cloud-saved custom mock test sets published or shared"
+    },
+    "/attempt_records/{attemptId}": {
+      "schema": "TestAttemptRecord",
+      "description": "User test attempts and score records"
+    },
+    "/deleted_question_ids/{recordId}": {
+      "schema": "DeletedQuestionRecord",
+      "description": "Deleted question tombstones for multi-device sync"
+    }
+  }
+}

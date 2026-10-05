@@ -1,0 +1,6 @@
+{
+  "name": "BPSC TRE 4.0 Mathematics Real Mock Test Portal",
+  "description": "BPSC TRE 4.0 Mathematics real mock test portal covering LCM & HCF and Percentage with 5 options, negative marking, per-question time analysis, and previous exam questions from Bihar STET and BPSC TRE.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

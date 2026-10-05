@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e3a8a" />
+      <stop offset="50%" stop-color="#2563eb" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a" />
+      <stop offset="100%" stop-color="#f59e0b" />
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#818cf8" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#0f172a" flood-opacity="0.35" />
+    </filter>
+  </defs>
+  
+  <!-- Background Squircle -->
+  <rect x="16" y="16" width="480" height="480" rx="108" fill="url(#bgGrad)" />
+  
+  <!-- Outer Glow Ring -->
+  <rect x="32" y="32" width="448" height="448" rx="92" fill="none" stroke="url(#accentGrad)" stroke-width="6" stroke-opacity="0.4" />
+  
+  <!-- Math Grid Background Pattern -->
+  <g opacity="0.08" stroke="#ffffff" stroke-width="2">
+    <line x1="96" y1="96" x2="416" y2="96" />
+    <line x1="96" y1="176" x2="416" y2="176" />
+    <line x1="96" y1="256" x2="416" y2="256" />
+    <line x1="96" y1="336" x2="416" y2="336" />
+    <line x1="96" y1="416" x2="416" y2="416" />
+    <line x1="176" y1="96" x2="176" y2="416" />
+    <line x1="256" y1="96" x2="256" y2="416" />
+    <line x1="336" y1="96" x2="336" y2="416" />
+  </g>
+
+  <!-- Central Badge Symbol -->
+  <g filter="url(#shadow)">
+    <!-- Pi & Sigma & Square Root symbols -->
+    <!-- Large Math Pi & Square Root Badge -->
+    <path d="M 120 180 Q 180 140 240 180 Q 300 220 390 150" fill="none" stroke="url(#goldGrad)" stroke-width="24" stroke-linecap="round" />
+    
+    <!-- Bold 'BPSC' Text -->
+    <text x="256" y="270" text-anchor="middle" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-weight="900" font-size="94" fill="#ffffff" letter-spacing="4">
+      BPSC
+    </text>
+    
+    <!-- Subtitle Banner: TRE 4.0 MATHS -->
+    <rect x="106" y="310" width="300" height="58" rx="29" fill="url(#goldGrad)" />
+    <text x="256" y="350" text-anchor="middle" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-weight="900" font-size="32" fill="#0f172a" letter-spacing="2">
+      TRE 4.0 MATHS
+    </text>
+    
+    <!-- Floating Math Symbols -->
+    <text x="110" y="145" font-family="serif" font-weight="bold" font-size="48" fill="#93c5fd" opacity="0.9">π</text>
+    <text x="375" y="135" font-family="serif" font-weight="bold" font-size="44" fill="#93c5fd" opacity="0.9">∑</text>
+    <text x="120" y="425" font-family="sans-serif" font-weight="900" font-size="42" fill="#60a5fa" opacity="0.8">%</text>
+    <text x="370" y="425" font-family="sans-serif" font-weight="900" font-size="42" fill="#60a5fa" opacity="0.8">√x</text>
+  </g>
+</svg>
