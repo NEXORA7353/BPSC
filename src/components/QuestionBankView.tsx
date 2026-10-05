@@ -623,17 +623,19 @@ export function QuestionBankView({
       />
 
       {/* Smart Quality & Duplicate Attention Modal */}
-      <SmartQualityReviewModal
-        isOpen={isBankAuditOpen}
-        onClose={() => setIsBankAuditOpen(false)}
-        auditReport={bankAuditReport}
-        onUpdateQuestions={(updated) => {
-          saveCustomQuestions(updated);
-          refreshData();
-          setDbNotification('प्रश्न बैंक सफलतापूर्वक अपडेट किया गया!');
-          setTimeout(() => setDbNotification(null), 3000);
-        }}
-      />
+      {isBankAuditOpen && (
+        <SmartQualityReviewModal
+          isOpen={isBankAuditOpen}
+          onClose={() => setIsBankAuditOpen(false)}
+          auditReport={bankAuditReport}
+          onUpdateQuestions={(updated) => {
+            saveCustomQuestions(updated);
+            refreshData();
+            setDbNotification('प्रश्न बैंक सफलतापूर्वक अपडेट किया गया!');
+            setTimeout(() => setDbNotification(null), 3000);
+          }}
+        />
+      )}
     </div>
   );
 }

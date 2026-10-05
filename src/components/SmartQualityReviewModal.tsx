@@ -44,16 +44,9 @@ export function SmartQualityReviewModal({
   const [searchFilter, setSearchFilter] = useState('');
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
-  if (!isOpen) return null;
-
-  const showToast = (msg: string) => {
-    setSuccessToast(msg);
-    setTimeout(() => setSuccessToast(null), 2500);
-  };
-
-  // Filtered List
+  // Filtered List - Hook MUST be called unconditionally before any early return!
   const displayItems = useMemo(() => {
-    let list = auditReport.items;
+    let list = auditReport?.items || [];
 
     if (activeTab === 'all_issues') {
       list = list.filter((item) => item.issues.length > 0);
@@ -76,6 +69,11 @@ export function SmartQualityReviewModal({
 
     return list;
   }, [auditReport, activeTab, searchFilter]);
+
+  const showToast = (msg: string) => {
+    setSuccessToast(msg);
+    setTimeout(() => setSuccessToast(null), 2500);
+  };
 
   // Single Item Handlers
   const handleDeleteItem = (id: string) => {
@@ -149,10 +147,12 @@ export function SmartQualityReviewModal({
     showToast('सभी खाली व्याख्याएं एवं विकल्प स्वतः ठीक कर दिए गए!');
   };
 
+  if (!isOpen) return null;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
-        
+
         {/* Header Bar */}
         <div className="p-4 sm:p-6 border-b border-slate-100 dark:border-slate-800/80 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-900/50">
           <div className="flex items-center gap-3">
@@ -246,44 +246,40 @@ export function SmartQualityReviewModal({
           <div className="flex items-center gap-1.5 overflow-x-auto py-1">
             <button
               onClick={() => setActiveTab('all_issues')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                activeTab === 'all_issues'
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${activeTab === 'all_issues'
                   ? 'bg-amber-500 text-slate-950 shadow-sm'
                   : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800'
-              }`}
+                }`}
             >
               सभी समस्याएं ({auditReport.problemCount})
             </button>
 
             <button
               onClick={() => setActiveTab('duplicates')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                activeTab === 'duplicates'
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${activeTab === 'duplicates'
                   ? 'bg-purple-600 text-white shadow-sm'
                   : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800'
-              }`}
+                }`}
             >
               डुप्लीकेट्स ({auditReport.duplicateCount})
             </button>
 
             <button
               onClick={() => setActiveTab('blanks')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                activeTab === 'blanks'
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${activeTab === 'blanks'
                   ? 'bg-red-500 text-white shadow-sm'
                   : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800'
-              }`}
+                }`}
             >
               खाली सामग्री ({auditReport.blankOptionCount + auditReport.blankExplanationCount})
             </button>
 
             <button
               onClick={() => setActiveTab('all')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                activeTab === 'all'
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${activeTab === 'all'
                   ? 'bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900 shadow-sm'
                   : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800'
-              }`}
+                }`}
             >
               सभी प्रश्न ({auditReport.totalQuestions})
             </button>
@@ -332,15 +328,14 @@ export function SmartQualityReviewModal({
               return (
                 <div
                   key={item.id}
-                  className={`p-4 sm:p-5 rounded-2xl border transition-all ${
-                    item.hasErrors
+                  className={`p-4 sm:p-5 rounded-2xl border transition-all ${item.hasErrors
                       ? 'bg-red-500/[0.03] border-red-500/30 dark:border-red-500/30'
                       : item.isDuplicate
-                      ? 'bg-purple-500/[0.03] border-purple-500/30 dark:border-purple-500/30'
-                      : item.hasWarnings
-                      ? 'bg-amber-500/[0.03] border-amber-500/30 dark:border-amber-500/30'
-                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
-                  }`}
+                        ? 'bg-purple-500/[0.03] border-purple-500/30 dark:border-purple-500/30'
+                        : item.hasWarnings
+                          ? 'bg-amber-500/[0.03] border-amber-500/30 dark:border-amber-500/30'
+                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
+                    }`}
                 >
                   {/* Top Bar of Item */}
                   <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -353,13 +348,12 @@ export function SmartQualityReviewModal({
                       {item.issues.map((iss, iIdx) => (
                         <span
                           key={iIdx}
-                          className={`px-2.5 py-0.5 rounded-md font-bold text-[11px] flex items-center gap-1 ${
-                            iss.severity === 'critical'
+                          className={`px-2.5 py-0.5 rounded-md font-bold text-[11px] flex items-center gap-1 ${iss.severity === 'critical'
                               ? 'bg-red-500/15 text-red-700 dark:text-red-300 border border-red-500/30'
                               : iss.type.includes('DUPLICATE')
-                              ? 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30'
-                              : 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30'
-                          }`}
+                                ? 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30'
+                                : 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30'
+                            }`}
                         >
                           <AlertTriangle className="w-3 h-3" />
                           <span>{iss.title}</span>
@@ -468,11 +462,10 @@ export function SmartQualityReviewModal({
                                   updatedOpts[oIdx] = { ...opt, text: e.target.value };
                                   setEditForm({ ...editForm, options: updatedOpts });
                                 }}
-                                className={`w-full p-2 text-xs rounded-xl bg-white dark:bg-slate-950 border focus:outline-none ${
-                                  isBlank
+                                className={`w-full p-2 text-xs rounded-xl bg-white dark:bg-slate-950 border focus:outline-none ${isBlank
                                     ? 'border-red-500 ring-1 ring-red-500'
                                     : 'border-slate-300 dark:border-slate-700'
-                                }`}
+                                  }`}
                               />
                             </div>
                           );
@@ -554,13 +547,12 @@ export function SmartQualityReviewModal({
                           return (
                             <div
                               key={optKey || Math.random().toString()}
-                              className={`px-3 py-1.5 rounded-xl text-xs flex items-center gap-2 border ${
-                                isEmpty
+                              className={`px-3 py-1.5 rounded-xl text-xs flex items-center gap-2 border ${isEmpty
                                   ? 'bg-red-500/10 border-red-500/40 text-red-600 dark:text-red-400 font-bold'
                                   : isCorrect
-                                  ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-950 dark:text-emerald-200 font-bold'
-                                  : 'bg-slate-50 dark:bg-slate-800/60 border-slate-100 dark:border-slate-800 text-slate-700 dark:text-slate-300'
-                              }`}
+                                    ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-950 dark:text-emerald-200 font-bold'
+                                    : 'bg-slate-50 dark:bg-slate-800/60 border-slate-100 dark:border-slate-800 text-slate-700 dark:text-slate-300'
+                                }`}
                             >
                               <span className="font-mono font-bold uppercase shrink-0">
                                 ({optKey || '?'})
@@ -575,11 +567,10 @@ export function SmartQualityReviewModal({
 
                       {/* Explanation Preview */}
                       <div
-                        className={`p-2.5 rounded-xl text-xs border ${
-                          !item.question.explanation || item.question.explanation.trim() === ''
+                        className={`p-2.5 rounded-xl text-xs border ${!item.question.explanation || item.question.explanation.trim() === ''
                             ? 'bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400 font-bold'
                             : 'bg-amber-500/5 border-amber-500/20 text-slate-700 dark:text-slate-300'
-                        }`}
+                          }`}
                       >
                         <span className="font-bold text-amber-600 dark:text-amber-400 mr-1.5">
                           व्याख्या:

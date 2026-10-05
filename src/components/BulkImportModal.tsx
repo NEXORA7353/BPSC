@@ -1493,15 +1493,17 @@ export function BulkImportModal({
         />
 
         {/* Smart Quality & Duplicate Attention Modal */}
-        <SmartQualityReviewModal
-          isOpen={isQualityReviewOpen}
-          onClose={() => setIsQualityReviewOpen(false)}
-          auditReport={auditReport}
-          onUpdateQuestions={(updated) => {
-            setPreviewQuestions(updated);
-            setJsonText(JSON.stringify(updated, null, 2));
-          }}
-        />
+        {isQualityReviewOpen && (
+          <SmartQualityReviewModal
+            isOpen={isQualityReviewOpen}
+            onClose={() => setIsQualityReviewOpen(false)}
+            auditReport={auditReport}
+            onUpdateQuestions={(updated) => {
+              setPreviewQuestions(updated);
+              setJsonText(JSON.stringify(updated, null, 2));
+            }}
+          />
+        )}
       </div>
     </div>
   );
