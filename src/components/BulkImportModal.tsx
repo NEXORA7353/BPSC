@@ -55,6 +55,19 @@ const SAMPLE_BPSC_TEXT = `प्रश्न 1.
 अतः (0.25)^x = (0.25)^1 = 0.25. अतः विकल्प (c) सही है।
 
 प्रश्न 2.
+यदि x, y और z धनात्मक वास्तविक संख्याएँ हों, तो ⁵√(3125x¹⁰y⁵z¹⁰) बराबर होगा-
+(a) 5x^2yz^2
+(b) 25x^3y^2z
+(c) 125x^2yz^2
+(d) उपर्युक्त में से एक से अधिक
+(e) उपर्युक्त में से कोई नहीं
+
+परीक्षा: BPSC-TRE 2.0 (6 to 8) 9/12/2023
+उत्तर: (a)
+व्याख्या:
+⁵√(3125x¹⁰y⁵z¹⁰) = ⁵√(5⁵ · x¹⁰ · y⁵ · z¹⁰) = 5 · x² · y · z² = 5x²yz². अतः विकल्प (a) सही है।
+
+प्रश्न 3.
 (0.03125)^(2/5) का मान ज्ञात कीजिए:
 (a) 0.25
 (b) 0.04
@@ -68,7 +81,7 @@ const SAMPLE_BPSC_TEXT = `प्रश्न 1.
 0.03125 = (0.5)^5.
 अतः (0.03125)^(2/5) = ((0.5)^5)^(2/5) = (0.5)^2 = 0.04.
 
-प्रश्न 3.
+प्रश्न 4.
 (64/125)^(-2/3) का सरलीकृत रूप क्या होगा?
 (a) 16/25
 (b) 25/16
@@ -81,20 +94,20 @@ const SAMPLE_BPSC_TEXT = `प्रश्न 1.
 व्याख्या:
 (64/125)^(-2/3) = (125/64)^(2/3) = ((5/4)^3)^(2/3) = (5/4)^2 = 25/16.
 
-प्रश्न 4.
-यदि x^2 - 5x + 6 = 0 है, तो x के मूल (Roots) होंगे:
-(a) 2, 3
-(b) -2, -3
-(c) 1, 6
-(d) -1, -6
+प्रश्न 5.
+यदि x + 1/x = 5 है, तो x^2 + 1/x^2 का मान ज्ञात कीजिए:
+(a) 23
+(b) 25
+(c) 27
+(d) उपर्युक्त में से एक से अधिक
 (e) उपर्युक्त में से कोई नहीं
 
-परीक्षा: BPSC TRE 3.0 Algebra
+परीक्षा: BPSC TRE Mathematics Algebra
 उत्तर: (a)
 व्याख्या:
-x^2 - 5x + 6 = 0 => (x - 2)(x - 3) = 0 => x = 2, 3.
+x + 1/x = 5 => (x + 1/x)^2 = 5^2 => x^2 + 1/x^2 + 2 = 25 => x^2 + 1/x^2 = 23.
 
-प्रश्न 5.
+प्रश्न 6.
 मूल्यांकित करें : (-343 × 512)^(1/3)
 (a) -56
 (b) -42
@@ -107,7 +120,7 @@ x^2 - 5x + 6 = 0 => (x - 2)(x - 3) = 0 => x = 2, 3.
 व्याख्या:
 (-343 × 512)^(1/3) = ((-7)^3 × 8^3)^(1/3) = -7 × 8 = -56.
 
-प्रश्न 6.
+प्रश्न 7.
 \\sqrt{144} + \\sqrt[3]{512} \\times 2^3 का मान क्या है?
 (a) 76
 (b) 64
@@ -119,7 +132,66 @@ x^2 - 5x + 6 = 0 => (x - 2)(x - 3) = 0 => x = 2, 3.
 उत्तर: (a)
 व्याख्या:
 \\sqrt{144} = 12, \\sqrt[3]{512} = 8, 2^3 = 8.
-12 + (8 × 8) = 12 + 64 = 76.`;
+12 + (8 × 8) = 12 + 64 = 76.
+
+प्रश्न 8.
+यदि x^2 - 5x + 6 = 0 है, तो x के मूल (Roots) होंगे:
+(a) 2, 3
+(b) -2, -3
+(c) 1, 6
+(d) -1, -6
+(e) उपर्युक्त में से कोई नहीं
+
+परीक्षा: BPSC TRE 3.0 Algebra
+उत्तर: (a)
+व्याख्या:
+x^2 - 5x + 6 = 0 => (x - 2)(x - 3) = 0 => x = 2, 3.`;
+
+const SAMPLE_BPSC_JSON = JSON.stringify([
+  {
+    "originalNumber": 1,
+    "exam": "BPSC-TRE 3.0 (6 to 8) 19/07/2024",
+    "questionText": "यदि (1/5)^(3x) = 0.008 हो, तो (0.25)^x का मान है-",
+    "options": [
+      { "key": "a", "text": "1.0" },
+      { "key": "b", "text": "4.0" },
+      { "key": "c", "text": "0.25" },
+      { "key": "d", "text": "उपर्युक्त में से एक से अधिक" },
+      { "key": "e", "text": "उपर्युक्त में से कोई नहीं" }
+    ],
+    "correctOption": "c",
+    "explanation": "(1/5)^(3x) = 0.008 => (0.2)^(3x) = (0.2)^3 => 3x = 3 => x = 1 अतः (0.25)^x = (0.25)^1 = 0.25"
+  },
+  {
+    "originalNumber": 2,
+    "exam": "BPSC-TRE 2.0 (6 to 8) 9/12/2023",
+    "questionText": "यदि x, y और z धनात्मक वास्तविक संख्याएँ हों, तो ⁵√(3125x¹⁰y⁵z¹⁰) बराबर होगा-",
+    "options": [
+      { "key": "a", "text": "5x^2yz^2" },
+      { "key": "b", "text": "25x^3y^2z" },
+      { "key": "c", "text": "125x^2yz^2" },
+      { "key": "d", "text": "उपर्युक्त में से एक से अधिक" },
+      { "key": "e", "text": "उपर्युक्त में से कोई नहीं" }
+    ],
+    "correctOption": "a",
+    "explanation": "⁵√(3125x¹⁰y⁵z¹⁰) = ⁵√(5⁵ · x¹⁰ · y⁵ · z¹⁰) = 5 · x² · y · z² = 5x²yz²"
+  },
+  {
+    "originalNumber": 3,
+    "exam": "BPSC TRE 4.0 Real Mock Question",
+    "questionText": "(0.03125)^(2/5) का मान ज्ञात कीजिए:",
+    "options": [
+      { "key": "a", "text": "0.25" },
+      { "key": "b", "text": "0.04" },
+      { "key": "c", "text": "0.5" },
+      { "key": "d", "text": "0.125" },
+      { "key": "e", "text": "उपर्युक्त में से कोई नहीं" }
+    ],
+    "correctOption": "b",
+    "explanation": "0.03125 = (0.5)^5. अतः (0.03125)^(2/5) = ((0.5)^5)^(2/5) = (0.5)^2 = 0.04."
+  }
+], null, 2);
+
 
 export function BulkImportModal({
   isOpen,
@@ -678,15 +750,30 @@ Smart parser automatically extracts:
                   <Code className="w-4 h-4 text-indigo-500" />
                   <span>JSON Question Array Schema</span>
                 </label>
-                <button
-                  type="button"
-                  onClick={handleCopyJson}
-                  disabled={!jsonText}
-                  className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                  <span>Copy JSON</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setJsonText(SAMPLE_BPSC_JSON);
+                      try {
+                        const parsed = JSON.parse(SAMPLE_BPSC_JSON);
+                        if (Array.isArray(parsed)) setPreviewQuestions(parsed);
+                      } catch {}
+                    }}
+                    className="px-3 py-1 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 text-xs font-bold hover:bg-indigo-500/20 transition-colors"
+                  >
+                    ⚡ Load Sample BPSC JSON
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCopyJson}
+                    disabled={!jsonText}
+                    className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>Copy JSON</span>
+                  </button>
+                </div>
               </div>
 
               <textarea
@@ -709,9 +796,30 @@ Smart parser automatically extracts:
           {activeTab === 'single_manual' && (
             <form onSubmit={handleAddSingle} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Question Text in Hindi *
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Question Text in Hindi *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSingleQ({
+                        text: 'यदि (1/5)^(3x) = 0.008 हो, तो (0.25)^x का मान है-',
+                        optA: '1.0',
+                        optB: '4.0',
+                        optC: '0.25',
+                        optD: 'उपर्युक्त में से एक से अधिक',
+                        optE: 'उपर्युक्त में से कोई नहीं',
+                        correct: 'c',
+                        exam: 'BPSC-TRE 3.0 (6 to 8) 19/07/2024',
+                        explanation: '(1/5)^(3x) = 0.008 => (0.2)^(3x) = (0.2)^3 => 3x = 3 => x = 1 अतः (0.25)^x = (0.25)^1 = 0.25'
+                      });
+                    }}
+                    className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline"
+                  >
+                    ⚡ Fill with Sample Math Question
+                  </button>
+                </div>
                 <textarea
                   rows={3}
                   required
