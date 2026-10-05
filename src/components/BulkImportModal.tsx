@@ -32,7 +32,9 @@ import {
   getAllQuestionBank,
   getAllRegisteredTopics,
   registerNewTopic,
-  saveCustomTest
+  saveCustomTest,
+  getQuestionCorrectKeys,
+  getQuestionCorrectDisplay
 } from '../utils/questionBankStorage';
 import { auditQuestionBatch } from '../utils/questionQualityAudit';
 import { SmartQualityReviewModal } from './SmartQualityReviewModal';
@@ -270,6 +272,7 @@ export function BulkImportModal({
     optD: '',
     optE: 'अनुत्तरित प्रश्न (यदि किसी प्रश्न का उत्तर नहीं देना चाहते, तो विकल्प E चुनें — इससे न अंक मिलेगा, न कटेगा।)',
     correct: 'a' as 'a' | 'b' | 'c' | 'd' | 'e',
+    correctKeys: ['a'] as ('a' | 'b' | 'c' | 'd' | 'e')[],
     exam: 'BPSC TRE 4.0 / Bihar STET',
     explanation: ''
   });
@@ -528,8 +531,9 @@ export function BulkImportModal({
         { key: 'd', text: singleQ.optD.trim() },
         { key: 'e', text: singleQ.optE.trim() }
       ],
-      correctOption: singleQ.correct,
-      explanation: singleQ.explanation.trim() || `सही उत्तर (${singleQ.correct.toUpperCase()}) है।`,
+      correctOption: (singleQ.correctKeys && singleQ.correctKeys.length > 0 ? singleQ.correctKeys : [singleQ.correct]).join(','),
+      correctOptions: singleQ.correctKeys && singleQ.correctKeys.length > 0 ? singleQ.correctKeys : [singleQ.correct],
+      explanation: singleQ.explanation.trim() || `सही उत्तर (${(singleQ.correctKeys || [singleQ.correct]).map((k) => k.toUpperCase()).join(', ')}) है।`,
       isUserAdded: true,
       createdAt: new Date().toISOString()
     };
@@ -974,20 +978,49 @@ export function BulkImportModal({
                   })}
 
                   <div className="sm:col-span-2">
-                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-0.5">
-                      Correct Option Key *
-                    </label>
-                    <select
-                      value={singleQ.correct}
-                      onChange={(e) => setSingleQ({ ...singleQ, correct: e.target.value as any })}
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 focus:outline-none"
-                    >
-                      <option value="a">Option (A) - सही उत्तर</option>
-                      <option value="b">Option (B) - सही उत्तर</option>
-                      <option value="c">Option (C) - सही उत्तर</option>
-                      <option value="d">Option (D) - सही उत्तर</option>
-                      <option value="e">Option (E) - सही उत्तर</option>
-                    </select>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                        सही उत्तर कुंजी (Correct Keys) *
+                      </label>
+                      <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
+                        (2 या अधिक उत्तर चुन सकते हैं)
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {(['a', 'b', 'c', 'd', 'e'] as const).map((k) => {
+                        const activeKeys = singleQ.correctKeys || [singleQ.correct];
+                        const isSelected = activeKeys.includes(k);
+                        return (
+                          <button
+                            key={k}
+                            type="button"
+                            onClick={() => {
+                              let next: ('a' | 'b' | 'c' | 'd' | 'e')[];
+                              if (activeKeys.includes(k)) {
+                                next = activeKeys.length > 1 ? activeKeys.filter((x) => x !== k) : activeKeys;
+                              } else {
+                                next = [...activeKeys, k];
+                              }
+                              setSingleQ({
+                                ...singleQ,
+                                correct: next[0] || 'a',
+                                correctKeys: next
+                              });
+                            }}
+                            className={`w-9 h-8 rounded-lg font-black text-xs uppercase flex items-center justify-center transition-all ${
+                              isSelected
+                                ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-400 scale-105'
+                                : 'bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-emerald-500'
+                            }`}
+                          >
+                            {k}
+                          </button>
+                        );
+                      })}
+                      <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 ml-2">
+                        चयनित: {(singleQ.correctKeys || [singleQ.correct]).map((k) => k.toUpperCase()).join(', ')}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
@@ -1230,24 +1263,46 @@ export function BulkImportModal({
                             ))}
                           </div>
 
-                          <div className="flex items-center gap-3 pt-1 text-xs">
-                            <span className="font-bold">Correct Key:</span>
-                            <select
-                              value={editItemState.correctOption}
-                              onChange={(e) =>
-                                setEditItemState({
-                                  ...editItemState,
-                                  correctOption: e.target.value as any
-                                })
-                              }
-                              className="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 px-2 py-1 rounded-lg font-bold"
-                            >
-                              <option value="a">A</option>
-                              <option value="b">B</option>
-                              <option value="c">C</option>
-                              <option value="d">D</option>
-                              <option value="e">E</option>
-                            </select>
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 text-xs">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-slate-700 dark:text-slate-300">सही उत्तर (Keys):</span>
+                              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">(2 या अधिक उत्तर चुन सकते हैं)</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              {(['a', 'b', 'c', 'd', 'e'] as const).map((k) => {
+                                const activeKeys = getQuestionCorrectKeys(editItemState);
+                                const isSelected = activeKeys.includes(k);
+                                return (
+                                  <button
+                                    key={k}
+                                    type="button"
+                                    onClick={() => {
+                                      let nextKeys: ('a' | 'b' | 'c' | 'd' | 'e')[];
+                                      if (activeKeys.includes(k)) {
+                                        nextKeys = activeKeys.length > 1 ? activeKeys.filter((x) => x !== k) : activeKeys;
+                                      } else {
+                                        nextKeys = [...activeKeys, k];
+                                      }
+                                      setEditItemState({
+                                        ...editItemState,
+                                        correctOption: nextKeys.join(','),
+                                        correctOptions: nextKeys
+                                      });
+                                    }}
+                                    className={`w-7 h-7 rounded-lg font-bold text-xs uppercase flex items-center justify-center transition-all ${
+                                      isSelected
+                                        ? 'bg-emerald-600 text-white ring-2 ring-emerald-400 scale-105'
+                                        : 'bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                                    }`}
+                                  >
+                                    {k}
+                                  </button>
+                                );
+                              })}
+                              <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 ml-1">
+                                ({getQuestionCorrectDisplay(editItemState)})
+                              </span>
+                            </div>
                           </div>
                         </div>
                       );
@@ -1312,7 +1367,7 @@ export function BulkImportModal({
 
                           <div className="flex items-center gap-2">
                             <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 font-black text-[11px] uppercase tracking-wider font-mono">
-                              KEY: ({q.correctOption.toUpperCase()})
+                              KEY: ({getQuestionCorrectDisplay(q)})
                             </span>
 
                             <button
@@ -1343,7 +1398,7 @@ export function BulkImportModal({
                         {/* Options Grid */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                           {q.options.map((opt) => {
-                            const isCorrect = opt.key.toLowerCase() === q.correctOption.toLowerCase();
+                            const isCorrect = getQuestionCorrectKeys(q).includes(opt.key.toLowerCase() as any);
                             return (
                               <div
                                 key={opt.key}

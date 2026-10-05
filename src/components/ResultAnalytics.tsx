@@ -29,7 +29,10 @@ import { calculateBPSCNormalization } from '../utils/normalizationEngine';
 import {
   createReattemptMissedQuestionsTest,
   toggleBookmarkQuestion,
-  getBookmarkedIds
+  getBookmarkedIds,
+  isQuestionAnswerCorrect,
+  getQuestionCorrectKeys,
+  getQuestionCorrectDisplay
 } from '../utils/questionBankStorage';
 import { exportTestToPrintablePdf } from '../utils/pdfExporter';
 import { BackButton } from './BackButton';
@@ -84,7 +87,10 @@ export function ResultAnalytics({
     .filter((q) => {
       const resp = result.responses[q.id];
       const sel = resp?.selectedOption;
-      return sel === null || (sel !== q.correctOption && !(sel === 'e' && q.correctOption !== 'e'));
+      const isCorrect = isQuestionAnswerCorrect(q, sel);
+      const correctKeys = getQuestionCorrectKeys(q);
+      const isSafeSkip = sel === 'e' && !correctKeys.includes('e');
+      return sel === null || (!isCorrect && !isSafeSkip);
     })
     .map((q) => q.id);
 
@@ -104,9 +110,12 @@ export function ResultAnalytics({
     }
     topicStats[topicKey].total += 1;
     const resp = result.responses[q.id];
-    if (resp?.selectedOption === q.correctOption) {
+    const isCorrect = isQuestionAnswerCorrect(q, resp?.selectedOption);
+    const correctKeys = getQuestionCorrectKeys(q);
+    const isSafeSkip = resp?.selectedOption === 'e' && !correctKeys.includes('e');
+    if (isCorrect) {
       topicStats[topicKey].correct += 1;
-    } else if (resp?.selectedOption !== null && !(resp?.selectedOption === 'e' && q.correctOption !== 'e')) {
+    } else if (resp?.selectedOption !== null && !isSafeSkip) {
       topicStats[topicKey].incorrect += 1;
     }
   });
@@ -125,12 +134,15 @@ export function ResultAnalytics({
   const filteredQuestions = testSet.questions.filter((q) => {
     const resp = result.responses[q.id];
     const sel = resp?.selectedOption;
+    const isCorrect = isQuestionAnswerCorrect(q, sel);
+    const correctKeys = getQuestionCorrectKeys(q);
+    const isSafeSkip = sel === 'e' && !correctKeys.includes('e');
     if (filterType === 'all') return true;
-    if (filterType === 'correct') return sel === q.correctOption;
+    if (filterType === 'correct') return isCorrect;
     if (filterType === 'incorrect')
-      return sel !== null && sel !== q.correctOption && !(sel === 'e' && q.correctOption !== 'e');
+      return sel !== null && !isCorrect && !isSafeSkip;
     if (filterType === 'blank_penalty') return sel === null;
-    if (filterType === 'safe_skip') return sel === 'e' && q.correctOption !== 'e';
+    if (filterType === 'safe_skip') return isSafeSkip;
     if (filterType === 'bookmarked') return bookmarkedIds.includes(q.id);
     return true;
   });
@@ -668,8 +680,9 @@ export function ResultAnalytics({
             {filteredQuestions.map((q, idx) => {
               const resp = result.responses[q.id];
               const sel = resp?.selectedOption;
-              const isCorrect = sel === q.correctOption;
-              const isSafeSkip = sel === 'e' && q.correctOption !== 'e';
+              const isCorrect = isQuestionAnswerCorrect(q, sel);
+              const correctKeys = getQuestionCorrectKeys(q);
+              const isSafeSkip = sel === 'e' && !correctKeys.includes('e');
               const isBlank = sel === null;
               const isExpanded = expandedAccordionId === q.id;
 
@@ -741,7 +754,7 @@ export function ResultAnalytics({
                       <div className="space-y-2">
                         {q.options.map((opt) => {
                           const isCandidateChoice = sel === opt.key;
-                          const isKeyCorrect = q.correctOption === opt.key;
+                          const isKeyCorrect = correctKeys.includes(opt.key);
 
                           let optionStyle = 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300';
                           if (isKeyCorrect) {
@@ -779,9 +792,14 @@ export function ResultAnalytics({
                       </div>
 
                       <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs sm:text-sm space-y-2">
-                        <div className="font-bold text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                          <span>विस्तृत चरणबद्ध हल (Hindi Explanation):</span>
+                        <div className="font-bold text-amber-700 dark:text-amber-300 flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                            <span>विस्तृत चरणबद्ध हल (Hindi Explanation):</span>
+                          </div>
+                          <span className="text-xs font-mono font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100/80 dark:bg-emerald-950/70 px-2.5 py-0.5 rounded-lg border border-emerald-300 dark:border-emerald-700">
+                            सही उत्तर: विकल्प ({getQuestionCorrectDisplay(q)})
+                          </span>
                         </div>
                         <div className="text-slate-800 dark:text-slate-200 whitespace-pre-line leading-relaxed font-sans">
                           <MathText text={q.explanation} />

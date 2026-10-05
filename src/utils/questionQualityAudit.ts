@@ -225,9 +225,12 @@ export function auditSingleQuestion(q: Question): QuestionIssue[] {
       });
     }
 
-    // 4. Correct Answer Key Check
-    const key = String(q.correctOption || '').toLowerCase();
-    if (!['a', 'b', 'c', 'd', 'e'].includes(key)) {
+    // 4. Correct Answer Key Check (supports single or multi-answers like 'a', 'a,c')
+    const rawKeys = Array.isArray(q.correctOptions) && q.correctOptions.length > 0
+      ? q.correctOptions.map((k) => String(k).trim().toLowerCase())
+      : String(q.correctOption || '').toLowerCase().split(/[,/&+\s]+/).map((s) => s.trim()).filter(Boolean);
+    const hasValidKey = rawKeys.length > 0 && rawKeys.every((k) => ['a', 'b', 'c', 'd', 'e'].includes(k));
+    if (!hasValidKey) {
       issues.push({
         type: 'INVALID_ANSWER_KEY',
         severity: 'critical',

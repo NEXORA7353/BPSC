@@ -947,11 +947,14 @@ export function generateStandaloneHtml(set: MockTestSet): string {
 
       questions.forEach(q => {
         const sel = responses[q.id].selectedOption;
+        var correctKeys = (q.correctOptions && q.correctOptions.length > 0) ? q.correctOptions : String(q.correctOption || 'a').toLowerCase().split(/[,/&+\s]+/);
+        var isCorrect = sel !== null && correctKeys.indexOf(sel) !== -1;
+        var isSafeSkip = sel === 'e' && correctKeys.indexOf('e') === -1;
         if (sel === null) {
           blankPenalty++;
-        } else if (sel === q.correctOption) {
+        } else if (isCorrect) {
           correct++;
-        } else if (sel === 'e' && q.correctOption !== 'e') {
+        } else if (isSafeSkip) {
           safeSkip++;
         } else {
           incorrect++;
@@ -987,13 +990,16 @@ export function generateStandaloneHtml(set: MockTestSet): string {
         let statusBadge = '';
         let paceStr = tSec <= 40 ? 'तेज़ (Fast)' : (tSec <= 75 ? 'मध्यम (Moderate)' : 'धीमा (Slow)');
 
+        var correctKeys = (q.correctOptions && q.correctOptions.length > 0) ? q.correctOptions : String(q.correctOption || 'a').toLowerCase().split(/[,/&+\s]+/);
+        var isCorrect = sel !== null && correctKeys.indexOf(sel) !== -1;
+        var isSafeSkip = sel === 'e' && correctKeys.indexOf('e') === -1;
         if (sel === null) {
           scoreStr = '<span style="color:var(--danger);">-0.33</span>';
           statusBadge = '<span class="sol-badge sol-penalty">रिक्त दंड (Blank -1/3)</span>';
-        } else if (sel === q.correctOption) {
+        } else if (isCorrect) {
           scoreStr = '<span style="color:var(--success);">+1.00</span>';
           statusBadge = '<span class="sol-badge sol-correct">सही (Correct)</span>';
-        } else if (sel === 'e' && q.correctOption !== 'e') {
+        } else if (isSafeSkip) {
           scoreStr = '<span style="color:var(--slate-600);">0.00</span>';
           statusBadge = '<span class="sol-badge sol-skip">सुरक्षित छोड़ा (Safe Left E)</span>';
         } else {
@@ -1022,12 +1028,16 @@ export function generateStandaloneHtml(set: MockTestSet): string {
         const card = document.createElement('div');
         card.className = 'sol-card';
 
+        var correctKeys = (q.correctOptions && q.correctOptions.length > 0) ? q.correctOptions : String(q.correctOption || 'a').toLowerCase().split(/[,/&+\s]+/);
+        var isCorrect = sel !== null && correctKeys.indexOf(sel) !== -1;
+        var isSafeSkip = sel === 'e' && correctKeys.indexOf('e') === -1;
+        var keyDisplay = correctKeys.map(function(k) { return k.toUpperCase(); }).join(', ');
         let badgeHtml = '';
         if (sel === null) {
           badgeHtml = '<span class="sol-badge sol-penalty">कोई विकल्प नहीं चुना गया: -1/3 दंड लागू</span>';
-        } else if (sel === q.correctOption) {
+        } else if (isCorrect) {
           badgeHtml = '<span class="sol-badge sol-correct">सही उत्तर (+1.00)</span>';
-        } else if (sel === 'e' && q.correctOption !== 'e') {
+        } else if (isSafeSkip) {
           badgeHtml = '<span class="sol-badge sol-skip">विकल्प (E) चुना गया (सुरक्षित, 0 अंक)</span>';
         } else {
           badgeHtml = '<span class="sol-badge sol-wrong">गलत उत्तर (-0.33)</span>';
@@ -1039,7 +1049,7 @@ export function generateStandaloneHtml(set: MockTestSet): string {
           '</div>' +
           '<div style="font-size:0.75rem; color:var(--primary); margin-bottom:10px;">स्रोत: ' + q.exam + '</div>' +
           '<div style="font-size:1rem; margin-bottom:14px; font-weight:500;">' + q.questionText + '</div>' +
-          '<div style="font-size:0.9rem; margin-bottom:10px;"><strong>सही उत्तर:</strong> (' + q.correctOption + ')</div>' +
+          '<div style="font-size:0.9rem; margin-bottom:10px;"><strong>सही उत्तर:</strong> (' + keyDisplay + ')</div>' +
           '<div style="font-size:0.9rem; margin-bottom:10px;"><strong>आपका उत्तर:</strong> ' + (sel ? '(' + sel + ')' : 'कोई नहीं') + ' | <strong>व्यतीत समय:</strong> ' + questionTimes[i] + ' सेकंड</div>' +
           '<div class="sol-exp-box"><strong>विस्तृत व्याख्या एवं हल:</strong>\\n' + q.explanation + '</div>';
 

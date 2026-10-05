@@ -1,4 +1,5 @@
 import { MockTestSet } from '../types';
+import { getQuestionCorrectDisplay } from './questionBankStorage';
 
 /**
  * Super-Clean Professional BPSC Printable Exam Paper & OMR Sheet Exporter
@@ -327,7 +328,7 @@ export function exportTestToPrintablePdf(testSet: MockTestSet): void {
               (q, idx) => `
             <tr>
               <td><strong>Q${idx + 1}</strong></td>
-              <td><strong style="text-transform:uppercase; color:#059669;">(${q.correctOption})</strong></td>
+              <td><strong style="text-transform:uppercase; color:#059669;">(${getQuestionCorrectDisplay(q)})</strong></td>
               <td>${q.topicNameHindi || 'सामान्य गणित'}</td>
               <td>${q.exam || 'BPSC TRE 4.0'}</td>
             </tr>
@@ -342,8 +343,8 @@ export function exportTestToPrintablePdf(testSet: MockTestSet): void {
         .map(
           (q, idx) => `
         <div class="explanation-card">
-          <strong>प्रश्न ${idx + 1}. (उत्तर: ${q.correctOption.toUpperCase()})</strong>
-          <div style="margin-top:4px; font-size:12px;">${q.explanation || 'सही उत्तर ' + q.correctOption.toUpperCase() + ' है।'}</div>
+          <strong>प्रश्न ${idx + 1}. (उत्तर: ${getQuestionCorrectDisplay(q)})</strong>
+          <div style="margin-top:4px; font-size:12px;">${q.explanation || 'सही उत्तर ' + getQuestionCorrectDisplay(q) + ' है।'}</div>
         </div>
       `
         )

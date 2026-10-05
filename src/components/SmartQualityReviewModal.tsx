@@ -18,12 +18,12 @@ import {
   FileText,
   Lightbulb
 } from 'lucide-react';
-import { Question } from '../types';
 import {
   BatchAuditReport,
   AuditedQuestionItem,
   autoHealQuestion
 } from '../utils/questionQualityAudit';
+import { getQuestionCorrectKeys, getQuestionCorrectDisplay } from '../utils/questionBankStorage';
 import { MathText } from './MathText';
 
 interface SmartQualityReviewModalProps {
@@ -105,6 +105,26 @@ export function SmartQualityReviewModal({
     setEditForm({
       ...item.question,
       options: item.question.options.map((o) => ({ ...o }))
+    });
+  };
+
+  const handleToggleCorrectKey = (key: 'a' | 'b' | 'c' | 'd' | 'e') => {
+    if (!editForm) return;
+    const currentKeys = getQuestionCorrectKeys(editForm);
+    let nextKeys: ('a' | 'b' | 'c' | 'd' | 'e')[];
+    if (currentKeys.includes(key)) {
+      if (currentKeys.length > 1) {
+        nextKeys = currentKeys.filter((k) => k !== key);
+      } else {
+        nextKeys = currentKeys;
+      }
+    } else {
+      nextKeys = [...currentKeys, key];
+    }
+    setEditForm({
+      ...editForm,
+      correctOption: nextKeys.join(','),
+      correctOptions: nextKeys
     });
   };
 
@@ -478,29 +498,42 @@ export function SmartQualityReviewModal({
 
                       {/* Answer Key & Explanation */}
                       <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 pt-1">
-                        <div className="sm:col-span-1">
-                          <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
-                            सही उत्तर (Key):
-                          </label>
-                          <select
-                            value={editForm.correctOption}
-                            onChange={(e) =>
-                              setEditForm({
-                                ...editForm,
-                                correctOption: e.target.value.toLowerCase() as any
-                              })
-                            }
-                            className="w-full mt-1 p-2 text-xs rounded-xl bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 font-bold uppercase focus:outline-none"
-                          >
-                            <option value="a">A</option>
-                            <option value="b">B</option>
-                            <option value="c">C</option>
-                            <option value="d">D</option>
-                            <option value="e">E</option>
-                          </select>
+                        <div className="sm:col-span-2">
+                          <div className="flex items-center justify-between">
+                            <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                              सही उत्तर (Key):
+                            </label>
+                            <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
+                              (2 या अधिक उत्तर चुन सकते हैं)
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 mt-1">
+                            {(['a', 'b', 'c', 'd', 'e'] as const).map((k) => {
+                              const activeKeys = getQuestionCorrectKeys(editForm);
+                              const isSelected = activeKeys.includes(k);
+                              return (
+                                <button
+                                  key={k}
+                                  type="button"
+                                  onClick={() => handleToggleCorrectKey(k)}
+                                  className={`w-8 h-8 rounded-xl font-bold text-xs uppercase transition-all flex items-center justify-center ${
+                                    isSelected
+                                      ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-400 scale-105'
+                                      : 'bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-emerald-500'
+                                  }`}
+                                  title={`Toggle answer ${k.toUpperCase()}`}
+                                >
+                                  {k}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <div className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 mt-1">
+                            चयनित: {getQuestionCorrectDisplay(editForm)} ({getQuestionCorrectKeys(editForm).length} उत्तर मान्य)
+                          </div>
                         </div>
 
-                        <div className="sm:col-span-3">
+                        <div className="sm:col-span-2">
                           <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
                             व्याख्या / हल (Explanation):
                           </label>
@@ -544,8 +577,8 @@ export function SmartQualityReviewModal({
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
                         {(Array.isArray(item.question.options) ? item.question.options : []).map((opt) => {
                           const optKey = String(opt?.key || '').toLowerCase();
-                          const correctKey = String(item.question.correctOption || '').toLowerCase();
-                          const isCorrect = Boolean(optKey && optKey === correctKey);
+                          const correctKeys = getQuestionCorrectKeys(item.question);
+                          const isCorrect = correctKeys.includes(optKey as any);
                           const isEmpty = !opt?.text || String(opt.text).trim() === '';
 
                           return (

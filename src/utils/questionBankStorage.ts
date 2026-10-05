@@ -57,7 +57,39 @@ export const DEFAULT_TOPICS: RegisteredTopic[] = [
   { key: 'custom', labelHindi: 'विविध / अन्य गणित (Custom Topics)', labelEnglish: 'Custom & Miscellaneous' }
 ];
 
-// 🛡️ BULLETPROOF SANITIZERS (Prevents all .map crashes)
+// Helper functions for multi-answer support
+export function getQuestionCorrectKeys(q?: { correctOption?: string; correctOptions?: string[] } | null): ('a' | 'b' | 'c' | 'd' | 'e')[] {
+  if (!q) return ['a'];
+  if (Array.isArray(q.correctOptions) && q.correctOptions.length > 0) {
+    const valid = q.correctOptions
+      .map((k) => String(k).trim().toLowerCase())
+      .filter((k) => ['a', 'b', 'c', 'd', 'e'].includes(k)) as ('a' | 'b' | 'c' | 'd' | 'e')[];
+    if (valid.length > 0) return Array.from(new Set(valid));
+  }
+  const raw = String(q.correctOption || 'a').trim().toLowerCase();
+  const split = raw
+    .split(/[,/&+\s]+/)
+    .map((s) => s.trim().toLowerCase())
+    .filter((k) => ['a', 'b', 'c', 'd', 'e'].includes(k)) as ('a' | 'b' | 'c' | 'd' | 'e')[];
+  return split.length > 0 ? Array.from(new Set(split)) : ['a'];
+}
+
+export function isQuestionAnswerCorrect(
+  q?: { correctOption?: string; correctOptions?: string[] } | null,
+  selectedOption?: string | null
+): boolean {
+  if (!q || !selectedOption) return false;
+  const sel = String(selectedOption).trim().toLowerCase();
+  const keys = getQuestionCorrectKeys(q);
+  return keys.includes(sel as any);
+}
+
+export function getQuestionCorrectDisplay(q?: { correctOption?: string; correctOptions?: string[] } | null): string {
+  const keys = getQuestionCorrectKeys(q);
+  return keys.map((k) => k.toUpperCase()).join(', ');
+}
+
+// BULLETPROOF SANITIZERS (Prevents all .map crashes)
 export function sanitizeQuestion(q: any): Question {
   if (!q || typeof q !== 'object') {
     return {
@@ -72,14 +104,35 @@ export function sanitizeQuestion(q: any): Question {
         { key: 'e', text: 'अनुत्तरित प्रश्न' }
       ],
       correctOption: 'e',
+      correctOptions: ['e'],
       explanation: '',
       topic: 'custom',
       topicNameHindi: 'सामान्य'
     };
   }
 
-  const rawKey = String(q.correctOption || q.correctAnswer || q.answer || q.correct || 'e').trim().toLowerCase();
-  const safeCorrectOption = (['a', 'b', 'c', 'd', 'e'].includes(rawKey) ? rawKey : 'e') as 'a' | 'b' | 'c' | 'd' | 'e';
+  let safeCorrectOptions: ('a' | 'b' | 'c' | 'd' | 'e')[] = [];
+  if (Array.isArray(q.correctOptions) && q.correctOptions.length > 0) {
+    safeCorrectOptions = q.correctOptions
+      .map((k: any) => String(k).trim().toLowerCase())
+      .filter((k: string) => ['a', 'b', 'c', 'd', 'e'].includes(k)) as any;
+  }
+
+  if (safeCorrectOptions.length === 0) {
+    const rawKey = String(q.correctOption || q.correctAnswer || q.answer || q.correct || 'e').trim().toLowerCase();
+    const split = rawKey
+      .split(/[,/&+\s]+/)
+      .map((s) => s.trim().toLowerCase())
+      .filter((k) => ['a', 'b', 'c', 'd', 'e'].includes(k)) as any;
+    if (split.length > 0) {
+      safeCorrectOptions = split;
+    } else {
+      safeCorrectOptions = ['e'];
+    }
+  }
+
+  safeCorrectOptions = Array.from(new Set(safeCorrectOptions));
+  const safeCorrectOption = safeCorrectOptions.join(',') || 'e';
 
   const safeOptions = Array.isArray(q.options)
     ? q.options.map((opt: any) => ({
@@ -95,6 +148,7 @@ export function sanitizeQuestion(q: any): Question {
     questionText: String(q.questionText || q.text || ''),
     options: safeOptions,
     correctOption: safeCorrectOption,
+    correctOptions: safeCorrectOptions,
     explanation: String(q.explanation || ''),
     topic: String(q.topic || 'custom'),
     topicNameHindi: String(q.topicNameHindi || 'सामान्य')

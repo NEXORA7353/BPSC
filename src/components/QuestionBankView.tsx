@@ -32,7 +32,10 @@ import {
   exportFullDatabaseJson,
   importFullDatabaseJson,
   clearEntireDatabase,
-  saveCustomQuestions
+  saveCustomQuestions,
+  updateQuestionInBank,
+  getQuestionCorrectKeys,
+  getQuestionCorrectDisplay
 } from '../utils/questionBankStorage';
 import { syncFromFirestore, seedAllQuestionsToCloud, clearCloudDatabase } from '../services/firebaseSyncService';
 import { auditQuestionBatch } from '../utils/questionQualityAudit';
@@ -91,6 +94,43 @@ export function QuestionBankView({
   }, []);
 
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
+  const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
+  const [editingFormState, setEditingFormState] = useState<Question | null>(null);
+
+  const handleStartEditQuestion = (q: Question) => {
+    setEditingQuestionId(q.id);
+    setEditingFormState({
+      ...q,
+      options: q.options.map((o) => ({ ...o })),
+      correctOptions: getQuestionCorrectKeys(q)
+    });
+  };
+
+  const handleToggleFormCorrectKey = (key: 'a' | 'b' | 'c' | 'd' | 'e') => {
+    if (!editingFormState) return;
+    const currentKeys = getQuestionCorrectKeys(editingFormState);
+    let nextKeys: ('a' | 'b' | 'c' | 'd' | 'e')[];
+    if (currentKeys.includes(key)) {
+      nextKeys = currentKeys.length > 1 ? currentKeys.filter((k) => k !== key) : currentKeys;
+    } else {
+      nextKeys = [...currentKeys, key];
+    }
+    setEditingFormState({
+      ...editingFormState,
+      correctOption: nextKeys.join(','),
+      correctOptions: nextKeys
+    });
+  };
+
+  const handleSaveQuestionEdit = () => {
+    if (!editingFormState) return;
+    updateQuestionInBank(editingFormState);
+    setEditingQuestionId(null);
+    setEditingFormState(null);
+    refreshData();
+    setDbNotification('प्रश्न सफलतापूर्वक संशोधित (Updated) किया गया!');
+    setTimeout(() => setDbNotification(null), 3000);
+  };
 
   const handleCloudSync = async () => {
     setIsCloudSyncing(true);
@@ -517,6 +557,14 @@ export function QuestionBankView({
                     </button>
 
                     <button
+                      onClick={() => handleStartEditQuestion(q)}
+                      className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors"
+                      title="Edit Question (प्रश्न सुधारें)"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+
+                    <button
                       onClick={() => handleDelete(q.id)}
                       className="p-1.5 rounded-lg border border-red-200 dark:border-red-900/40 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
                       title="Delete Question from Bank"
@@ -526,90 +574,203 @@ export function QuestionBankView({
                   </div>
                 </div>
 
-                {/* Question Text in Hindi */}
-                <div className="text-base sm:text-lg font-semibold text-slate-900 dark:text-slate-100 leading-relaxed font-sans">
-                  <MathText text={q.questionText} />
-                </div>
+                {editingQuestionId === q.id && editingFormState ? (
+                  /* Inline Edit Form */
+                  <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/30 space-y-3">
+                    <div className="flex items-center justify-between text-xs font-bold text-amber-600 dark:text-amber-400">
+                      <span>प्रश्न संपादन (Editing Question)</span>
+                      <span>1 या 2 (अधिक) उत्तर चुन सकते हैं</span>
+                    </div>
 
-                {q.imageUrl && !q.questionText?.includes(q.imageUrl) && (
-                  <div className="my-3 flex flex-col items-center justify-center p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 shadow-xs max-w-md mx-auto">
-                    <img
-                      src={q.imageUrl}
-                      alt="प्रश्न आकृति / Diagram"
-                      className="max-h-60 w-auto object-contain rounded-xl"
-                    />
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-semibold">
-                      प्रश्न संबंधित आकृति (Diagram)
-                    </span>
-                  </div>
-                )}
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1 block">
+                        प्रश्न विवरण (Question Text):
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={editingFormState.questionText}
+                        onChange={(e) =>
+                          setEditingFormState({ ...editingFormState, questionText: e.target.value })
+                        }
+                        className="w-full p-2.5 text-xs sm:text-sm rounded-xl bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 focus:outline-none"
+                      />
+                    </div>
 
-                {q.svgContent && (
-                  <div
-                    className="my-3 flex flex-col items-center justify-center p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 shadow-xs max-w-xs sm:max-w-sm mx-auto overflow-hidden"
-                    dangerouslySetInnerHTML={{ __html: q.svgContent }}
-                  />
-                )}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {editingFormState.options.map((opt, oIdx) => (
+                        <div key={opt.key} className="space-y-1">
+                          <label className="text-[11px] font-bold uppercase text-slate-500">
+                            Option ({opt.key}):
+                          </label>
+                          <input
+                            type="text"
+                            value={opt.text}
+                            onChange={(e) => {
+                              const updated = [...editingFormState.options];
+                              updated[oIdx] = { ...opt, text: e.target.value };
+                              setEditingFormState({ ...editingFormState, options: updated });
+                            }}
+                            className="w-full p-2 text-xs rounded-xl bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700"
+                          />
+                        </div>
+                      ))}
+                    </div>
 
-                {/* Options Grid in Hindi */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                  {(Array.isArray(q.options) ? q.options : []).map((opt) => {
-                    const optKey = String(opt?.key || '').toLowerCase();
-                    const correctKey = String(q.correctOption || '').toLowerCase();
-                    const isCorrect = Boolean(optKey && optKey === correctKey);
-                    return (
-                      <div
-                        key={optKey || Math.random().toString()}
-                        className={`px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm flex items-center gap-3 transition-colors ${
-                          isCorrect
-                            ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-400 dark:border-emerald-700 text-emerald-900 dark:text-emerald-100 font-bold shadow-2xs'
-                            : 'bg-slate-50/70 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'
-                        }`}
-                      >
-                        <span
-                          className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs uppercase shrink-0 ${
-                            isCorrect
-                              ? 'bg-emerald-600 text-white'
-                              : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
-                          }`}
-                        >
-                          {optKey}
-                        </span>
-                        <span className="flex-1 font-sans">
-                          <MathText text={String(opt?.text || '')} />
-                        </span>
-                        {isCorrect && (
-                          <span className="text-[10px] uppercase font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded">
-                            Official Key
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                            सही उत्तर कुंजी (Correct Answer Keys):
+                          </label>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          {(['a', 'b', 'c', 'd', 'e'] as const).map((k) => {
+                            const activeKeys = getQuestionCorrectKeys(editingFormState);
+                            const isSelected = activeKeys.includes(k);
+                            return (
+                              <button
+                                key={k}
+                                type="button"
+                                onClick={() => handleToggleFormCorrectKey(k)}
+                                className={`w-8 h-8 rounded-xl font-bold text-xs uppercase transition-all flex items-center justify-center ${
+                                  isSelected
+                                    ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-400 scale-105'
+                                    : 'bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-emerald-500'
+                                }`}
+                              >
+                                {k}
+                              </button>
+                            );
+                          })}
+                          <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 ml-2">
+                            ({getQuestionCorrectDisplay(editingFormState)})
                           </span>
-                        )}
+                        </div>
                       </div>
-                    );
-                  })}
-                </div>
 
-                {/* Solution Toggle & Box */}
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-                  <button
-                    onClick={() => toggleSolution(q.id)}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline"
-                  >
-                    <span>{isSolExpanded ? 'Hide Solution' : 'View Detailed Solution (व्याख्या)'}</span>
-                    {isSolExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                  </button>
-
-                  {isSolExpanded && (
-                    <div className="mt-3 p-4 rounded-2xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 text-xs sm:text-sm text-slate-800 dark:text-slate-200 leading-relaxed space-y-1.5">
-                      <div className="font-bold text-amber-950 dark:text-amber-300 flex items-center gap-1.5">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                        <span>सही उत्तर: विकल्प ({q.correctOption.toUpperCase()})</span>
-                      </div>
-                      <div className="whitespace-pre-line pt-1 text-slate-800 dark:text-slate-200 font-sans">
-                        <MathText text={q.explanation} />
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1 block">
+                          विस्तृत व्याख्या (Explanation):
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={editingFormState.explanation}
+                          onChange={(e) =>
+                            setEditingFormState({ ...editingFormState, explanation: e.target.value })
+                          }
+                          className="w-full p-2 text-xs rounded-xl bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700"
+                        />
                       </div>
                     </div>
-                  )}
-                </div>
+
+                    <div className="flex justify-end gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingQuestionId(null);
+                          setEditingFormState(null);
+                        }}
+                        className="px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      >
+                        रद्द करें (Cancel)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveQuestionEdit}
+                        className="px-4 py-1.5 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-500 shadow-sm"
+                      >
+                        सहेजें (Save Question)
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Question Text in Hindi */}
+                    <div className="text-base sm:text-lg font-semibold text-slate-900 dark:text-slate-100 leading-relaxed font-sans">
+                      <MathText text={q.questionText} />
+                    </div>
+
+                    {q.imageUrl && !q.questionText?.includes(q.imageUrl) && (
+                      <div className="my-3 flex flex-col items-center justify-center p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 shadow-xs max-w-md mx-auto">
+                        <img
+                          src={q.imageUrl}
+                          alt="प्रश्न आकृति / Diagram"
+                          className="max-h-60 w-auto object-contain rounded-xl"
+                        />
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-semibold">
+                          प्रश्न संबंधित आकृति (Diagram)
+                        </span>
+                      </div>
+                    )}
+
+                    {q.svgContent && (
+                      <div
+                        className="my-3 flex flex-col items-center justify-center p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 shadow-xs max-w-xs sm:max-w-sm mx-auto overflow-hidden"
+                        dangerouslySetInnerHTML={{ __html: q.svgContent }}
+                      />
+                    )}
+
+                    {/* Options Grid in Hindi */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                      {(Array.isArray(q.options) ? q.options : []).map((opt) => {
+                        const optKey = String(opt?.key || '').toLowerCase();
+                        const correctKeys = getQuestionCorrectKeys(q);
+                        const isCorrect = correctKeys.includes(optKey as any);
+                        return (
+                          <div
+                            key={optKey || Math.random().toString()}
+                            className={`px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm flex items-center gap-3 transition-colors ${
+                              isCorrect
+                                ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-400 dark:border-emerald-700 text-emerald-900 dark:text-emerald-100 font-bold shadow-2xs'
+                                : 'bg-slate-50/70 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'
+                            }`}
+                          >
+                            <span
+                              className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs uppercase shrink-0 ${
+                                isCorrect
+                                  ? 'bg-emerald-600 text-white'
+                                  : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                              }`}
+                            >
+                              {optKey}
+                            </span>
+                            <span className="flex-1 font-sans">
+                              <MathText text={String(opt?.text || '')} />
+                            </span>
+                            {isCorrect && (
+                              <span className="text-[10px] uppercase font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded">
+                                Official Key
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Solution Toggle & Box */}
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                      <button
+                        onClick={() => toggleSolution(q.id)}
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        <span>{isSolExpanded ? 'Hide Solution' : 'View Detailed Solution (व्याख्या)'}</span>
+                        {isSolExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                      </button>
+
+                      {isSolExpanded && (
+                        <div className="mt-3 p-4 rounded-2xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 text-xs sm:text-sm text-slate-800 dark:text-slate-200 leading-relaxed space-y-1.5">
+                          <div className="font-bold text-amber-950 dark:text-amber-300 flex items-center gap-1.5">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                            <span>सही उत्तर: विकल्प ({getQuestionCorrectDisplay(q)})</span>
+                          </div>
+                          <div className="whitespace-pre-line pt-1 text-slate-800 dark:text-slate-200 font-sans">
+                            <MathText text={q.explanation} />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             );
           })

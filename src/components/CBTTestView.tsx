@@ -16,7 +16,7 @@ import {
   BookOpen
 } from 'lucide-react';
 import { MockTestSet, QuestionResponse, TestResult } from '../types';
-import { toggleBookmarkQuestion, getBookmarkedIds } from '../utils/questionBankStorage';
+import { toggleBookmarkQuestion, getBookmarkedIds, isQuestionAnswerCorrect, getQuestionCorrectKeys } from '../utils/questionBankStorage';
 import { ScratchpadModal } from './ScratchpadModal';
 import { FormulaSheetModal } from './FormulaSheetModal';
 import { MathText } from './MathText';
@@ -300,11 +300,15 @@ export function CBTTestView({
       };
 
       const sel = userResp.selectedOption;
+      const isCorrect = isQuestionAnswerCorrect(q, sel);
+      const correctKeys = getQuestionCorrectKeys(q);
+      const isSafeSkip = sel === 'e' && !correctKeys.includes('e');
+
       if (sel === null) {
         blankPenaltyCount++;
-      } else if (sel === q.correctOption) {
+      } else if (isCorrect) {
         correctCount++;
-      } else if (sel === 'e' && q.correctOption !== 'e') {
+      } else if (isSafeSkip) {
         safeSkipCount++;
       } else {
         incorrectCount++;
@@ -493,6 +497,11 @@ export function CBTTestView({
               <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                 {currentQ.topicNameHindi}
               </span>
+              {getQuestionCorrectKeys(currentQ).length > 1 && (
+                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 animate-pulse">
+                  बहु-उत्तर मान्य ({getQuestionCorrectKeys(currentQ).length} विकल्प सही)
+                </span>
+              )}
             </div>
           </div>
 

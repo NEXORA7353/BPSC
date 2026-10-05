@@ -9,7 +9,8 @@ export interface Question {
     key: 'a' | 'b' | 'c' | 'd' | 'e';
     text: string;
   }[];
-  correctOption: 'a' | 'b' | 'c' | 'd' | 'e';
+  correctOption: 'a' | 'b' | 'c' | 'd' | 'e' | string;
+  correctOptions?: ('a' | 'b' | 'c' | 'd' | 'e')[];
   explanation: string;
   imageUrl?: string;
   svgContent?: string;
