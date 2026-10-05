@@ -22,6 +22,8 @@ import {
   setLiveCloudTests,
   getDeletedQuestionIds,
   saveDeletedQuestionIds,
+  getDeletedTestIds,
+  saveDeletedTestIds,
   getSavedCustomTests,
   saveCustomTest as saveLocalCustomTest,
   getAllRegisteredTopics,
@@ -91,69 +93,92 @@ export async function syncFromFirestore(): Promise<void> {
   try {
     // 1. Fetch Deleted Question IDs tombstones
     const deletedSnap = await getDocs(collection(db, 'deleted_question_ids')).catch((err) => {
-      handleFirestoreError(err, OperationType.GET, 'deleted_question_ids');
+      console.warn('deleted_question_ids fetch warning:', err);
+      return null;
     });
     const cloudDeletedIds: string[] = [];
-    deletedSnap.forEach((d) => {
+    deletedSnap?.forEach((d) => {
       const data = d.data();
       if (data.questionId) cloudDeletedIds.push(data.questionId);
     });
-
-    // Merge with local deleted
     const localDeleted = getDeletedQuestionIds();
     const mergedDeleted = Array.from(new Set([...localDeleted, ...cloudDeletedIds]));
     saveDeletedQuestionIds(mergedDeleted);
 
+    // 1b. Fetch Deleted Test IDs tombstones
+    const deletedTestsSnap = await getDocs(collection(db, 'deleted_test_ids')).catch((err) => {
+      console.warn('deleted_test_ids fetch warning:', err);
+      return null;
+    });
+    const cloudDeletedTestIds: string[] = [];
+    deletedTestsSnap?.forEach((d) => {
+      const data = d.data();
+      if (data.testId) cloudDeletedTestIds.push(data.testId);
+    });
+    const localDeletedTests = getDeletedTestIds();
+    const mergedDeletedTests = Array.from(new Set([...localDeletedTests, ...cloudDeletedTestIds]));
+    saveDeletedTestIds(mergedDeletedTests);
+
+    const deletedQuestionSet = new Set(mergedDeleted);
+    const deletedTestSet = new Set(mergedDeletedTests);
+
     // 2. Fetch Questions from Firestore
     const questionsSnap = await getDocs(collection(db, 'questions')).catch((err) => {
-      handleFirestoreError(err, OperationType.GET, 'questions');
+      console.warn('questions fetch warning:', err);
+      return null;
     });
     const cloudQuestions: Question[] = [];
-    questionsSnap.forEach((d) => {
+    questionsSnap?.forEach((d) => {
       cloudQuestions.push(d.data() as Question);
     });
 
-    if (cloudQuestions.length === 0) {
-      // Auto-seed built-in base questions and topics to Firestore so all devices immediately have them!
+    if (!questionsSnap || cloudQuestions.length === 0) {
       console.log('No cloud questions found. Automatically seeding built-in database to Firestore...');
       await seedAllQuestionsToCloud().catch((err) => console.warn('Auto-seed failed:', err));
     } else {
-      // Merge cloud questions with local questions
-      const deletedSet = new Set(mergedDeleted);
       const questionMap = new Map<string, Question>();
-      // First put local
       getCustomQuestions().forEach((q) => questionMap.set(q.id, q));
-      // Overwrite/add cloud questions
       cloudQuestions.forEach((q) => questionMap.set(q.id, q));
-      // Remove any that are deleted
-      const finalQuestions = Array.from(questionMap.values()).filter((q) => !deletedSet.has(q.id));
+      const finalQuestions = Array.from(questionMap.values()).filter((q) => !deletedQuestionSet.has(q.id));
       setLiveCloudQuestions(finalQuestions);
     }
 
     // 3. Fetch Custom Tests from Firestore
     const testsSnap = await getDocs(collection(db, 'custom_tests')).catch((err) => {
-      handleFirestoreError(err, OperationType.GET, 'custom_tests');
+      console.warn('custom_tests fetch warning:', err);
+      return null;
     });
     const cloudTests: MockTestSet[] = [];
-    testsSnap.forEach((d) => {
+    testsSnap?.forEach((d) => {
       cloudTests.push(d.data() as MockTestSet);
     });
 
     if (cloudTests.length > 0) {
+      const cloudTestMap = new Map<string, MockTestSet>();
+      cloudTests.forEach((t) => cloudTestMap.set(t.id, t));
+
       const localTests = getSavedCustomTests();
       const testMap = new Map<string, MockTestSet>();
-      localTests.forEach((t) => testMap.set(t.id, t));
-      cloudTests.forEach((t) => testMap.set(t.id, t));
-      const mergedTests = Array.from(testMap.values());
-      setLiveCloudTests(mergedTests);
+      localTests.forEach((t) => {
+        if (!deletedTestSet.has(t.id) && cloudTestMap.has(t.id)) {
+          testMap.set(t.id, t);
+        }
+      });
+      cloudTests.forEach((t) => {
+        if (!deletedTestSet.has(t.id)) testMap.set(t.id, t);
+      });
+
+      const finalTests = Array.from(testMap.values());
+      setLiveCloudTests(finalTests);
     }
 
     // 4. Fetch Registered Topics from Firestore
     const topicsSnap = await getDocs(collection(db, 'topics')).catch((err) => {
-      handleFirestoreError(err, OperationType.GET, 'topics');
+      console.warn('topics fetch warning:', err);
+      return null;
     });
     const cloudTopics: RegisteredTopic[] = [];
-    topicsSnap.forEach((d) => {
+    topicsSnap?.forEach((d) => {
       cloudTopics.push(d.data() as RegisteredTopic);
     });
 
@@ -198,25 +223,33 @@ export function setupRealtimeSync(onDataChange: () => void): () => void {
     (snapshot) => {
       const updated: Question[] = [];
       snapshot.forEach((d) => updated.push(d.data() as Question));
-      if (updated.length > 0) {
-        const deletedSet = new Set(getDeletedQuestionIds());
-        const localCustom = getCustomQuestions();
-        const map = new Map<string, Question>();
-        localCustom.forEach((q) => map.set(q.id, q));
-        updated.forEach((q) => map.set(q.id, q));
-        const filtered = Array.from(map.values()).filter((q) => !deletedSet.has(q.id));
-        setLiveCloudQuestions(filtered);
-        syncState = {
-          ...syncState,
-          cloudQuestionCount: filtered.length,
-          lastSyncedAt: new Date()
-        };
-        notifyState();
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('bpsc_cloud_data_updated'));
+      const deletedSet = new Set(getDeletedQuestionIds());
+      const cloudQIdSet = new Set(updated.map((q) => q.id));
+
+      const localCustom = getCustomQuestions();
+      const map = new Map<string, Question>();
+
+      localCustom.forEach((q) => {
+        if (!deletedSet.has(q.id) && (updated.length === 0 || cloudQIdSet.has(q.id))) {
+          map.set(q.id, q);
         }
-        onDataChange();
+      });
+      updated.forEach((q) => {
+        if (!deletedSet.has(q.id)) map.set(q.id, q);
+      });
+
+      const filtered = Array.from(map.values());
+      setLiveCloudQuestions(filtered);
+      syncState = {
+        ...syncState,
+        cloudQuestionCount: filtered.length,
+        lastSyncedAt: new Date()
+      };
+      notifyState();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('bpsc_cloud_data_updated'));
       }
+      onDataChange();
     },
     (err) => {
       console.warn('Realtime sync questions listener:', err);
@@ -226,33 +259,42 @@ export function setupRealtimeSync(onDataChange: () => void): () => void {
   const unsubTests = onSnapshot(
     collection(db, 'custom_tests'),
     (snapshot) => {
-      const updated: MockTestSet[] = [];
-      snapshot.forEach((d) => updated.push(d.data() as MockTestSet));
-      if (updated.length > 0) {
-        const localTests = getSavedCustomTests();
-        const map = new Map<string, MockTestSet>();
-        localTests.forEach((t) => map.set(t.id, t));
-        updated.forEach((t) => map.set(t.id, t));
-        const mergedTests = Array.from(map.values());
-        setLiveCloudTests(mergedTests);
-        syncState = {
-          ...syncState,
-          cloudTestCount: mergedTests.length,
-          lastSyncedAt: new Date()
-        };
-        notifyState();
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('bpsc_cloud_data_updated'));
+      const cloudTests: MockTestSet[] = [];
+      snapshot.forEach((d) => cloudTests.push(d.data() as MockTestSet));
+      const deletedTestIds = new Set<string>(getDeletedTestIds());
+      const cloudTestIdSet = new Set(cloudTests.map((t) => t.id));
+
+      const localTests = getSavedCustomTests();
+      const testMap = new Map<string, MockTestSet>();
+
+      localTests.forEach((t) => {
+        if (!deletedTestIds.has(t.id) && (cloudTests.length === 0 || cloudTestIdSet.has(t.id))) {
+          testMap.set(t.id, t);
         }
-        onDataChange();
+      });
+      cloudTests.forEach((t) => {
+        if (!deletedTestIds.has(t.id)) testMap.set(t.id, t);
+      });
+
+      const finalTests = Array.from(testMap.values());
+      setLiveCloudTests(finalTests);
+      syncState = {
+        ...syncState,
+        cloudTestCount: finalTests.length,
+        lastSyncedAt: new Date()
+      };
+      notifyState();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('bpsc_cloud_data_updated'));
       }
+      onDataChange();
     },
     (err) => {
       console.warn('Realtime sync custom_tests listener:', err);
     }
   );
 
-  const unsubDeleted = onSnapshot(
+  const unsubDeletedQuestions = onSnapshot(
     collection(db, 'deleted_question_ids'),
     (snapshot) => {
       const deletedIds = new Set<string>(getDeletedQuestionIds());
@@ -275,7 +317,34 @@ export function setupRealtimeSync(onDataChange: () => void): () => void {
       }
     },
     (err) => {
-      console.warn('Realtime sync deleted_questions listener:', err);
+      console.warn('Realtime sync deleted_question_ids listener:', err);
+    }
+  );
+
+  const unsubDeletedTests = onSnapshot(
+    collection(db, 'deleted_test_ids'),
+    (snapshot) => {
+      const deletedTestIds = new Set<string>(getDeletedTestIds());
+      let hasChanges = false;
+      snapshot.forEach((d) => {
+        const tId = d.data()?.testId;
+        if (tId && !deletedTestIds.has(tId)) {
+          deletedTestIds.add(tId);
+          hasChanges = true;
+        }
+      });
+      if (hasChanges) {
+        saveDeletedTestIds(Array.from(deletedTestIds));
+        const filteredCustomTests = getSavedCustomTests().filter((t) => !deletedTestIds.has(t.id));
+        setLiveCloudTests(filteredCustomTests);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('bpsc_cloud_data_updated'));
+        }
+        onDataChange();
+      }
+    },
+    (err) => {
+      console.warn('Realtime sync deleted_test_ids listener:', err);
     }
   );
 
@@ -304,7 +373,8 @@ export function setupRealtimeSync(onDataChange: () => void): () => void {
   return () => {
     unsubQuestions();
     unsubTests();
-    unsubDeleted();
+    unsubDeletedQuestions();
+    unsubDeletedTests();
     unsubTopics();
   };
 }
@@ -462,6 +532,12 @@ export async function deleteTestSetFromCloud(testId: string): Promise<void> {
   const path = `custom_tests/${testId}`;
   try {
     await deleteDoc(doc(db, 'custom_tests', testId));
+    await setDoc(doc(db, 'deleted_test_ids', testId), {
+      id: testId,
+      testId,
+      deletedAt: new Date().toISOString(),
+      deletedBy: auth.currentUser?.uid || 'user'
+    });
     syncState = {
       ...syncState,
       lastSyncedAt: new Date()
@@ -601,4 +677,10 @@ if (typeof window !== 'undefined') {
       saveAttemptRecordToCloud(e.detail).catch((err) => console.warn('Cloud sync error (save attempt):', err));
     }
   }) as EventListener);
+
+  window.addEventListener('storage', (e) => {
+    if (e.key && e.key.startsWith('bpsc_')) {
+      window.dispatchEvent(new CustomEvent('bpsc_cloud_data_updated'));
+    }
+  });
 }
