@@ -23,6 +23,7 @@ import { Question, RegisteredTopic } from '../types';
 import {
   getAllQuestionBank,
   deleteCustomQuestion,
+  deleteMultipleQuestions,
   toggleBookmarkQuestion,
   getBookmarkedIds,
   getAllRegisteredTopics,
@@ -49,6 +50,7 @@ export function QuestionBankView({
   const [selectedTopic, setSelectedTopic] = useState<string>('all');
   const [onlyBookmarked, setOnlyBookmarked] = useState(false);
   const [bookmarkedIds, setBookmarkedIds] = useState<string[]>(() => getBookmarkedIds());
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [expandedSolutions, setExpandedSolutions] = useState<Record<string, boolean>>({});
   const [allQuestions, setAllQuestions] = useState<Question[]>(() => getAllQuestionBank());
   const [registeredTopics, setRegisteredTopics] = useState<RegisteredTopic[]>(() => getAllRegisteredTopics());
@@ -98,7 +100,38 @@ export function QuestionBankView({
   const handleDelete = (id: string) => {
     if (window.confirm('Delete this question from your Question Bank?')) {
       deleteCustomQuestion(id);
+      setSelectedIds((prev) => prev.filter((item) => item !== id));
       refreshData();
+    }
+  };
+
+  const handleToggleSelectAll = () => {
+    if (selectedIds.length === filteredQuestions.length && filteredQuestions.length > 0) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredQuestions.map((q) => q.id));
+    }
+  };
+
+  const handleToggleSelectOne = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedIds.length === 0) return;
+    if (
+      window.confirm(
+        `क्या आप सचमुच इन ${selectedIds.length} चुने हुए प्रश्नों को हटाना चाहते हैं?\n(Are you sure you want to permanently delete ${selectedIds.length} selected questions?)`
+      )
+    ) {
+      deleteMultipleQuestions(selectedIds);
+      const count = selectedIds.length;
+      setSelectedIds([]);
+      refreshData();
+      setDbNotification(`✅ Successfully deleted ${count} questions from Question Bank!`);
+      setTimeout(() => setDbNotification(null), 3500);
     }
   };
 
@@ -317,17 +350,44 @@ export function QuestionBankView({
         </div>
       </div>
 
-      {/* Results Count Header */}
-      <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-semibold px-1">
-        <span>Showing {filteredQuestions.length} of {allQuestions.length} Questions</span>
-        {searchTerm && (
-          <button
-            onClick={() => setSearchTerm('')}
-            className="text-blue-600 dark:text-blue-400 hover:underline"
-          >
-            Clear Search
-          </button>
-        )}
+      {/* Results & Bulk Action Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 dark:bg-slate-900/80 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 text-xs font-semibold px-4">
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-800 dark:text-slate-200">
+            <input
+              type="checkbox"
+              checked={filteredQuestions.length > 0 && selectedIds.length === filteredQuestions.length}
+              onChange={handleToggleSelectAll}
+              className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 cursor-pointer"
+            />
+            <span>Select All ({filteredQuestions.length})</span>
+          </label>
+          <span className="text-slate-400">|</span>
+          <span className="text-slate-500 dark:text-slate-400">
+            Showing {filteredQuestions.length} of {allQuestions.length} Questions
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {selectedIds.length > 0 && (
+            <button
+              onClick={handleBulkDelete}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-sm transition-all active:scale-95 animate-in fade-in"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete Selected ({selectedIds.length})</span>
+            </button>
+          )}
+
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              Clear Search
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Questions List */}
@@ -343,16 +403,28 @@ export function QuestionBankView({
         ) : (
           filteredQuestions.map((q, idx) => {
             const isBookmarked = bookmarkedIds.includes(q.id);
+            const isSelected = selectedIds.includes(q.id);
             const isSolExpanded = expandedSolutions[q.id];
 
             return (
               <div
                 key={q.id}
-                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 sm:p-6 shadow-sm space-y-4 transition-all hover:border-slate-300 dark:hover:border-slate-700"
+                className={`bg-white dark:bg-slate-900 border rounded-3xl p-5 sm:p-6 shadow-sm space-y-4 transition-all ${
+                  isSelected
+                    ? 'border-blue-500 ring-2 ring-blue-500/20 bg-blue-50/20 dark:bg-blue-950/20'
+                    : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                }`}
               >
                 {/* Header */}
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleToggleSelectOne(q.id)}
+                      className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      title="Select question"
+                    />
                     <span className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono font-bold text-xs flex items-center justify-center">
                       #{idx + 1}
                     </span>

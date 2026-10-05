@@ -40,10 +40,12 @@ export function CBTTestView({
   const totalDurationSeconds = testSet.totalTimeMinutes * 60;
   const negPenalty = testSet.negativeMarkingValue ?? 0.33;
 
-  const [remainingTime, setRemainingTime] = useState(totalDurationSeconds);
-  const [questionTimes, setQuestionTimes] = useState<number[]>(() =>
-    new Array(totalQuestions).fill(0)
-  );
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const allottedSeconds = testSet.totalTimeMinutes * 60;
+  const remainingTime = Math.max(0, allottedSeconds - elapsedSeconds);
+  const isOvertime = elapsedSeconds > allottedSeconds;
+  const overtimeSeconds = Math.max(0, elapsedSeconds - allottedSeconds);
+  const [questionTimes, setQuestionTimes] = useState<number[]>(() => new Array(totalQuestions).fill(0));
 
   const [fontSize, setFontSize] = useState<'normal' | 'large' | 'xlarge'>('normal');
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -82,17 +84,10 @@ export function CBTTestView({
     }
   }, [currentIdx]);
 
-  // Timer effect
+  // Timer effect - Continuous time tracking without forced auto-submit
   useEffect(() => {
     const interval = setInterval(() => {
-      setRemainingTime((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          handleFinalSubmit();
-          return 0;
-        }
-        return prev - 1;
-      });
+      setElapsedSeconds((prev) => prev + 1);
 
       setQuestionTimes((prev) => {
         const next = [...prev];
@@ -293,7 +288,7 @@ export function CBTTestView({
       correctCount + incorrectCount > 0
         ? Math.round((correctCount / (correctCount + incorrectCount)) * 100)
         : 0;
-    const totalTimeSpentSeconds = totalDurationSeconds - remainingTime;
+    const totalTimeSpentSeconds = elapsedSeconds;
 
     const result: TestResult = {
       setId: testSet.id,
@@ -378,17 +373,31 @@ export function CBTTestView({
             </button>
 
             {/* Timer Chip */}
-            <div
-              className={`px-3 py-1 rounded-lg font-mono text-xs font-black transition-all ${
-                remainingTime <= 60
-                  ? 'bg-rose-600 text-white animate-bounce ring-2 ring-rose-400'
-                  : remainingTime <= 300
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                  : 'bg-white/10 text-amber-300 border border-white/10'
-              }`}
-            >
-              <span>{formatTime(remainingTime)}</span>
-            </div>
+            {isOvertime ? (
+              <div
+                className="px-3 py-1 rounded-lg font-mono text-xs font-black bg-rose-600/30 text-rose-300 border border-rose-500/50 flex items-center gap-1.5 animate-pulse"
+                title="Time limit exceeded. You are answering in overtime mode."
+              >
+                <Clock className="w-3.5 h-3.5 text-rose-400" />
+                <span>00:00</span>
+                <span className="bg-rose-600 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">
+                  +{formatTime(overtimeSeconds)} Overtime
+                </span>
+              </div>
+            ) : (
+              <div
+                className={`px-3 py-1 rounded-lg font-mono text-xs font-black transition-all flex items-center gap-1.5 ${
+                  remainingTime <= 60
+                    ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400'
+                    : remainingTime <= 300
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                    : 'bg-white/10 text-amber-300 border border-white/10'
+                }`}
+              >
+                <Clock className="w-3.5 h-3.5 text-amber-400" />
+                <span>{formatTime(remainingTime)}</span>
+              </div>
+            )}
 
             {/* Submit CTA */}
             <button

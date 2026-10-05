@@ -282,6 +282,40 @@ export function ResultAnalytics({
             </div>
           </div>
 
+          {/* TIME & OVERTIME ANALYSIS BANNER */}
+          <div className="p-4 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold shrink-0 shadow-md">
+                <Clock className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="font-bold text-slate-900 dark:text-white text-sm">
+                  Total Time Taken: {Math.floor(result.totalTimeSpentSeconds / 60)}m {result.totalTimeSpentSeconds % 60}s
+                </div>
+                <div className="text-slate-500 dark:text-slate-400 text-xs">
+                  Allotted Time Limit: {testSet.totalTimeMinutes} mins · Avg Speed per Question: {avgSeconds}s / Q
+                </div>
+              </div>
+            </div>
+
+            <div>
+              {result.totalTimeSpentSeconds > testSet.totalTimeMinutes * 60 ? (
+                <span className="px-3 py-1.5 rounded-xl bg-rose-500/10 text-rose-700 dark:text-rose-300 font-bold border border-rose-500/30 flex items-center gap-1.5 text-xs">
+                  <AlertTriangle className="w-4 h-4 text-rose-500" />
+                  <span>
+                    Overtime: +{Math.floor((result.totalTimeSpentSeconds - testSet.totalTimeMinutes * 60) / 60)}m{' '}
+                    {(result.totalTimeSpentSeconds - testSet.totalTimeMinutes * 60) % 60}s
+                  </span>
+                </span>
+              ) : (
+                <span className="px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-500/30 flex items-center gap-1.5 text-xs">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                  <span>Completed On Schedule</span>
+                </span>
+              )}
+            </div>
+          </div>
+
           {/* ADVANCED TOPIC MASTERY BREAKDOWN MATRIX */}
           <div className="space-y-3 pt-2">
             <div className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center justify-between">
@@ -408,7 +442,13 @@ export function ResultAnalytics({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 shrink-0">
+                    <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                      {resp?.timeSpentSeconds !== undefined && resp.timeSpentSeconds > 0 && (
+                        <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 flex items-center gap-1" title="Time spent on this question">
+                          <Clock className="w-3 h-3 text-amber-500" />
+                          <span>{resp.timeSpentSeconds}s</span>
+                        </span>
+                      )}
                       {statusChip}
                       <button className="p-1 text-slate-400 hover:text-slate-900 dark:hover:text-white">
                         {isExpanded ? (

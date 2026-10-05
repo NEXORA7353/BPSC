@@ -18,7 +18,8 @@ import {
   Trash2,
   Bookmark,
   Zap,
-  Filter
+  Filter,
+  Save
 } from 'lucide-react';
 import { CustomTestConfig, MockTestSet, RegisteredTopic, Question } from '../types';
 import {
@@ -140,11 +141,31 @@ export function CustomTestModal({
 
   if (!isOpen) return null;
 
+  const updateAutoTitleFromDist = (dist: Record<string, number>) => {
+    const activeKeys = Object.keys(dist).filter((k) => (dist[k] || 0) > 0);
+    if (activeKeys.length === 0) return;
+
+    const topicsObj = registeredTopics.filter((t) => activeKeys.includes(t.key));
+    const names = topicsObj.map((t) => t.labelHindi.split('(')[0].trim());
+
+    if (names.length === 1) {
+      setTestTitle(`BPSC TRE 4.0 - ${names[0]} स्पेशल टेस्ट`);
+    } else if (names.length === 2) {
+      setTestTitle(`BPSC TRE 4.0 - ${names[0]} तथा ${names[1]} स्पेशल मॉक टेस्ट`);
+    } else if (names.length === 3) {
+      setTestTitle(`BPSC TRE 4.0 - ${names[0]}, ${names[1]} तथा ${names[2]} कंबाइंड टेस्ट`);
+    } else if (names.length > 3) {
+      setTestTitle(`BPSC TRE 4.0 - ${names[0]}, ${names[1]} + ${names.length - 2} अन्य अध्याय टेस्ट`);
+    }
+  };
+
   const handleDistributionChange = (topicKey: string, count: number) => {
-    setTopicDistribution((prev) => ({
-      ...prev,
+    const updated = {
+      ...topicDistribution,
       [topicKey]: Math.max(0, count)
-    }));
+    };
+    setTopicDistribution(updated);
+    updateAutoTitleFromDist(updated);
   };
 
   const handleCreateNewTopic = () => {
@@ -152,7 +173,9 @@ export function CustomTestModal({
     const key = newTopicHindi.trim().toLowerCase().replace(/[^a-z0-9]/gi, '_');
     const created = registerNewTopic(key, newTopicHindi, newTopicEnglish || newTopicHindi);
     setRegisteredTopics(getAllRegisteredTopics());
-    setTopicDistribution((prev) => ({ ...prev, [created.key]: 10 }));
+    const updated = { ...topicDistribution, [created.key]: 10 };
+    setTopicDistribution(updated);
+    updateAutoTitleFromDist(updated);
     setIsAddingNewTopic(false);
     setNewTopicHindi('');
     setNewTopicEnglish('');
@@ -225,13 +248,15 @@ export function CustomTestModal({
     });
   };
 
-  const handleLaunchTest = () => {
+  const handleCreateTestSet = (autoStart: boolean = false) => {
     const finalTime = timeMode === 'auto' ? Math.max(5, totalQuestionsCount) : customTimeMinutes;
+
+    const activeTopics = Object.keys(topicDistribution).filter((k) => (topicDistribution[k] || 0) > 0);
 
     const config: CustomTestConfig = {
       title: testTitle.trim() || `Custom Test (${totalQuestionsCount} Qs)`,
       creationMode,
-      selectedTopics: Object.keys(topicDistribution),
+      selectedTopics: activeTopics.length > 0 ? activeTopics : Object.keys(topicDistribution),
       topicDistribution: creationMode === 'topic_distribution' ? topicDistribution : undefined,
       specificQuestionIds: creationMode === 'handpick' ? handpickedIds : undefined,
       directQuestions: creationMode === 'direct_paste' ? directParsedQuestions : undefined,
@@ -243,8 +268,17 @@ export function CustomTestModal({
     };
 
     const newTestSet = createCustomMockTest(config);
-    onStartCustomTest(newTestSet);
-    onClose();
+
+    if (autoStart) {
+      onStartCustomTest(newTestSet);
+      onClose();
+    } else {
+      setBulkStatusMsg('✅ Custom Test Created & Saved to My Tests!');
+      setTimeout(() => {
+        setBulkStatusMsg(null);
+        onClose();
+      }, 700);
+    }
   };
 
   return (
@@ -803,11 +837,20 @@ export function CustomTestModal({
 
             <button
               disabled={totalQuestionsCount === 0}
-              onClick={handleLaunchTest}
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed shadow-md transition-all active:scale-95"
+              onClick={() => handleCreateTestSet(false)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-slate-800 bg-white border border-slate-300 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700 disabled:opacity-40 disabled:cursor-not-allowed shadow-xs transition-all active:scale-95"
+            >
+              <Save className="w-4 h-4 text-emerald-500" />
+              <span>Save to My Tests</span>
+            </button>
+
+            <button
+              disabled={totalQuestionsCount === 0}
+              onClick={() => handleCreateTestSet(true)}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed shadow-md transition-all active:scale-95"
             >
               <Play className="w-4 h-4 fill-white" />
-              <span>Launch Test Now</span>
+              <span>Save & Start Test Now</span>
             </button>
           </div>
         </div>
