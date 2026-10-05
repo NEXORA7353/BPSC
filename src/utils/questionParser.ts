@@ -93,18 +93,23 @@ export function parseBulkQuestionText(
       const q = parseSingleQuestionBlock(block, index + 1, topicKey, topicNameHindi, dateFormatted);
       if (q) {
         // Discard phantom dummy questions (blocks with no real question text or only placeholder dummy options)
+        const hasOptions = hasRecognizableOptions(block);
+        const hasQMarker = isKeywordQuestionStart(block) || isBareNumberQuestionStart(block);
+
         const isDummyQuestion =
-          (!q.questionText || q.questionText.trim().length < 3) ||
+          (!hasOptions && !hasQMarker) &&
+          ((!q.questionText || q.questionText.trim().length < 3) ||
           (q.questionText.startsWith('Question #') && q.options[0]?.text === 'Option A' && q.options[1]?.text === 'Option B') ||
           (q.options[0]?.text === 'Option A' && q.options[1]?.text === 'Option B' && q.options[2]?.text === 'Option C') ||
-          (q.options[1]?.text === 'Option B' && q.options[2]?.text === 'Option C' && q.options[3]?.text === 'Option D');
+          (q.options[1]?.text === 'Option B' && q.options[2]?.text === 'Option C' && q.options[3]?.text === 'Option D'));
 
         if (!isDummyQuestion) {
           questions.push(q);
         } else if (questions.length > 0) {
           // If a discarded block was math notes or explanation, append to previous question so nothing is lost
+          // NEVER append if it resembles a real question or has options
           const extraText = block.trim();
-          if (extraText) {
+          if (extraText && !hasOptions && !hasQMarker) {
             questions[questions.length - 1].explanation =
               (questions[questions.length - 1].explanation ? questions[questions.length - 1].explanation + '\n\n' : '') + extraText;
           }
@@ -152,10 +157,11 @@ const isMetadataOrExplanation = (t: string) =>
  * from multi-line explanations or numbered math statements (like ratios 5 : 8 : : 15 : x).
  */
 export function smartSplitQuestionBlocks(text: string): string[] {
-  // Pre-normalize gaps before explicit keyword question starts, avoiding math ratios like 5 : 8
+  // Pre-normalize gaps before explicit keyword question starts, ensuring at least \n\n precedes each question
+  // even if it appears inline (e.g. "... = 79 प्रश्न 37.") or after a single newline.
   const withNormalizedGaps = text.replace(
-    /(?:\n)(?=\s*(?:(?:प्रश्न|प्रश्नावली|Q(?:uestion)?|Prashna|Q\.)\s*[:\-.]?\s*\d+))/gi,
-    '\n\n'
+    /(\n*)\s*(?=(?:(?:प्रश्न|प्रश्नावली|Q(?:uestion)?|Prashna|Q\.)\s*[:\-.]?\s*\d+))/gi,
+    (_m, _newlines, offset) => (offset === 0 ? '' : '\n\n')
   );
 
   const paragraphs = withNormalizedGaps
@@ -165,7 +171,7 @@ export function smartSplitQuestionBlocks(text: string): string[] {
 
   if (paragraphs.length <= 1) {
     // If no double-line breaks exist, fallback to line-start question markers
-    const fallbackDelim = /(?:\n+|^)(?=\s*(?:(?:प्रश्न|प्रश्नावली|Q(?:uestion)?|Prashna)\s*[:\-.]?\s*\d+))/i;
+    const fallbackDelim = /(?:\n+|^)(?=\s*(?:(?:प्रश्न|प्रश्नावली|Q(?:uestion)?|Prashna|Q\.)\s*[:\-.]?\s*\d+))/i;
     const blocks = text.split(fallbackDelim).map((b) => b.trim()).filter((b) => b.length > 5);
     if (blocks.length > 1) {
       return blocks;
@@ -240,7 +246,7 @@ export function smartSplitQuestionBlocks(text: string): string[] {
 /**
  * Parses a single text block with 100% zero-loss fallback guarantees.
  */
-function parseSingleQuestionBlock(
+export function parseSingleQuestionBlock(
   block: string,
   index: number,
   topicKey: string,
@@ -281,7 +287,7 @@ function parseSingleQuestionBlock(
 
   // 3. Extract Explanation / Solution
   let explanation = '';
-  const expRegex = /(?:^|\n)\s*(?:व्याख्या|हल|Explanation|Solution|Reason|तर्क)\s*[:\-]?\s*([\s\S]+)$/i;
+  const expRegex = /(?:^|\n)\s*(?:व्याख्या|हल|Explanation|Solution|Reason|तर्क)\s*[:\-]?\s*([\s\S]+?)(?=(?:\n\s*(?:(?:प्रश्न|प्रश्नावली|Q(?:uestion)?|Prashna|Q\.)\s*[:\-.]?\s*\d+[\.:\)\-\]\}\s]))|$)/i;
   const expMatch = body.match(expRegex);
 
   if (expMatch) {
@@ -303,12 +309,12 @@ function parseSingleQuestionBlock(
     explanation = `सही उत्तर विकल्प (${correctOption.toUpperCase()}) है।`;
   }
 
-  // 4. Extract Exam Tag
+  // 4. Extract Exam Tag (Strict: Must have colon/hyphen/brackets to avoid matching words like "एक परीक्षा में..." in question text)
   let exam = 'BPSC TRE 4.0 / STET';
-  const examRegex = /(?:परीक्षा|Exam|Source)\s*[:\-]?\s*([^\n\r]+)/i;
+  const examRegex = /(?:^|\n)\s*(?:(?:परीक्षा|Exam|Source)\s*[:\-]\s*([^\n\r]+)|\[(?:परीक्षा|Exam|Source)\s*[:\-]?\s*([^\]]+)\])/i;
   const examMatch = body.match(examRegex);
   if (examMatch) {
-    exam = examMatch[1].trim();
+    exam = (examMatch[1] || examMatch[2] || '').trim();
     body = body.replace(examRegex, '').trim();
   }
 
@@ -406,7 +412,7 @@ function cleanOptionText(str: string): string {
   return str
     .replace(/\n/g, ' ')
     .replace(/\s+/g, ' ')
-    .replace(/(?:\n\s*(?:परीक्षा|Exam):?.*$)/i, '')
+    .replace(/(?:\n\s*(?:परीक्षा|Exam)\s*[:\-].*$)/i, '')
     .replace(/(?:उत्तर|Ans|Answer|Key)\s*[:\-]\s*\(?[a-eA-E1-5].*$/i, '')
     .replace(/(?:व्याख्या|Solution|हल|Explanation)\s*[:\-].*$/i, '')
     .trim();
@@ -420,11 +426,12 @@ export function aiSmartFormatText(text: string): string {
   let formatted = text
     .replace(/\r\n/g, '\n')
     .replace(/\r/g, '\n')
-    .replace(/(?:^|\s)(?:प्रश्न|प्रश्नावली|Q(?:uestion)?|Prashna|Q\.)\s*[:\-.]?\s*(\d+)/gi, '\nप्रश्न $1.')
+    .replace(/(?:^|\n|\s)(?:प्रश्न|प्रश्नावली|Q(?:uestion)?|Prashna|Q\.)\s*[:\-.]?\s*(\d+)[\.:\)\-\]\}\s]*/gi, '\n\nप्रश्न $1. ')
     .replace(/(?:^|\n|\s)\(?([a-eA-E])\)[\.\s]/g, '\n($1) ')
     .replace(/(Ans|Answer|Key|Correct|उत्तर)\s*[:\-]?\s*([a-eA-E1-5])/gi, '\nउत्तर: ($2)')
     .replace(/(Explanation|Solution|व्याख्या|हल)\s*[:\-]?/gi, '\nव्याख्या: ')
-    .replace(/\n\s*\n+/g, '\n\n');
+    .replace(/\n\s*\n+/g, '\n\n')
+    .trim();
   return formatted;
 }
 
