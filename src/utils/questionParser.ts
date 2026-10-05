@@ -139,41 +139,42 @@ function hasRecognizableOptions(t: string): boolean {
 }
 
 const isKeywordQuestionStart = (t: string) =>
-  /^\s*(?:(?:प्रश्न|प्रश्नावली|Q(?:uestion)?|Prashna|Q\.)\s*[:\-.]?\s*\d+(?:[\.:\)\-\]\}\s]|$)(?!\s*(?:का|के|की|में|से|पर|द्वारा|को|ने|वाला|वाली)))/i.test(t);
+  /^\s*(?:(?:प्रश्न|प्रश्नावली|Q(?:uestion)?|Prashna|Q\.|प्र\.)\s*[:\-.]?\s*\d+(?:[\.:\)\-\]\}\s]|$)(?!\s*(?:का|के|की|में|से|पर|द्वारा|को|ने|वाला|वाली)))/i.test(t);
 
 const isBareNumberQuestionStart = (t: string) =>
-  /^\s*(?:\(?\d{1,4}\)?[\.\)\-]|\[\d{1,4}\])\s+(?![=:\d\+\-\*\/])/.test(t) &&
+  /^\s*\d{1,4}\.\s+(?![=:\d\+\-\*\/])/.test(t) &&
   !/^\s*\d{1,4}\s*[:=]/.test(t);
 
 const hasExplanationStarted = (t: string) =>
   /(?:^|\n|[\s,;।|])(?:व्याख्या|Explanation|Solution|हल|Reason|तर्क)\.?\s*[:\-]/i.test(t) ||
   /(?:^|\n|[\s,;।|])(?:Ans(?:wer)?|उत्तर|Key)\.?\s*[:\-]?\s*\(?[a-eA-E1-5]|अ|ब|स|द|य/i.test(t);
 
-const isMetadataOrExplanation = (t: string) =>
-  /(?:^|\n|[\s,;।|])(?:व्याख्या|Explanation|Solution|हल|Reason|तर्क|परीक्षा|Exam|Source)\.?\s*[:\-]/i.test(t) ||
-  /(?:^|\n|[\s,;।|])(?:Ans(?:wer)?|उत्तर|Key)\.?\s*[:\-]?\s*\(?[a-eA-E1-5]|अ|ब|स|द|य/i.test(t);
+const isMetadataOrExplanationBlock = (t: string) =>
+  !hasRecognizableOptions(t) &&
+  (/^\s*(?:व्याख्या|Explanation|Solution|हल|Reason|तर्क|परीक्षा|Exam|Source)\.?\s*[:\-]/i.test(t) ||
+   /^\s*(?:Ans(?:wer)?|उत्तर|Key)\.?\s*[:\-]?\s*\(?[a-eA-E1-5]|अ|ब|स|द|य/i.test(t));
 
 /**
  * Universal smart question splitter & consolidator.
  * Handles 100, 200, 500+ questions seamlessly without creating phantom questions
- * from multi-line explanations or numbered math statements (like ratios 5 : 8 : : 15 : x).
+ * or swallowing subsequent questions into explanations.
  */
 export function smartSplitQuestionBlocks(text: string): string[] {
-  // Pre-normalize gaps before explicit keyword question starts, ensuring at least \n\n precedes each question
-  // Note: Negative lookahead ensures references like "प्रश्न 24 का पुनरावृत्त रूप" are not split!
-  const withNormalizedGaps = text.replace(
-    /(\n*)\s*(?=(?:(?:प्रश्न|प्रश्नावली|Q(?:uestion)?|Prashna|Q\.)\s*[:\-.]?\s*\d+(?:[\.:\)\-\]\}\s]|$)(?!\s*(?:का|के|की|में|से|पर|द्वारा|को|ने|वाला|वाली))))/gi,
-    (_m, _newlines, offset) => (offset === 0 ? '' : '\n\n')
+  // Pre-normalize gaps before explicit keyword question starts or numbered question starts (e.g. "1. ", "2. ")
+  // Note: Only \d+\.\s+ is matched, preventing options like (1) or (2) or (5) from being falsely split!
+  const normalized = text.replace(
+    /(?:\n|^)\s*(?=(?:(?:प्रश्न|प्रश्नावली|Q(?:uestion)?|Prashna|Q\.|प्र\.)\s*[:\-.]?\s*\d+[\.:\)\-\]\}\s]|\d{1,4}\.\s+(?![=:\d\+\-\*\/]))(?!\s*(?:का|के|की|में|से|पर|द्वारा|को|ने|वाला|वाली)))/gi,
+    (_m, offset) => (offset === 0 ? '' : '\n\n')
   );
 
-  const paragraphs = withNormalizedGaps
+  const paragraphs = normalized
     .split(/\n\s*\n+/)
     .map((p) => p.trim())
     .filter((p) => p.length > 3);
 
   if (paragraphs.length <= 1) {
     // If no double-line breaks exist, fallback to line-start question markers
-    const fallbackDelim = /(?:\n+|^)(?=\s*(?:(?:प्रश्न|प्रश्नावली|Q(?:uestion)?|Prashna|Q\.)\s*[:\-.]?\s*\d+))/i;
+    const fallbackDelim = /(?:\n+|^)(?=\s*(?:(?:प्रश्न|प्रश्नावली|Q(?:uestion)?|Prashna|Q\.|प्र\.)\s*[:\-.]?\s*\d+|\d{1,4}\.\s+(?![=:\d\+\-\*\/])))/i;
     const blocks = text.split(fallbackDelim).map((b) => b.trim()).filter((b) => b.length > 5);
     if (blocks.length > 1) {
       return blocks;
@@ -192,47 +193,35 @@ export function smartSplitQuestionBlocks(text: string): string[] {
       continue;
     }
 
-    const currentHasExp = hasExplanationStarted(currentQ);
+    const pHasOptions = hasRecognizableOptions(p);
+    const currHasOptions = hasRecognizableOptions(currentQ);
+    const pIsBareNum = isBareNumberQuestionStart(p);
+    const pIsKeyQ = isKeywordQuestionStart(p);
 
-    // 1. Explicit keyword start of next question (e.g. प्रश्न 2, Q2, Question 12:)
-    // Keyword questions always start a new question
-    if (isKeywordQuestionStart(p)) {
+    // 1. Explicit keyword or numbered start of next question
+    if (pIsKeyQ || (pIsBareNum && (pHasOptions || (i + 1 < paragraphs.length && hasRecognizableOptions(paragraphs[i + 1]))))) {
       questions.push(currentQ);
       currentQ = p;
     }
-    // 2. Explanation, Answer Key or Exam tag of current question (MUST merge into current question)
-    else if (isMetadataOrExplanation(p)) {
+    // 2. Both current and next have recognizable options -> definite new question
+    else if (pHasOptions && currHasOptions) {
+      questions.push(currentQ);
+      currentQ = p;
+    }
+    // 3. Current question does not have options yet -> must merge into current
+    else if (!currHasOptions) {
       currentQ += '\n\n' + p;
     }
-    // 3. If explanation has already started in current question:
-    // It can ONLY be a new question if it's a bare number question that HAS recognizable options!
-    // Otherwise multi-line math formulas, steps, or ratios (like 5 : 8 : : 15 : x) stay in explanation!
-    else if (currentHasExp) {
-      if (
-        (isBareNumberQuestionStart(p) || hasRecognizableOptions(p)) &&
-        (hasRecognizableOptions(p) || (i + 1 < paragraphs.length && hasRecognizableOptions(paragraphs[i + 1])))
-      ) {
-        questions.push(currentQ);
-        currentQ = p;
-      } else {
-        currentQ += '\n\n' + p;
-      }
-    }
-    // 4. Both have real options -> p must be a new question
-    else if (hasRecognizableOptions(p) && hasRecognizableOptions(currentQ)) {
-      questions.push(currentQ);
-      currentQ = p;
-    }
-    // 5. Current question does not have options yet -> merge into current
-    else if (!hasRecognizableOptions(currentQ)) {
+    // 4. Standalone explanation or metadata block (only if p doesn't have options)
+    else if (isMetadataOrExplanationBlock(p)) {
       currentQ += '\n\n' + p;
     }
-    // 6. Lookahead: if p is not metadata AND subsequent paragraph has options -> p is the stem of next question
-    else if (!isMetadataOrExplanation(p) && i + 1 < paragraphs.length && hasRecognizableOptions(paragraphs[i + 1])) {
+    // 5. Lookahead: if p is not metadata AND subsequent paragraph has options -> p is the stem of next question
+    else if (!isMetadataOrExplanationBlock(p) && i + 1 < paragraphs.length && hasRecognizableOptions(paragraphs[i + 1])) {
       questions.push(currentQ);
       currentQ = p;
     }
-    // 7. Otherwise it's continuation/explanation of current question
+    // 6. Otherwise it's continuation/explanation of current question
     else {
       currentQ += '\n\n' + p;
     }
@@ -259,15 +248,15 @@ export function parseSingleQuestionBlock(
 
   // 1. Extract Question Number safely without stripping math ratios like 5 : 8
   let originalNumber = index;
-  const keywordMatch = body.match(/^(?:प्रश्न|प्रश्नावली|Q(?:uestion)?|Prashna|Q\.)\s*[:\-.]?\s*(\d+)[\.:\)\-\]\}\s]*/i);
+  const keywordMatch = body.match(/^(?:प्रश्न|प्रश्नावली|Q(?:uestion)?|Prashna|Q\.|प्र\.)\s*[:\-.]?\s*(\d+)[\.:\)\-\]\}\s]*/i);
   if (keywordMatch) {
     originalNumber = parseInt(keywordMatch[1], 10);
-    body = body.replace(/^(?:प्रश्न|प्रश्नावली|Q(?:uestion)?|Prashna|Q\.)\s*[:\-.]?\s*\d+[\.:\)\-\]\}\s]*/i, '').trim();
+    body = body.replace(/^(?:प्रश्न|प्रश्नावली|Q(?:uestion)?|Prashna|Q\.|प्र\.)\s*[:\-.]?\s*\d+[\.:\)\-\]\}\s]*/i, '').trim();
   } else {
-    const bareMatch = body.match(/^(?:(?:\(?(\d{1,4})\)?[\.\)\-]|\[(\d{1,4})\]))\s+/);
+    const bareMatch = body.match(/^(\d{1,4})\.\s+/);
     if (bareMatch && !/^\s*\d{1,4}\s*[:=]/.test(body)) {
-      originalNumber = parseInt(bareMatch[1] || bareMatch[2], 10);
-      body = body.replace(/^(?:(?:\(?\d{1,4}\)?[\.\)\-]|\[\d{1,4}\]))\s+/, '').trim();
+      originalNumber = parseInt(bareMatch[1], 10);
+      body = body.replace(/^\d{1,4}\.\s+/, '').trim();
     }
   }
 
@@ -288,8 +277,9 @@ export function parseSingleQuestionBlock(
   }
 
   // 3. Extract Explanation / Solution and completely separate it from body BEFORE option extraction
+  // MUST have colon/hyphen/period or line start. Avoid matching "हल करने पर" mid-sentence!
   let explanation = '';
-  const expKeywordRegex = /(?:^|\n|[\s,;।|])(?:व्याख्या|हल|Explanation|Solution|Reason|तर्क)\.?\s*[:\-]?\s*([\s\S]+?)(?=(?:\n\s*(?:(?:प्रश्न|प्रश्नावली|Q(?:uestion)?|Prashna|Q\.)\s*[:\-.]?\s*\d+[\.:\)\-\]\}\s]))|$)/i;
+  const expKeywordRegex = /(?:^|\n)\s*(?:(?:व्याख्या|Explanation|Solution|स्पष्टीकरण)\s*[:\-.]?|(?:हल|तर्क|Reason)\s*[:\-]|(?:Ans(?:wer)?\s*Explanation)\s*[:\-.]?)\s*([\s\S]+?)(?=(?:\n\s*(?:(?:प्रश्न|प्रश्नावली|Q(?:uestion)?|Prashna|Q\.|प्र\.)\s*[:\-.]?\s*\d+[\.:\)\-\]\}\s]|(?:\(?\d{1,4}\)?[\.\)\-]|\[\d{1,4}\])\s+(?![=:\d\+\-\*\/])))|$)/i;
   const expMatch = body.match(expKeywordRegex);
 
   if (expMatch && typeof expMatch.index === 'number') {
@@ -316,12 +306,66 @@ export function parseSingleQuestionBlock(
     body = body.replace(examRegex, '').trim();
   }
 
+  // 5. Multi-Pattern Options Extractor
+  let { questionText, optA, optB, optC, optD, optE } = extractOptionsAndText(body);
+
+  // 6. Smart Option E & D Truncation & Spillover Explanation Rescue
+  if (optE) {
+    // Pattern A: Standard BPSC Option E phrase
+    const stdPattern = /^(उपर्युक्त में से कोई नहीं\s*(?:\/\s*उपर्युक्त में से एक से अधिक)?|उपर्युक्त में से एक से अधिक|इनमें से कोई नहीं|उपरोक्त में से कोई नहीं|उपरोक्त में से एक से अधिक|None of the above(?:\s*\/\s*More than one of the above)?|More than one of the above|None of these)\s*[\.,।\-:]*\s*([\s\S]*)$/i;
+    const stdMatch = optE.match(stdPattern);
+    if (stdMatch) {
+      optE = stdMatch[1].trim();
+      const extra = stdMatch[2].trim();
+      if (extra) {
+        explanation = explanation && !explanation.startsWith('सही उत्तर') ? extra + '\n\n' + explanation : extra;
+      }
+    } else {
+      // Pattern B: Newline or sentence followed by explanation starters
+      const expStarterPattern = /(?:\n|[\s,;।|])(?=(?:माना|दिया है|दिया गया है|हम जानते हैं|प्रश्नानुसार|चूंकि|क्योंकि|यहाँ|अतः|सूत्र|स्पष्ट है|समीकरण)\b)/i;
+      const starterIdx = optE.search(expStarterPattern);
+      if (starterIdx !== -1 && starterIdx > 2) {
+        const extra = optE.slice(starterIdx).trim();
+        optE = optE.slice(0, starterIdx).trim();
+        if (extra) {
+          explanation = explanation && !explanation.startsWith('सही उत्तर') ? extra + '\n\n' + explanation : extra;
+        }
+      }
+    }
+  }
+
+  // Same check for Option D if Option E is empty or missing
+  if (optD && !optE) {
+    const stdMatchD = optD.match(/^(उपर्युक्त में से एक से अधिक|उपर्युक्त में से कोई नहीं|इनमें से कोई नहीं|None of the above|More than one of the above)\s*[\.,।\-:]*\s*([\s\S]*)$/i);
+    if (stdMatchD) {
+      optD = stdMatchD[1].trim();
+      const extra = stdMatchD[2].trim();
+      if (extra) {
+        explanation = explanation && !explanation.startsWith('सही उत्तर') ? extra + '\n\n' + explanation : extra;
+      }
+    }
+  }
+
+  // Answer key rescue if embedded inside explanation
+  if (explanation) {
+    const ansInExp = explanation.match(/(?:(?:^|\n|[\s,;।|])(?:अतः\s*)?(?:सही\s*)?(?:उत्तर|विकल्प|Ans(?:wer)?)\s*[:\-]?\s*\(?\s*([a-eA-E1-5]|अ|ब|स|द|य|क|ख|ग|घ|ङ)\s*\)?)/i);
+    if (ansInExp && (!ansMatch || correctOption === 'a')) {
+      const keyStr = ansInExp[1].toLowerCase();
+      if (['a', 'b', 'c', 'd', 'e'].includes(keyStr)) {
+        correctOption = keyStr as any;
+      } else if (keyStr === '1' || keyStr === 'अ' || keyStr === 'क') correctOption = 'a';
+      else if (keyStr === '2' || keyStr === 'ब' || keyStr === 'ख') correctOption = 'b';
+      else if (keyStr === '3' || keyStr === 'स' || keyStr === 'ग') correctOption = 'c';
+      else if (keyStr === '4' || keyStr === 'द' || keyStr === 'घ') correctOption = 'd';
+      else if (keyStr === '5' || keyStr === 'य' || keyStr === 'ङ') correctOption = 'e';
+    }
+    // Clean redundant answer line from explanation
+    explanation = explanation.replace(/(?:^|\n)\s*(?:उत्तर|Ans(?:wer)?|Key|Correct|सही उत्तर)\.?\s*[:\-]?\s*\(?\s*[a-eA-E1-5]\s*\)?[:\-]?\s*/gi, '\n').trim();
+  }
+
   if (!explanation) {
     explanation = `सही उत्तर विकल्प (${correctOption.toUpperCase()}) है।`;
   }
-
-  // 5. Multi-Pattern Options Extractor (Body is now free of explanation and answer key!)
-  const { questionText, optA, optB, optC, optD, optE } = extractOptionsAndText(body);
 
   const finalOptE = optE || 'अनुत्तरित प्रश्न (यदि किसी प्रश्न का उत्तर नहीं देना चाहते, तो विकल्प E चुनें — इससे न अंक मिलेगा, न कटेगा।)';
 
@@ -357,8 +401,8 @@ function extractOptionsAndText(body: string) {
       a: /(?:\((?:a|A|अ|क)\)|(?:^|\s)(?:a|A|अ|क)[\.\)])\s*([\s\S]*?)(?=(?:\((?:b|B|ब|ख)\)|(?:^|\s)(?:b|B|ब|ख)[\.\)]))/i,
       b: /(?:\((?:b|B|ब|ख)\)|(?:^|\s)(?:b|B|ब|ख)[\.\)])\s*([\s\S]*?)(?=(?:\((?:c|C|स|ग)\)|(?:^|\s)(?:c|C|स|ग)[\.\)]))/i,
       c: /(?:\((?:c|C|स|ग)\)|(?:^|\s)(?:c|C|स|ग)[\.\)])\s*([\s\S]*?)(?=(?:\((?:d|D|द|घ)\)|(?:^|\s)(?:d|D|द|घ)[\.\)]))/i,
-      d: /(?:\((?:d|D|द|घ)\)|(?:^|\s)(?:d|D|द|घ)[\.\)])\s*([\s\S]*?)(?=(?:\((?:e|E|य|ङ)\)|(?:^|\s)(?:e|E|य|ङ)[\.\)]|(?:\n|[\s,;।|])(?:परीक्षा|Exam)\s*[:\-]|(?:\n|[\s,;।|])(?:उत्तर|Ans(?:wer)?|Key)\.?\s*[:\-]?|(?:\n|[\s,;।|])(?:व्याख्या|Solution|हल)\.?\s*[:\-]?|$))/i,
-      e: /(?:\((?:e|E|य|ङ)\)|(?:^|\s)(?:e|E|य|ङ)[\.\)])\s*([\s\S]*?)(?=(?:\n|[\s,;।|])(?:परीक्षा|Exam)\s*[:\-]|(?:\n|[\s,;।|])(?:उत्तर|Ans(?:wer)?|Key)\.?\s*[:\-]?|(?:\n|[\s,;।|])(?:व्याख्या|Solution|हल)\.?\s*[:\-]?|$)/i,
+      d: /(?:\((?:d|D|द|घ)\)|(?:^|\s)(?:d|D|द|घ)[\.\)])\s*([\s\S]*?)(?=(?:\((?:e|E|य|ङ)\)|(?:^|\s)(?:e|E|य|ङ)[\.\)]|(?:\n|[\s,;।|])(?:परीक्षा|Exam)\s*[:\-]|(?:\n|[\s,;।|])(?:उत्तर|Ans(?:wer)?|Key)\.?\s*[:\-]?\s*\(?[a-eA-E1-5]|(?:\n)\s*(?:व्याख्या|Explanation|Solution|स्पष्टीकरण)\s*[:\-.]?|(?:\n|[\s,;।|])(?:हल|तर्क|Reason)\s*[:\-]|(?:\n\s*(?:(?:प्रश्न|प्रश्नावली|Q(?:uestion)?|Prashna|Q\.|प्र\.)\s*[:\-.]?\s*\d+|(?:\(?\d{1,4}\)?[\.\)\-]|\[\d{1,4}\])\s+(?![=:\d\+\-\*\/])))|$))/i,
+      e: /(?:\((?:e|E|य|ङ)\)|(?:^|\s)(?:e|E|य|ङ)[\.\)])\s*([\s\S]*?)(?=(?:\n|[\s,;।|])(?:परीक्षा|Exam)\s*[:\-]|(?:\n|[\s,;।|])(?:उत्तर|Ans(?:wer)?|Key)\.?\s*[:\-]?\s*\(?[a-eA-E1-5]|(?:\n)\s*(?:व्याख्या|Explanation|Solution|स्पष्टीकरण)\s*[:\-.]?|(?:\n|[\s,;।|])(?:हल|तर्क|Reason)\s*[:\-]|(?:\n\s*(?:(?:प्रश्न|प्रश्नावली|Q(?:uestion)?|Prashna|Q\.|प्र\.)\s*[:\-.]?\s*\d+|(?:\(?\d{1,4}\)?[\.\)\-]|\[\d{1,4}\])\s+(?![=:\d\+\-\*\/])))|$)/i,
       splitRegex: /(?:\((?:a|A|अ|क)\)|(?:^|\s)(?:a|A|अ|क)[\.\)])/i
     },
     // (1) (2) (3) (4) (5) or 1) 2) 3) 4) 5) (excluding fractions like (1/3) or (2/5))
@@ -366,8 +410,8 @@ function extractOptionsAndText(body: string) {
       a: /(?:\((?:1)\)(?!\/)|(?:^|\s)(?:1)[\.\)](?!\/))\s*([\s\S]*?)(?=(?:\((?:2)\)(?!\/)|(?:^|\s)(?:2)[\.\)](?!\/)))/i,
       b: /(?:\((?:2)\)(?!\/)|(?:^|\s)(?:2)[\.\)](?!\/))\s*([\s\S]*?)(?=(?:\((?:3)\)(?!\/)|(?:^|\s)(?:3)[\.\)](?!\/)))/i,
       c: /(?:\((?:3)\)(?!\/)|(?:^|\s)(?:3)[\.\)](?!\/))\s*([\s\S]*?)(?=(?:\((?:4)\)(?!\/)|(?:^|\s)(?:4)[\.\)](?!\/)))/i,
-      d: /(?:\((?:4)\)(?!\/)|(?:^|\s)(?:4)[\.\)](?!\/))\s*([\s\S]*?)(?=(?:\((?:5)\)(?!\/)|(?:^|\s)(?:5)[\.\)](?!\/)|(?:\n|[\s,;।|])(?:परीक्षा|Exam)\s*[:\-]|(?:\n|[\s,;।|])(?:उत्तर|Ans(?:wer)?|Key)\.?\s*[:\-]?|(?:\n|[\s,;।|])(?:व्याख्या|Solution|हल)\.?\s*[:\-]?|$))/i,
-      e: /(?:\((?:5)\)(?!\/)|(?:^|\s)(?:5)[\.\)](?!\/))\s*([\s\S]*?)(?=(?:\n|[\s,;।|])(?:परीक्षा|Exam)\s*[:\-]|(?:\n|[\s,;।|])(?:उत्तर|Ans(?:wer)?|Key)\.?\s*[:\-]?|(?:\n|[\s,;।|])(?:व्याख्या|Solution|हल)\.?\s*[:\-]?|$)/i,
+      d: /(?:\((?:4)\)(?!\/)|(?:^|\s)(?:4)[\.\)](?!\/))\s*([\s\S]*?)(?=(?:\((?:5)\)(?!\/)|(?:^|\s)(?:5)[\.\)](?!\/)|(?:\n|[\s,;।|])(?:परीक्षा|Exam)\s*[:\-]|(?:\n|[\s,;।|])(?:उत्तर|Ans(?:wer)?|Key)\.?\s*[:\-]?\s*\(?[a-eA-E1-5]|(?:\n)\s*(?:व्याख्या|Explanation|Solution|स्पष्टीकरण)\s*[:\-.]?|(?:\n|[\s,;।|])(?:हल|तर्क|Reason)\s*[:\-]|(?:\n\s*(?:(?:प्रश्न|प्रश्नावली|Q(?:uestion)?|Prashna|Q\.|प्र\.)\s*[:\-.]?\s*\d+|(?:\(?\d{1,4}\)?[\.\)\-]|\[\d{1,4}\])\s+(?![=:\d\+\-\*\/])))|$))/i,
+      e: /(?:\((?:5)\)(?!\/)|(?:^|\s)(?:5)[\.\)](?!\/))\s*([\s\S]*?)(?=(?:\n|[\s,;।|])(?:परीक्षा|Exam)\s*[:\-]|(?:\n|[\s,;।|])(?:उत्तर|Ans(?:wer)?|Key)\.?\s*[:\-]?\s*\(?[a-eA-E1-5]|(?:\n)\s*(?:व्याख्या|Explanation|Solution|स्पष्टीकरण)\s*[:\-.]?|(?:\n|[\s,;।|])(?:हल|तर्क|Reason)\s*[:\-]|(?:\n\s*(?:(?:प्रश्न|प्रश्नावली|Q(?:uestion)?|Prashna|Q\.|प्र\.)\s*[:\-.]?\s*\d+|(?:\(?\d{1,4}\)?[\.\)\-]|\[\d{1,4}\])\s+(?![=:\d\+\-\*\/])))|$)/i,
       splitRegex: /(?:\((?:1)\)(?!\/)|(?:^|\s)(?:1)[\.\)](?!\/))/i
     }
   ];
@@ -420,7 +464,8 @@ function cleanOptionText(str: string): string {
     .replace(/\s+/g, ' ')
     .replace(/(?:(?:\n|[\s,;।|])(?:परीक्षा|Exam)\s*[:\-].*$)/i, '')
     .replace(/(?:(?:\n|[\s,;।|])(?:उत्तर|Ans(?:wer)?|Key|Correct)\.?\s*[:\-]?\s*\(?[a-eA-E1-5].*$)/i, '')
-    .replace(/(?:(?:\n|[\s,;।|])(?:व्याख्या|Solution|हल|Explanation)\.?\s*[:\-].*$)/i, '')
+    .replace(/(?:(?:\n)\s*(?:व्याख्या|Solution|Explanation|स्पष्टीकरण)\.?\s*[:\-.]?.*$)/i, '')
+    .replace(/(?:(?:\n|[\s,;।|])(?:हल|तर्क|व्याख्या|Solution)\s*[:\-].*$)/i, '')
     .trim();
 }
 
