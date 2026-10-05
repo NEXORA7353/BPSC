@@ -63,7 +63,9 @@ export function TestIntroView({
   const [isScratchpadOpen, setIsScratchpadOpen] = useState(false);
   const [isFormulaSheetOpen, setIsFormulaSheetOpen] = useState(false);
 
-  const safeSets = Array.isArray(availableSets) ? availableSets : [];
+  const safeSets = Array.isArray(availableSets)
+    ? availableSets.filter((s): s is MockTestSet => Boolean(s && typeof s === 'object' && s.id))
+    : [];
 
   const filteredSets = safeSets.filter((s) => {
     if (!s) return false;

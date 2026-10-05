@@ -123,14 +123,41 @@ export function getDefaultQuestions(): Question[] {
   return [...lcmHcfQuestions, ...percentageQuestions, ...profitLossQuestions].map(sanitizeQuestion);
 }
 
+export function generateTopicKey(labelHindi: string, labelEnglish?: string, keyHint?: string): string {
+  if (keyHint) {
+    const cleaned = keyHint.trim().toLowerCase().replace(/[^a-z0-9_]/gi, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '');
+    if (cleaned.length > 0 && /[a-z0-9]/.test(cleaned)) {
+      return cleaned;
+    }
+  }
+
+  if (labelEnglish) {
+    const cleaned = labelEnglish.trim().toLowerCase().replace(/[^a-z0-9_]/gi, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '');
+    if (cleaned.length > 0 && /[a-z0-9]/.test(cleaned)) {
+      return cleaned;
+    }
+  }
+
+  if (labelHindi) {
+    const cleaned = labelHindi.trim().toLowerCase().replace(/[^a-z0-9_]/gi, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '');
+    if (cleaned.length > 0 && /[a-z0-9]/.test(cleaned)) {
+      return cleaned;
+    }
+  }
+
+  return `topic_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+}
+
 // --- TOPICS DATABASE ---
 export function getAllRegisteredTopics(): RegisteredTopic[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.REGISTERED_TOPICS);
     const userTopics: RegisteredTopic[] = raw ? JSON.parse(raw) : [];
-    const safeUserTopics = Array.isArray(userTopics) ? userTopics : [];
+    const safeUserTopics = (Array.isArray(userTopics) ? userTopics : []).filter(
+      (t) => t && t.key && typeof t.key === 'string' && /[a-z0-9]/i.test(t.key) && t.key !== '_____'
+    );
     const existingKeys = new Set(DEFAULT_TOPICS.map((t) => t.key));
-    const merged = [...DEFAULT_TOPICS, ...safeUserTopics.filter((t) => t && t.key && !existingKeys.has(t.key))];
+    const merged = [...DEFAULT_TOPICS, ...safeUserTopics.filter((t) => !existingKeys.has(t.key))];
     return merged;
   } catch {
     return DEFAULT_TOPICS;
@@ -138,18 +165,19 @@ export function getAllRegisteredTopics(): RegisteredTopic[] {
 }
 
 export function registerNewTopic(key: string, labelHindi: string, labelEnglish: string): RegisteredTopic {
-  const normalizedKey = key.trim().toLowerCase().replace(/\s+/g, '_');
+  const safeKey = generateTopicKey(labelHindi, labelEnglish, key);
   const newTopic: RegisteredTopic = {
-    key: normalizedKey,
+    key: safeKey,
     labelHindi: labelHindi.trim(),
-    labelEnglish: labelEnglish.trim() || labelHindi.trim(),
+    labelEnglish: (labelEnglish || labelHindi).trim(),
     isUserCreated: true
   };
 
   try {
     const existing = getAllRegisteredTopics();
-    const filtered = existing.filter((t) => t.key !== normalizedKey);
-    localStorage.setItem(STORAGE_KEYS.REGISTERED_TOPICS, JSON.stringify([...filtered, newTopic]));
+    const filtered = existing.filter((t) => t.key !== safeKey);
+    const updated = [...filtered, newTopic];
+    localStorage.setItem(STORAGE_KEYS.REGISTERED_TOPICS, JSON.stringify(updated));
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('bpsc_topic_added', { detail: newTopic }));
     }

@@ -328,7 +328,7 @@ export async function saveQuestionToCloud(question: Question): Promise<void> {
     };
     notifyState();
   } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, path);
+    console.warn(`Cloud write question failed (${path}):`, err);
   }
 }
 
@@ -364,7 +364,7 @@ export async function saveBatchQuestionsToCloud(questions: Question[]): Promise<
     };
     notifyState();
   } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, 'questions/batch');
+    console.warn('Cloud write batch questions failed:', err);
   }
 }
 
@@ -373,7 +373,6 @@ export async function saveBatchQuestionsToCloud(questions: Question[]): Promise<
  */
 export async function deleteQuestionFromCloud(questionId: string): Promise<void> {
   const qPath = `questions/${questionId}`;
-  const tombstonePath = `deleted_question_ids/${questionId}`;
   try {
     // 1. Delete from questions collection
     await deleteDoc(doc(db, 'questions', questionId));
@@ -390,7 +389,7 @@ export async function deleteQuestionFromCloud(questionId: string): Promise<void>
     };
     notifyState();
   } catch (err) {
-    handleFirestoreError(err, OperationType.DELETE, qPath);
+    console.warn(`Cloud delete question failed (${qPath}):`, err);
   }
 }
 
@@ -427,7 +426,7 @@ export async function deleteBatchQuestionsFromCloud(questionIds: string[]): Prom
     };
     notifyState();
   } catch (err) {
-    handleFirestoreError(err, OperationType.DELETE, 'questions/batch_delete');
+    console.warn('Cloud delete batch questions failed:', err);
   }
 }
 
@@ -435,6 +434,7 @@ export async function deleteBatchQuestionsFromCloud(questionIds: string[]): Prom
  * Save custom test set to Firestore
  */
 export async function saveTestSetToCloud(testSet: MockTestSet): Promise<void> {
+  if (!testSet || !testSet.id) return;
   const path = `custom_tests/${testSet.id}`;
   try {
     const cleanTest = cleanPayload({
@@ -450,7 +450,7 @@ export async function saveTestSetToCloud(testSet: MockTestSet): Promise<void> {
     };
     notifyState();
   } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, path);
+    console.warn(`Cloud write test set failed (${path}):`, err);
   }
 }
 
@@ -458,6 +458,7 @@ export async function saveTestSetToCloud(testSet: MockTestSet): Promise<void> {
  * Delete custom test from Firestore
  */
 export async function deleteTestSetFromCloud(testId: string): Promise<void> {
+  if (!testId) return;
   const path = `custom_tests/${testId}`;
   try {
     await deleteDoc(doc(db, 'custom_tests', testId));
@@ -467,7 +468,7 @@ export async function deleteTestSetFromCloud(testId: string): Promise<void> {
     };
     notifyState();
   } catch (err) {
-    handleFirestoreError(err, OperationType.DELETE, path);
+    console.warn(`Cloud delete test set failed (${path}):`, err);
   }
 }
 
@@ -475,6 +476,10 @@ export async function deleteTestSetFromCloud(testId: string): Promise<void> {
  * Save topic to Firestore
  */
 export async function saveTopicToCloud(topic: RegisteredTopic): Promise<void> {
+  if (!topic || !topic.key || !/[a-z0-9]/i.test(topic.key) || topic.key === '_____') {
+    console.warn('Skipping saveTopicToCloud for invalid topic key:', topic);
+    return;
+  }
   const path = `topics/${topic.key}`;
   try {
     const cleanTopic = cleanPayload({
@@ -483,7 +488,7 @@ export async function saveTopicToCloud(topic: RegisteredTopic): Promise<void> {
     });
     await setDoc(doc(db, 'topics', topic.key), cleanTopic);
   } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, path);
+    console.warn(`Cloud write topic failed (${path}):`, err);
   }
 }
 
@@ -491,6 +496,7 @@ export async function saveTopicToCloud(topic: RegisteredTopic): Promise<void> {
  * Save attempt record to Firestore
  */
 export async function saveAttemptRecordToCloud(record: TestAttemptRecord): Promise<void> {
+  if (!record || !record.testId) return;
   const recordId = `${record.testId}_${Date.now()}`;
   const path = `attempt_records/${recordId}`;
   try {
@@ -502,7 +508,7 @@ export async function saveAttemptRecordToCloud(record: TestAttemptRecord): Promi
     });
     await setDoc(doc(db, 'attempt_records', recordId), cleanRecord);
   } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, path);
+    console.warn(`Cloud write attempt record failed (${path}):`, err);
   }
 }
 

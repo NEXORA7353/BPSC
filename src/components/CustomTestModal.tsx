@@ -170,8 +170,7 @@ export function CustomTestModal({
 
   const handleCreateNewTopic = () => {
     if (!newTopicHindi.trim()) return;
-    const key = newTopicHindi.trim().toLowerCase().replace(/[^a-z0-9]/gi, '_');
-    const created = registerNewTopic(key, newTopicHindi, newTopicEnglish || newTopicHindi);
+    const created = registerNewTopic('', newTopicHindi, newTopicEnglish || newTopicHindi);
     setRegisteredTopics(getAllRegisteredTopics());
     const updated = { ...topicDistribution, [created.key]: 10 };
     setTopicDistribution(updated);

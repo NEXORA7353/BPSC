@@ -187,7 +187,8 @@ export default function App() {
   };
 
   const currentSet: MockTestSet =
-    availableSets.find((s) => s.id === currentSetId) || availableSets[0] || {
+    (Array.isArray(availableSets) ? availableSets : []).find((s) => s?.id === currentSetId) ||
+    availableSets[0] || {
       id: 'default',
       title: 'Mathematics Practice Set',
       subtitle: 'BPSC TRE 4.0 Standard',

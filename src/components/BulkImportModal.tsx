@@ -184,8 +184,7 @@ export function BulkImportModal({
 
   const handleCreateNewTopic = () => {
     if (!newTopicHindi.trim()) return;
-    const key = newTopicHindi.trim().toLowerCase().replace(/[^a-z0-9]/gi, '_');
-    const created = registerNewTopic(key, newTopicHindi, newTopicEnglish || newTopicHindi);
+    const created = registerNewTopic('', newTopicHindi, newTopicEnglish || newTopicHindi);
     setRegisteredTopics(getAllRegisteredTopics());
     handleTopicChange(created.key);
     setIsCreatingNewTopic(false);
