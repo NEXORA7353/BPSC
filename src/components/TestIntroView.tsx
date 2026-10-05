@@ -5,18 +5,18 @@ import {
   Clock,
   Award,
   Layers,
-  ShieldCheck,
-  CheckCircle2,
+  Trash2,
+  Share2,
   Sparkles,
   Shuffle,
   BookOpen,
-  Trash2,
-  Share2,
+  ArrowRight,
+  ShieldCheck,
+  CheckCircle2,
+  User,
   History,
-  Calendar,
-  ChevronRight,
-  Smartphone,
-  Download
+  Zap,
+  Target
 } from 'lucide-react';
 import { MockTestSet, TestAttemptRecord } from '../types';
 import { getAttemptRecords, deleteAttemptRecord } from '../utils/questionBankStorage';
@@ -34,12 +34,13 @@ interface TestIntroViewProps {
   onOpenBulkImport: (topicKey?: string) => void;
   onOpenShareModal: () => void;
   onOpenResultsHistory?: () => void;
-  onDeleteCustomTest?: (testId: string) => void;
+  onDeleteTest: (testId: string) => void;
   onGoBack?: () => void;
   canGoBack?: boolean;
   onInstallApp?: () => void;
   isAppInstallable?: boolean;
   totalQuestionsCount?: number;
+  userName?: string;
 }
 
 export function TestIntroView({
@@ -54,38 +55,17 @@ export function TestIntroView({
   onOpenBulkImport,
   onOpenShareModal,
   onOpenResultsHistory,
-  onDeleteCustomTest,
+  onDeleteTest,
   onGoBack,
   canGoBack,
   onInstallApp,
   isAppInstallable,
-  totalQuestionsCount
+  totalQuestionsCount,
+  userName = 'PrIyA PaTeL'
 }: TestIntroViewProps) {
   const [activeCategory, setActiveCategory] = useState<
     'all' | 'tri_topic' | 'profit_loss' | 'lcm_percentage' | 'custom'
   >('all');
-  const [attemptList, setAttemptList] = useState<TestAttemptRecord[]>(() => {
-    try {
-      return getAttemptRecords() || [];
-    } catch {
-      return [];
-    }
-  });
-
-  const handleDeleteAttempt = (index: number) => {
-    if (window.confirm('Delete this attempt record?')) {
-      deleteAttemptRecord(index);
-      setAttemptList(getAttemptRecords());
-    }
-  };
-
-  const attemptRecords: TestAttemptRecord[] = useMemo(() => {
-    try {
-      return getAttemptRecords() || [];
-    } catch {
-      return [];
-    }
-  }, []);
 
   const safeSets = Array.isArray(availableSets) ? availableSets : [];
 
@@ -97,402 +77,334 @@ export function TestIntroView({
 
   const currentTitle = currentSet?.title ?? 'Mock Test';
   const currentId = currentSet?.id ?? '';
-  
-  // ✅ Dynamic Count Logic (No hardcoded 157 or 167)
-  const qCount = totalQuestionsCount && totalQuestionsCount > 0 ? totalQuestionsCount : null;
-  const displayCountText = qCount ? `${qCount}+ ` : '';
+  const qCount = totalQuestionsCount && totalQuestionsCount > 0 ? totalQuestionsCount : 157;
+
+  // Technical Marquee Items
+  const marqueeItems = [
+    'BPSC TRE 4.0 MATHEMATICS',
+    'CLASS 6-8 & 9-10 TEACHER EXAM 2026',
+    'NEGATIVE MARKING -0.33',
+    'OPTION (E) SAFE SKIP',
+    'REAL CBT TIMER (1 MIN/Q)',
+    'BIHAR STET & TRE PREVIOUS PAPERS',
+    'FULL SOLUTION IN HINDI & ENGLISH',
+    'REALTIME SCORE ANALYTICS'
+  ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-8 text-slate-900 dark:text-slate-100 font-sans">
-      {/* Optional Back Button */}
-      {canGoBack && onGoBack && (
-        <div className="-mb-4">
-          <BackButton onClick={onGoBack} label="Back to Previous / वापस" variant="subtle" />
-        </div>
-      )}
+    <div className="min-h-screen bg-midnight grid-lines-44 text-slate-100 font-sans pb-16 relative overflow-hidden">
+      {/* Background Aurora Mesh Blobs */}
+      <div className="absolute top-10 left-1/4 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-40 right-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-20 left-1/3 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Hero Exam Header Card */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm p-6 sm:p-8 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/5 dark:bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
-          <div className="max-w-3xl space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/70 text-blue-900 dark:text-blue-300 border border-blue-200 dark:border-blue-900 text-xs font-bold">
-                <Award className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                <span>BPSC TRE 4.0 Teacher Exam 2026 (Maths Class 6-8 / 9-10)</span>
-              </div>
-
-              {onInstallApp && (
-                <button
-                  onClick={onInstallApp}
-                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-xs font-bold hover:bg-emerald-100 transition-all cursor-pointer animate-bounce"
-                >
-                  <Smartphone className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span>Install App on Mobile / ऐप इंस्टॉल करें</span>
-                </button>
-              )}
-            </div>
-
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-tight">
-              Real CBT Examination & Practice Portal
-            </h1>
-
-            <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed font-normal">
-              {displayCountText}authentic questions from Bihar STET (2020–2024) and BPSC TRE (1.0–3.0) with real-time Cloud Auto-Sync. Authentic 5-option interface with negative marking (-0.33), Option (E) Safe Skip, and step-by-step Hindi solutions.
-            </p>
-
-            <div className="flex flex-wrap items-center gap-2 pt-1 text-xs font-semibold text-slate-700 dark:text-slate-300">
-              <span className="px-3 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1.5 font-bold">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span>Firestore Cloud Live ({qCount ?? '...'} Qs)</span>
-              </span>
-              <span className="px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                LCM & HCF
-              </span>
-              <span className="px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                Percentage
-              </span>
-              <span className="px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                Profit & Loss
-              </span>
-              <span className="px-3 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-bold">
-                Custom Test Studio
-              </span>
-            </div>
-          </div>
-
-          {/* Quick CTA Actions */}
-          <div className="flex flex-col sm:flex-row lg:flex-col gap-3 shrink-0">
-            <button
-              onClick={() => onStartTest(currentId)}
-              className="inline-flex items-center justify-center gap-2 px-7 py-3.5 text-sm font-bold rounded-2xl text-white bg-blue-600 hover:bg-blue-700 shadow-md transition-all active:scale-95"
-            >
-              <Play className="w-4 h-4 fill-white" />
-              <span>Start {currentTitle.slice(0, 16)}{currentTitle.length > 16 ? '...' : ''}</span>
-            </button>
-
-            {onInstallApp && (
-              <button
-                onClick={onInstallApp}
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-xs sm:text-sm font-bold rounded-2xl text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 border border-emerald-300 dark:border-emerald-800 transition-colors"
-              >
-                <Download className="w-4 h-4 text-emerald-600" />
-                <span>Install Mobile App</span>
-              </button>
-            )}
-
-            <button
-              onClick={onOpenCustomTest}
-              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-xs sm:text-sm font-bold rounded-2xl text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 border border-blue-200 dark:border-blue-900 transition-colors"
-            >
-              <Shuffle className="w-4 h-4" />
-              <span>Create Custom Test</span>
-            </button>
-
-            <button
-              onClick={onOpenShareModal}
-              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-xs sm:text-sm font-bold rounded-2xl text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 transition-colors"
-            >
-              <Share2 className="w-4 h-4 text-blue-500" />
-              <span>Share Portal Link</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Feature Highlights Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-6 mt-6 border-t border-slate-200 dark:border-slate-800 text-xs font-semibold">
-          <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-            <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-            <span>{displayCountText}STET & TRE Questions</span>
-          </div>
-          <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-            <Clock className="w-4 h-4 text-blue-500 shrink-0" />
-            <span>1 Min / Question CBT Timer</span>
-          </div>
-          <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-            <ShieldCheck className="w-4 h-4 text-amber-500 shrink-0" />
-            <span>-0.33 Negative Marking Rules</span>
-          </div>
-          <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-            <FileDown className="w-4 h-4 text-indigo-500 shrink-0" />
-            <span>Standalone Offline HTML Export</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Database Banner */}
-      <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white rounded-3xl p-6 sm:p-7 shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
-        <div className="space-y-1.5 max-w-2xl">
-          <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-white/20 text-white text-[11px] font-bold">
-            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-            <span>Database Connected · Import Any Exam Paper</span>
-          </div>
-          <h3 className="text-base sm:text-xl font-black tracking-tight leading-snug">
-            Paste raw questions from any PDF or document to add new chapters
-          </h3>
-          <p className="text-xs text-indigo-200 leading-relaxed font-normal">
-            Auto-extracts Hindi text, 5 options, correct answer keys, and solutions. Saved permanently into your database.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto shrink-0">
-          <button
-            onClick={() => onOpenBulkImport()}
-            className="flex-1 md:flex-initial px-5 py-3 rounded-2xl text-xs sm:text-sm font-bold bg-white text-indigo-900 hover:bg-indigo-50 shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
-          >
-            <Sparkles className="w-4 h-4 text-indigo-600" />
-            <span>Bulk Paste Questions</span>
-          </button>
-
-          <button
-            onClick={onOpenQuestionBank}
-            className="flex-1 md:flex-initial px-5 py-3 rounded-2xl text-xs sm:text-sm font-bold bg-indigo-800/80 hover:bg-indigo-700 text-white border border-indigo-600/60 shadow-md transition-all flex items-center justify-center gap-2"
-          >
-            <BookOpen className="w-4 h-4" />
-            <span>Browse Repository</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Tests Catalog */}
-      <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 space-y-10 relative z-10">
+        {/* Optional Back Button */}
+        {canGoBack && onGoBack && (
           <div>
-            <h2 className="text-xl sm:text-2xl font-black tracking-tight flex items-center gap-2.5">
-              <Layers className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-              <span>Available Mock Test Series ({safeSets.length})</span>
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-              Select any test to begin practicing in the official CBT test environment
-            </p>
-          </div>
-
-          <button
-            onClick={onDownloadAllHtml}
-            className="self-start sm:self-auto inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-700 shadow-xs transition-colors"
-          >
-            <FileDown className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-            <span>Download All Tests (HTML)</span>
-          </button>
-        </div>
-
-        {/* Category Tabs */}
-        <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3 text-xs font-bold">
-          {[
-            { id: 'all', label: `All Tests (${safeSets.length})` },
-            { id: 'tri_topic', label: '3-Topic Mega Mocks' },
-            { id: 'profit_loss', label: 'Profit & Loss Tests' },
-            { id: 'lcm_percentage', label: 'LCM & Percentage Tests' },
-            {
-              id: 'custom',
-              label: `Custom Generated (${safeSets.filter((s) => s?.isCustom).length})`
-            }
-          ].map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setActiveCategory(cat.id as any)}
-              className={`px-4 py-2 rounded-2xl transition-all ${
-                activeCategory === cat.id
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-              }`}
-            >
-              {cat.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Test Cards Grid */}
-        {filteredSets.length === 0 ? (
-          <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-300 dark:border-slate-700">
-            <Layers className="w-12 h-12 text-slate-300 dark:text-slate-700 mx-auto mb-3" />
-            <p className="text-sm font-bold text-slate-600 dark:text-slate-400">
-              No tests found in this category
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
-            {filteredSets.map((test) => {
-              const isSelected = test.id === currentId;
-              const topicBadges = Array.isArray(test.topicBadges) ? test.topicBadges : [];
-              const totalQuestions = test.totalQuestions ?? 0;
-              const totalTimeMinutes = test.totalTimeMinutes ?? 0;
-              const title = test.title ?? 'Untitled Test';
-              const subtitle = test.subtitle ?? '';
-              const categoryTitle = test.categoryTitle ?? 'General';
-
-              return (
-                <div
-                  key={test.id}
-                  onClick={() => onSelectSet(test.id)}
-                  className={`cursor-pointer rounded-3xl border p-5 sm:p-6 transition-all flex flex-col justify-between gap-4 ${
-                    isSelected
-                      ? 'bg-white dark:bg-slate-900 border-blue-500 ring-2 ring-blue-500/20 shadow-md'
-                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs'
-                  }`}
-                >
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/70 text-blue-900 dark:text-blue-300 border border-blue-200 dark:border-blue-900 uppercase">
-                          {categoryTitle}
-                        </span>
-                        {test.isCustom && (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/70 text-amber-900 dark:text-amber-300">
-                            Custom
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-slate-500 dark:text-slate-400">
-                        <Clock className="w-3.5 h-3.5" />
-                        <span>{totalTimeMinutes} Mins</span>
-                      </div>
-                    </div>
-
-                    <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight leading-snug">
-                      {title}
-                    </h3>
-
-                    {subtitle && (
-                      <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
-                        {subtitle}
-                      </p>
-                    )}
-                  </div>
-
-                  {topicBadges.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                      {topicBadges.map((badge, idx) => (
-                        <span
-                          key={idx}
-                          className="text-[11px] font-medium px-2.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
-                        >
-                          {badge}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
-                    <div className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                      <span>{totalQuestions} Questions</span>
-                      <span className="text-slate-400 dark:text-slate-600 font-normal"> · </span>
-                      <span className="text-slate-500 dark:text-slate-400 font-normal">
-                        +{totalQuestions}.00 Marks
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {test.isCustom && onDeleteCustomTest && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (window.confirm('Delete this custom test?')) {
-                              onDeleteCustomTest(test.id);
-                            }
-                          }}
-                          className="p-2 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
-                          title="Delete Custom Test"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDownloadHtml(test);
-                        }}
-                        className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                        title="Download Standalone Offline HTML"
-                      >
-                        <FileDown className="w-4 h-4" />
-                      </button>
-
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onStartTest(test.id);
-                        }}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-xs transition-all active:scale-95"
-                      >
-                        <Play className="w-3.5 h-3.5 fill-white" />
-                        <span>Start Test</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            <BackButton onClick={onGoBack} label="Back to Previous" variant="subtle" />
           </div>
         )}
-      </div>
 
-      {/* Attempt History */}
-      {attemptRecords.length > 0 && (
-        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-base sm:text-lg font-black tracking-tight flex items-center gap-2">
-              <History className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-              <span>Saved Attempt History ({attemptRecords.length})</span>
-            </h3>
-            {onOpenResultsHistory && (
-              <button
-                type="button"
-                onClick={onOpenResultsHistory}
-                className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
-              >
-                <span>View Full Results & Analytics</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            )}
+        {/* HERO SECTION */}
+        <section className="space-y-6 text-center sm:text-left">
+          {/* Pulsing Status Pill Badge */}
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-bold text-amber-300 shadow-sm backdrop-blur-md">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500" />
+            </span>
+            <span className="uppercase tracking-widest text-[10px]">
+              BPSC TRE 4.0 MATHS • REAL CBT ENGINE
+            </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {attemptList.slice(0, 6).map((rec, idx) => (
-              <div
-                key={idx}
-                className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 space-y-2 text-xs relative group"
-              >
-                <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 font-semibold">
-                  <span className="flex items-center gap-1">
-                    <Calendar className="w-3.5 h-3.5" />
-                    {rec?.date ?? 'N/A'}
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-bold text-blue-600 dark:text-blue-400">
-                      Accuracy: {rec?.accuracy ?? 0}%
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteAttempt(idx)}
-                      className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors"
-                      title="Delete attempt record"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
+          {/* 3-Line Oversized Gradient Headline */}
+          <div className="space-y-2 max-w-4xl">
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-none text-white">
+              Master BPSC TRE 4.0 <br />
+              <span className="bg-gradient-to-r from-amber-300 via-amber-400 to-indigo-300 bg-clip-text text-transparent">
+                Mathematics Exam
+              </span> <br />
+              With Real CBT Practice
+            </h1>
+            <p className="text-sm sm:text-base text-slate-400 font-medium max-w-2xl pt-2">
+              Welcome back, <strong className="text-white font-bold">{userName}</strong>! Practice {qCount}+ authentic Bihar STET & BPSC TRE Mathematics questions with real exam timer, option (E) safe skip, and step-by-step Hindi solutions.
+            </p>
+          </div>
 
-                <div className="font-bold text-slate-900 dark:text-slate-100 text-sm line-clamp-1 pr-6">
-                  {rec?.testTitle ?? 'Untitled'}
-                </div>
+          {/* 4 Glass Stat Tiles in a Row */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 pt-4">
+            <div className="glass-panel glass-panel-hover p-4 rounded-2xl relative overflow-hidden">
+              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                Total Questions
+              </div>
+              <div className="text-2xl sm:text-3xl font-black font-mono text-amber-400 mt-1">
+                {qCount}+
+              </div>
+              <div className="text-[11px] text-slate-400 mt-0.5">STET & TRE Papers</div>
+            </div>
 
-                <div className="flex items-center justify-between pt-1 border-t border-slate-200 dark:border-slate-700">
-                  <span className="text-slate-600 dark:text-slate-400">
-                    Score: <strong className="text-slate-900 dark:text-slate-100">{(rec?.score ?? 0).toFixed(2)}</strong> / {rec?.totalMarks ?? 0}
-                  </span>
-                  <span className="text-emerald-600 font-bold">
-                    +{rec?.correctCount ?? 0} / -{rec?.incorrectCount ?? 0}
-                  </span>
-                </div>
+            <div className="glass-panel glass-panel-hover p-4 rounded-2xl relative overflow-hidden">
+              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                Active Mock Sets
+              </div>
+              <div className="text-2xl sm:text-3xl font-black font-mono text-indigo-400 mt-1">
+                {safeSets.length} Sets
+              </div>
+              <div className="text-[11px] text-slate-400 mt-0.5">Preset + Custom</div>
+            </div>
+
+            <div className="glass-panel glass-panel-hover p-4 rounded-2xl relative overflow-hidden">
+              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                Speed Target
+              </div>
+              <div className="text-2xl sm:text-3xl font-black font-mono text-emerald-400 mt-1">
+                1 Min / Q
+              </div>
+              <div className="text-[11px] text-slate-400 mt-0.5">Real CBT Pace</div>
+            </div>
+
+            <div className="glass-panel glass-panel-hover p-4 rounded-2xl relative overflow-hidden">
+              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                Marking Scheme
+              </div>
+              <div className="text-2xl sm:text-3xl font-black font-mono text-rose-400 mt-1">
+                -0.33
+              </div>
+              <div className="text-[11px] text-slate-400 mt-0.5">Option (E) Safe Skip</div>
+            </div>
+          </div>
+        </section>
+
+        {/* Running Marquee Strip */}
+        <div className="overflow-hidden py-3 bg-white/5 border-y border-white/10 backdrop-blur-md rounded-2xl">
+          <div className="animate-marquee items-center gap-8 whitespace-nowrap text-xs font-mono font-bold uppercase tracking-widest text-amber-300">
+            {marqueeItems.concat(marqueeItems).map((item, idx) => (
+              <div key={idx} className="flex items-center gap-6">
+                <span>{item}</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400/60" />
               </div>
             ))}
           </div>
         </div>
-      )}
+
+        {/* HERO CTA ROW */}
+        <div className="flex flex-wrap items-center justify-between gap-4 p-6 glass-panel rounded-3xl">
+          <div className="space-y-1">
+            <div className="text-xs font-black uppercase tracking-widest text-amber-400">
+              Ready to Start?
+            </div>
+            <div className="text-lg font-black text-white">
+              Selected Set: {currentTitle}
+            </div>
+            <div className="text-xs text-slate-400">
+              {currentSet?.totalQuestions ?? 20} Questions · {currentSet?.totalTimeMinutes ?? 20} Minutes · Negative Marking -0.33
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => onStartTest(currentId)}
+              className="px-8 py-3.5 rounded-2xl font-black text-sm text-slate-950 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 shadow-xl shadow-amber-500/25 transition-all active:scale-95 flex items-center gap-2 group"
+            >
+              <Play className="w-4 h-4 fill-slate-950" />
+              <span>Start Examination</span>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </button>
+
+            <button
+              onClick={onOpenCustomTest}
+              className="px-5 py-3.5 rounded-2xl font-bold text-xs text-slate-200 bg-white/5 hover:bg-white/10 border border-white/10 transition-all flex items-center gap-2"
+            >
+              <Shuffle className="w-4 h-4 text-amber-400" />
+              <span>Create Custom Test</span>
+            </button>
+          </div>
+        </div>
+
+        {/* TESTS CATALOG SECTION */}
+        <section className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center gap-2">
+                <Layers className="w-5 h-5 text-amber-400" />
+                <span>Available Mock Tests ({safeSets.length})</span>
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Click any test to select or start. Every test has a Delete button to remove it.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onDownloadAllHtml}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-300 bg-white/5 hover:bg-white/10 border border-white/10 transition-all flex items-center gap-1.5"
+              >
+                <FileDown className="w-3.5 h-3.5 text-amber-400" />
+                <span>Download All HTML</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Category Tabs */}
+          <div className="flex flex-wrap items-center gap-2 pb-2 text-xs font-bold">
+            {[
+              { id: 'all', label: `All Tests (${safeSets.length})` },
+              { id: 'tri_topic', label: '3-Topic Mocks' },
+              { id: 'profit_loss', label: 'Profit & Loss' },
+              { id: 'lcm_percentage', label: 'LCM & Percentage' },
+              { id: 'custom', label: `Custom Generated (${safeSets.filter((s) => s?.isCustom).length})` }
+            ].map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id as any)}
+                className={`px-4 py-2 rounded-xl transition-all ${
+                  activeCategory === cat.id
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
+                    : 'bg-white/5 text-slate-400 hover:text-white border border-white/5'
+                }`}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
+
+          {/* TEST CARDS GRID WITH DELETE BUTTON FOR ALL TESTS */}
+          {filteredSets.length === 0 ? (
+            <div className="text-center py-16 glass-panel rounded-3xl space-y-3">
+              <Layers className="w-12 h-12 text-slate-600 mx-auto" />
+              <p className="text-sm font-bold text-slate-400">
+                No mock tests in this category
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {filteredSets.map((test, index) => {
+                const isSelected = test.id === currentId;
+                const topicBadges = Array.isArray(test.topicBadges) ? test.topicBadges : [];
+                const totalQuestions = test.totalQuestions ?? 0;
+                const totalTimeMinutes = test.totalTimeMinutes ?? 0;
+                const title = test.title ?? 'Untitled Test';
+                const subtitle = test.subtitle ?? '';
+                const categoryTitle = test.categoryTitle ?? 'General';
+                const ghostNumber = String(index + 1).padStart(2, '0');
+
+                return (
+                  <div
+                    key={test.id}
+                    onClick={() => onSelectSet(test.id)}
+                    className={`cursor-pointer rounded-3xl p-6 transition-all relative overflow-hidden flex flex-col justify-between gap-5 border ${
+                      isSelected
+                        ? 'bg-white/10 border-amber-500/60 shadow-xl shadow-amber-500/10 ring-1 ring-amber-500/40'
+                        : 'glass-panel glass-panel-hover'
+                    }`}
+                  >
+                    {/* Ghost Numeral Background */}
+                    <div className="absolute -top-4 -right-2 font-black text-8xl ghost-numeral pointer-events-none opacity-20">
+                      {ghostNumber}
+                    </div>
+
+                    <div className="space-y-3 relative z-10">
+                      {/* Category & Timer row */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                            {categoryTitle}
+                          </span>
+                          {test.isCustom && (
+                            <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                              Custom
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-slate-400">
+                          <Clock className="w-3.5 h-3.5 text-amber-400" />
+                          <span>{totalTimeMinutes} Mins</span>
+                        </div>
+                      </div>
+
+                      {/* Card Title & Subtitle */}
+                      <div>
+                        <h3 className="text-lg font-black text-white tracking-tight leading-snug">
+                          {title}
+                        </h3>
+                        {subtitle && (
+                          <p className="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed">
+                            {subtitle}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Topic Chips */}
+                      {topicBadges.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                          {topicBadges.map((badge, bIdx) => (
+                            <span
+                              key={bIdx}
+                              className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-white/5 text-slate-300 border border-white/10"
+                            >
+                              {badge}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Footer Row: Stats, Delete Button & Start CTA */}
+                    <div className="pt-4 border-t border-white/10 flex items-center justify-between gap-2 relative z-10">
+                      <div className="text-xs font-bold text-slate-300">
+                        <span className="font-mono text-amber-300">{totalQuestions}</span> Questions
+                        <span className="text-slate-500 mx-1">•</span>
+                        <span className="font-mono text-slate-400">+{totalQuestions}.0 Marks</span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {/* ✅ PROMINENT DELETE TEST BUTTON FOR ALL TESTS */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm(`Are you sure you want to delete "${title}"?`)) {
+                              onDeleteTest(test.id);
+                            }
+                          }}
+                          className="p-2 rounded-xl text-rose-400 hover:text-rose-300 hover:bg-rose-500/20 border border-rose-500/30 transition-all cursor-pointer"
+                          title="Delete this test set"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDownloadHtml(test);
+                          }}
+                          className="p-2 rounded-xl text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all"
+                          title="Download Offline HTML"
+                        >
+                          <FileDown className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onStartTest(test.id);
+                          }}
+                          className="px-4 py-2 rounded-xl text-xs font-black text-slate-950 bg-amber-400 hover:bg-amber-300 shadow-md shadow-amber-400/20 transition-all active:scale-95 flex items-center gap-1.5"
+                        >
+                          <Play className="w-3.5 h-3.5 fill-slate-950" />
+                          <span>Start</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      </div>
     </div>
   );
 }

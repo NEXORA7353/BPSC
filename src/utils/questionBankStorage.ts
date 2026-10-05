@@ -16,6 +16,7 @@ const STORAGE_KEYS = {
   CUSTOM_QUESTIONS: 'bpsc_custom_questions',
   DELETED_QUESTION_IDS: 'bpsc_deleted_question_ids',
   CUSTOM_TESTS: 'bpsc_custom_mock_sets',
+  DELETED_TEST_IDS: 'bpsc_deleted_test_ids',
   BOOKMARKED_IDS: 'bpsc_bookmarked_questions',
   ATTEMPT_HISTORY: 'bpsc_attempt_records',
   FULL_SAVED_RESULTS: 'bpsc_full_results_archive',
@@ -51,9 +52,11 @@ export function sanitizeQuestion(q: any): Question {
   if (!q || typeof q !== 'object') {
     return {
       id: `invalid_${Math.random()}`,
-      text: '',
+      exam: 'BPSC TRE 4.0',
+      questionText: '',
       options: [],
-      correctAnswer: 'E',
+      correctOption: 'e',
+      explanation: '',
       topic: 'custom',
       topicNameHindi: 'सामान्य'
     };
@@ -61,15 +64,16 @@ export function sanitizeQuestion(q: any): Question {
   return {
     ...q,
     id: String(q.id || `q_${Math.random()}`),
-    text: String(q.text || ''),
+    exam: String(q.exam || 'BPSC TRE 4.0'),
+    questionText: String(q.questionText || q.text || ''),
     options: Array.isArray(q.options)
       ? q.options.map((opt: any) => ({
-          id: String(opt?.id || ''),
-          textHindi: String(opt?.textHindi || ''),
-          textEnglish: String(opt?.textEnglish || opt?.textHindi || '')
+          key: (opt?.key || 'a') as 'a' | 'b' | 'c' | 'd' | 'e',
+          text: String(opt?.text || opt?.textHindi || '')
         }))
       : [],
-    correctAnswer: q.correctAnswer || 'E',
+    correctOption: (q.correctOption || q.correctAnswer || 'e').toLowerCase() as 'a' | 'b' | 'c' | 'd' | 'e',
+    explanation: String(q.explanation || ''),
     topic: q.topic || 'custom',
     topicNameHindi: q.topicNameHindi || 'सामान्य'
   };
@@ -82,7 +86,7 @@ export function sanitizeTestSet(t: any): MockTestSet {
       title: 'Untitled Test',
       subtitle: '',
       targetExam: 'BPSC TRE 4.0',
-      category: 'all',
+      category: 'tri_topic',
       categoryTitle: 'General',
       topicBadges: [],
       totalQuestions: 0,
@@ -98,7 +102,7 @@ export function sanitizeTestSet(t: any): MockTestSet {
     id: String(t.id || `set_${Math.random()}`),
     title: String(t.title || 'Untitled Test'),
     subtitle: String(t.subtitle || ''),
-    category: t.category || 'all',
+    category: t.category || 'tri_topic',
     categoryTitle: t.categoryTitle || 'General',
     topicBadges: Array.isArray(t.topicBadges) ? t.topicBadges.map(String) : [],
     questions: safeQuestions,
@@ -404,21 +408,62 @@ export function saveCustomTest(testSet: MockTestSet): void {
   }
 }
 
-export function deleteCustomTest(testId: string): void {
+export function getDeletedTestIds(): string[] {
   try {
-    const filtered = getSavedCustomTests().filter((t) => t.id !== testId);
-    liveCloudTestsCache = filtered;
-    localStorage.setItem(STORAGE_KEYS.CUSTOM_TESTS, JSON.stringify(filtered));
+    const raw = localStorage.getItem(STORAGE_KEYS.DELETED_TEST_IDS);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveDeletedTestIds(ids: string[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEYS.DELETED_TEST_IDS, JSON.stringify(Array.isArray(ids) ? ids : []));
+  } catch (err) {
+    console.error('Failed to save deleted test ids', err);
+  }
+}
+
+export function deleteTest(testId: string): void {
+  try {
+    // Filter out from custom tests
+    const filteredCustom = getSavedCustomTests().filter((t) => t.id !== testId);
+    liveCloudTestsCache = filteredCustom;
+    localStorage.setItem(STORAGE_KEYS.CUSTOM_TESTS, JSON.stringify(filteredCustom));
+
+    // Record testId in deleted list
+    const deleted = new Set(getDeletedTestIds());
+    deleted.add(testId);
+    saveDeletedTestIds(Array.from(deleted));
+
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('bpsc_test_deleted', { detail: testId }));
       window.dispatchEvent(new CustomEvent('bpsc_cloud_data_updated'));
     }
   } catch (err) {
-    console.error('Failed to delete custom test', err);
+    console.error('Failed to delete test', err);
+  }
+}
+
+export function deleteCustomTest(testId: string): void {
+  deleteTest(testId);
+}
+
+export function restoreAllDefaultTests(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEYS.DELETED_TEST_IDS);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('bpsc_cloud_data_updated'));
+    }
+  } catch (err) {
+    console.error('Failed to restore default tests', err);
   }
 }
 
 export function getAllAvailableTests(): MockTestSet[] {
+  const deletedIds = new Set(getDeletedTestIds());
   const testMap = new Map<string, MockTestSet>();
   
   if (Array.isArray(defaultMockSets)) {
@@ -434,7 +479,9 @@ export function getAllAvailableTests(): MockTestSet[] {
     liveCloudTestsCache.forEach((t) => { if (t && t.id) testMap.set(t.id, sanitizeTestSet(t)); });
   }
 
-  return Array.from(testMap.values()).map(sanitizeTestSet);
+  return Array.from(testMap.values())
+    .filter((t) => t && t.id && !deletedIds.has(t.id))
+    .map(sanitizeTestSet);
 }
 
 export function createCustomMockTest(config: CustomTestConfig): MockTestSet {

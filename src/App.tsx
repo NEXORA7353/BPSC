@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { MockTestSet, TestResult, ThemeMode } from './types';
 import { TopBar } from './components/TopBar';
+import { Sidebar } from './components/Sidebar';
 import { TestIntroView } from './components/TestIntroView';
 import { CBTTestView } from './components/CBTTestView';
 import { ResultAnalytics } from './components/ResultAnalytics';
@@ -12,10 +13,11 @@ import { QuestionBankView } from './components/QuestionBankView';
 import { ResultsHistoryView } from './components/ResultsHistoryView';
 import { CloudSyncModal } from './components/CloudSyncModal';
 import { generateStandaloneHtml } from './utils/exportHtml';
-import { Smartphone, Download, X, Check } from 'lucide-react';
+import { Smartphone, Download, X } from 'lucide-react';
 import {
   getAllAvailableTests,
-  deleteCustomTest,
+  deleteTest,
+  restoreAllDefaultTests,
   getStoredTheme,
   setStoredTheme,
   saveAttemptRecord,
@@ -44,7 +46,8 @@ export default function App() {
   const [viewHistory, setViewHistory] = useState<AppView[]>(['intro']);
   const [testResult, setTestResult] = useState<TestResult | null>(null);
 
-  // Modals
+  // Modals & Navigation
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isRulesModalOpen, setIsRulesModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isCustomTestModalOpen, setIsCustomTestModalOpen] = useState(false);
@@ -52,14 +55,14 @@ export default function App() {
   const [isCloudModalOpen, setIsCloudModalOpen] = useState(false);
   const [bulkImportTopic, setBulkImportTopic] = useState<string | undefined>(undefined);
 
+  const candidateName = 'PrIyA PaTeL';
+
   // PWA Install Prompt State
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
 
-  // Catch PWA BeforeInstallPrompt Event
   useEffect(() => {
-    // Check if app is already running in standalone PWA mode
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsInstalled(true);
     }
@@ -104,7 +107,6 @@ export default function App() {
     }
   };
 
-  // Navigation History Stack Management
   const navigateToView = useCallback((nextView: AppView) => {
     setViewHistory((prev) => {
       if (prev[prev.length - 1] === nextView) return prev;
@@ -131,7 +133,7 @@ export default function App() {
     });
   }, []);
 
-  // Connect & sync with Firestore Cloud Database on mount
+  // Sync with Firestore Cloud Database
   useEffect(() => {
     const handleUpdate = () => {
       setAvailableSets(getAllAvailableTests());
@@ -158,7 +160,6 @@ export default function App() {
     };
   }, []);
 
-  // Sync theme to DOM & storage
   useEffect(() => {
     setStoredTheme(theme);
     if (theme === 'dark') {
@@ -180,7 +181,18 @@ export default function App() {
   };
 
   const currentSet: MockTestSet =
-    availableSets.find((s) => s.id === currentSetId) || availableSets[0];
+    availableSets.find((s) => s.id === currentSetId) || availableSets[0] || {
+      id: 'default',
+      title: 'Mathematics Practice Set',
+      subtitle: 'BPSC TRE 4.0 Standard',
+      targetExam: 'BPSC TRE 4.0',
+      category: 'tri_topic',
+      categoryTitle: 'General',
+      topicBadges: ['LCM & HCF', 'Percentage', 'Profit & Loss'],
+      totalQuestions: 0,
+      totalTimeMinutes: 20,
+      questions: []
+    };
 
   const handleSelectSet = (setId: string) => {
     setCurrentSetId(setId);
@@ -199,7 +211,6 @@ export default function App() {
     setTestResult(result);
     navigateToView('results');
 
-    // Persist attempt history
     const dateFormatted = new Date().toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
@@ -220,7 +231,6 @@ export default function App() {
       incorrectCount: result.incorrectCount
     });
 
-    // Save full result in database archive
     saveFullTestResult({
       ...result,
       id: `result_${Date.now()}`,
@@ -273,8 +283,9 @@ export default function App() {
     setTestResult(null);
   };
 
-  const handleDeleteCustomTest = (testId: string) => {
-    deleteCustomTest(testId);
+  // ✅ Universal Delete Test Handler (Works on ANY test)
+  const handleDeleteTest = (testId: string) => {
+    deleteTest(testId);
     const updated = getAllAvailableTests();
     setAvailableSets(updated);
     if (currentSetId === testId) {
@@ -282,10 +293,16 @@ export default function App() {
     }
   };
 
+  // Restore Default Tests Handler
+  const handleRestoreTests = () => {
+    restoreAllDefaultTests();
+    setAvailableSets(getAllAvailableTests());
+  };
+
   const handleNextSet = () => {
     const currentIdx = availableSets.findIndex((s) => s.id === currentSetId);
     const nextIdx = (currentIdx + 1) % availableSets.length;
-    setCurrentSetId(availableSets[nextIdx].id);
+    setCurrentSetId(availableSets[nextIdx]?.id || '');
     navigateToView('intro');
     setTestResult(null);
   };
@@ -321,7 +338,24 @@ export default function App() {
   const canGoBack = viewHistory.length > 1;
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-blue-600 selection:text-white transition-colors duration-150 relative">
+    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950 transition-colors duration-150 relative">
+      {/* Sidebar Navigation Component */}
+      <Sidebar
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        activeView={activeView}
+        onNavigateView={navigateToView}
+        onOpenRules={() => setIsRulesModalOpen(true)}
+        onOpenCustomTest={() => setIsCustomTestModalOpen(true)}
+        onOpenBulkImport={() => handleOpenBulkImportWithTopic(undefined)}
+        onOpenCloudModal={() => setIsCloudModalOpen(true)}
+        onRestoreTests={handleRestoreTests}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        onInstallApp={handleInstallApp}
+        userName={candidateName}
+      />
+
       {/* Top Bar Navigation */}
       <TopBar
         currentSet={currentSet}
@@ -336,6 +370,7 @@ export default function App() {
         onOpenShareModal={() => setIsShareModalOpen(true)}
         onOpenResultsHistory={handleOpenResultsHistory}
         onOpenCloudModal={() => setIsCloudModalOpen(true)}
+        onOpenSidebar={() => setIsSidebarOpen(true)}
         onGoBack={handleGoBack}
         canGoBack={canGoBack}
         onInstallApp={handleInstallApp}
@@ -345,6 +380,7 @@ export default function App() {
         onToggleTheme={toggleTheme}
         activeView={activeView}
         totalQuestionsCount={totalQuestionsCount}
+        userName={candidateName}
       />
 
       {/* Main View Router */}
@@ -362,12 +398,13 @@ export default function App() {
             onOpenBulkImport={handleOpenBulkImportWithTopic}
             onOpenShareModal={() => setIsShareModalOpen(true)}
             onOpenResultsHistory={handleOpenResultsHistory}
-            onDeleteCustomTest={handleDeleteCustomTest}
+            onDeleteTest={handleDeleteTest}
             onGoBack={handleGoBack}
             canGoBack={canGoBack}
             onInstallApp={handleInstallApp}
             isAppInstallable={!isInstalled}
             totalQuestionsCount={totalQuestionsCount}
+            userName={candidateName}
           />
         )}
 
@@ -394,6 +431,7 @@ export default function App() {
             onSubmitTest={handleSubmitTest}
             onExitTest={handleGoBack}
             onViewResultsHistory={handleOpenResultsHistory}
+            userName={candidateName}
           />
         )}
 
@@ -407,38 +445,10 @@ export default function App() {
             onGoHome={handleGoHome}
             onDownloadHtml={handleDownloadHtml}
             onOpenShareModal={() => setIsShareModalOpen(true)}
+            userName={candidateName}
           />
         )}
       </main>
-
-      {/* PWA Floating Install Banner / Toast */}
-      {showInstallBanner && !isInstalled && activeView !== 'testing' && (
-        <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 max-w-md bg-gradient-to-r from-blue-900 to-indigo-950 text-white p-4 rounded-3xl shadow-2xl border border-blue-500/40 z-50 flex items-center justify-between gap-3 animate-in slide-in-from-bottom duration-300">
-          <div className="flex items-center gap-3">
-            <img src="/logo.svg" alt="App Icon" className="w-11 h-11 rounded-2xl shadow-md shrink-0 bg-blue-600" />
-            <div>
-              <div className="font-black text-sm leading-snug">Install BPSC TRE 4.0 App</div>
-              <div className="text-xs text-blue-200">Open directly without Chrome address bar</div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={handleInstallApp}
-              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md transition-all active:scale-95 flex items-center gap-1.5"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>Install</span>
-            </button>
-            <button
-              onClick={() => setShowInstallBanner(false)}
-              className="p-1.5 text-blue-300 hover:text-white rounded-lg"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Modals */}
       {isRulesModalOpen && (
@@ -490,16 +500,16 @@ export default function App() {
 
       {/* Global Dynamic Footer */}
       {activeView !== 'testing' && (
-        <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-6 text-xs text-slate-500 dark:text-slate-400">
+        <footer className="border-t border-white/10 bg-slate-950/90 py-6 text-xs text-slate-400">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
             <div>
-              <span className="font-bold text-slate-800 dark:text-slate-200">
-                BPSC TRE 4.0 Mathematics CBT Exam & Practice Portal
+              <span className="font-bold text-slate-200">
+                BPSC TRE 4.0 Mathematics CBT Exam Portal
               </span>{' '}
-              · {totalQuestionsCount > 0 ? `${totalQuestionsCount}+` : ''} STET & TRE Real Questions · Questions & Solutions in Hindi · English Interface
+              · Candidate: <strong className="text-amber-400">{candidateName}</strong> · {totalQuestionsCount}+ Questions
             </div>
-            <div className="flex items-center gap-4 text-slate-500 font-medium">
-              <span>BPSC TRE 4.0 Standard</span>
+            <div className="flex items-center gap-4 text-slate-400 font-medium">
+              <span>BPSC Standard</span>
               <span>·</span>
               <span>Negative Marking: -0.33</span>
               <span>·</span>
