@@ -27,6 +27,29 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
     console.error('App Crash intercepted by ErrorBoundary:', error, errorInfo);
   }
 
+  handleAutoRepair = () => {
+    try {
+      const keysToCheck = [
+        'bpsc_custom_questions',
+        'bpsc_custom_mock_tests',
+        'bpsc_deleted_question_ids',
+        'bpsc_deleted_test_ids',
+        'bpsc_bookmarked_ids'
+      ];
+      for (const k of keysToCheck) {
+        const val = localStorage.getItem(k);
+        if (val) {
+          try {
+            JSON.parse(val);
+          } catch {
+            localStorage.removeItem(k);
+          }
+        }
+      }
+    } catch {}
+    window.location.reload();
+  };
+
   handleReset = () => {
     try {
       localStorage.clear();
@@ -46,17 +69,18 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
           alignItems: 'center',
           justifyContent: 'center',
           padding: '24px',
-          fontFamily: 'system-ui, sans-serif',
+          fontFamily: 'system-ui, -apple-system, sans-serif',
           textAlign: 'center'
         }}>
           <div style={{
-            maxWidth: '480px',
+            maxWidth: '540px',
             width: '100%',
             backgroundColor: '#0F172A',
             border: '1px solid rgba(255, 255, 255, 0.1)',
             borderRadius: '24px',
             padding: '32px',
-            boxShadow: '0 20px 40px rgba(0,0,0,0.5)'
+            boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+            textAlign: 'left'
           }}>
             <div style={{
               width: '56px',
@@ -68,50 +92,102 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
               alignItems: 'center',
               justifyContent: 'center',
               margin: '0 auto 16px auto',
-              fontSize: '24px',
+              fontSize: '26px',
               fontWeight: 'bold'
             }}>
-              !
+              ⚠️
             </div>
-            <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '8px', color: '#FFFFFF' }}>
-              पोर्टल रीलोड हो रहा है (Recovering)
+            <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '8px', color: '#FFFFFF', textAlign: 'center' }}>
+              पोर्टल रिकवरी एवं सहायता (Portal Recovery)
             </h2>
-            <p style={{ fontSize: '13px', color: '#94A3B8', lineHeight: '1.6', marginBottom: '20px' }}>
-              पेज लोड करते समय कोई रुकावट आई थी। नीचे दिए गए बटन से फ्रेश रीलोड करें।
+            <p style={{ fontSize: '13px', color: '#94A3B8', lineHeight: '1.6', marginBottom: '18px', textAlign: 'center' }}>
+              पेज लोड करते समय एक रुकावट आई। सुरक्षा प्रणाली ने पोर्टल को सुरक्षित रखा है।
             </p>
-            <button
-              onClick={() => window.location.reload()}
-              style={{
-                width: '100%',
-                padding: '12px 20px',
-                borderRadius: '12px',
-                backgroundColor: '#F5A524',
-                color: '#0A0F1D',
-                fontWeight: 'bold',
-                fontSize: '14px',
-                border: 'none',
-                cursor: 'pointer',
-                marginBottom: '10px'
-              }}
-            >
-              🔄 पुनः लोड करें (Reload Portal)
-            </button>
-            <button
-              onClick={this.handleReset}
-              style={{
-                width: '100%',
-                padding: '10px 20px',
-                borderRadius: '12px',
-                backgroundColor: 'transparent',
-                color: '#EF4444',
-                fontWeight: 'bold',
-                fontSize: '12px',
-                border: '1px solid rgba(239, 68, 68, 0.3)',
-                cursor: 'pointer'
-              }}
-            >
-              🧹 डेटा रीसेट एवं फ्रेश स्टार्ट (Reset Cache)
-            </button>
+
+            {this.state.error && (
+              <div style={{
+                backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                border: '1px solid rgba(239, 68, 68, 0.25)',
+                borderRadius: '14px',
+                padding: '12px 14px',
+                marginBottom: '20px'
+              }}>
+                <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#F87171', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  त्रुटि विवरण (Error Details):
+                </div>
+                <div style={{ fontSize: '12px', fontFamily: 'monospace', color: '#FECACA', marginTop: '4px', wordBreak: 'break-word' }}>
+                  {this.state.error.message || String(this.state.error)}
+                </div>
+                {this.state.error.stack && (
+                  <details style={{ marginTop: '8px', fontSize: '11px', color: '#94A3B8' }}>
+                    <summary style={{ cursor: 'pointer', outline: 'none' }}>तकनीकी Stack Trace देखें</summary>
+                    <pre style={{
+                      marginTop: '6px',
+                      padding: '8px',
+                      backgroundColor: '#020617',
+                      borderRadius: '8px',
+                      overflowX: 'auto',
+                      fontSize: '10px',
+                      color: '#64748B',
+                      maxHeight: '120px'
+                    }}>
+                      {this.state.error.stack}
+                    </pre>
+                  </details>
+                )}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button
+                onClick={() => window.location.reload()}
+                style={{
+                  width: '100%',
+                  padding: '12px 20px',
+                  borderRadius: '12px',
+                  backgroundColor: '#F5A524',
+                  color: '#0A0F1D',
+                  fontWeight: 'bold',
+                  fontSize: '14px',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                🔄 पुनः लोड करें (Reload Portal)
+              </button>
+              <button
+                onClick={this.handleAutoRepair}
+                style={{
+                  width: '100%',
+                  padding: '10px 20px',
+                  borderRadius: '12px',
+                  backgroundColor: 'rgba(59, 130, 246, 0.15)',
+                  color: '#60A5FA',
+                  fontWeight: 'bold',
+                  fontSize: '13px',
+                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  cursor: 'pointer'
+                }}
+              >
+                🛠️ स्वचालित मरम्मत एवं रीस्टार्ट (Auto-Repair Storage)
+              </button>
+              <button
+                onClick={this.handleReset}
+                style={{
+                  width: '100%',
+                  padding: '9px 20px',
+                  borderRadius: '12px',
+                  backgroundColor: 'transparent',
+                  color: '#EF4444',
+                  fontWeight: '600',
+                  fontSize: '12px',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  cursor: 'pointer'
+                }}
+              >
+                🧹 डेटा रीसेट एवं फ्रेश स्टार्ट (Reset Cache)
+              </button>
+            </div>
           </div>
         </div>
       );

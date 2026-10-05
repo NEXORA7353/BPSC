@@ -64,28 +64,40 @@ export function sanitizeQuestion(q: any): Question {
       id: `invalid_${Math.random()}`,
       exam: 'BPSC TRE 4.0',
       questionText: '',
-      options: [],
+      options: [
+        { key: 'a', text: '' },
+        { key: 'b', text: '' },
+        { key: 'c', text: '' },
+        { key: 'd', text: '' },
+        { key: 'e', text: 'अनुत्तरित प्रश्न' }
+      ],
       correctOption: 'e',
       explanation: '',
       topic: 'custom',
       topicNameHindi: 'सामान्य'
     };
   }
+
+  const rawKey = String(q.correctOption || q.correctAnswer || q.answer || q.correct || 'e').trim().toLowerCase();
+  const safeCorrectOption = (['a', 'b', 'c', 'd', 'e'].includes(rawKey) ? rawKey : 'e') as 'a' | 'b' | 'c' | 'd' | 'e';
+
+  const safeOptions = Array.isArray(q.options)
+    ? q.options.map((opt: any) => ({
+        key: String(opt?.key || 'a').toLowerCase() as 'a' | 'b' | 'c' | 'd' | 'e',
+        text: String(opt?.text || opt?.textHindi || '')
+      }))
+    : [];
+
   return {
     ...q,
     id: String(q.id || `q_${Math.random()}`),
     exam: String(q.exam || 'BPSC TRE 4.0'),
     questionText: String(q.questionText || q.text || ''),
-    options: Array.isArray(q.options)
-      ? q.options.map((opt: any) => ({
-          key: (opt?.key || 'a') as 'a' | 'b' | 'c' | 'd' | 'e',
-          text: String(opt?.text || opt?.textHindi || '')
-        }))
-      : [],
-    correctOption: (q.correctOption || q.correctAnswer || 'e').toLowerCase() as 'a' | 'b' | 'c' | 'd' | 'e',
+    options: safeOptions,
+    correctOption: safeCorrectOption,
     explanation: String(q.explanation || ''),
-    topic: q.topic || 'custom',
-    topicNameHindi: q.topicNameHindi || 'सामान्य'
+    topic: String(q.topic || 'custom'),
+    topicNameHindi: String(q.topicNameHindi || 'सामान्य')
   };
 }
 

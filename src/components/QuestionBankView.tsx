@@ -207,12 +207,12 @@ export function QuestionBankView({
 
   const filteredQuestions = useMemo(() => {
     return allQuestions.filter((q) => {
+      if (!q) return false;
       const searchLower = searchTerm.toLowerCase();
-      const matchesSearch =
-        !searchTerm ||
-        q.questionText.toLowerCase().includes(searchLower) ||
-        q.exam.toLowerCase().includes(searchLower) ||
-        (q.explanation && q.explanation.toLowerCase().includes(searchLower));
+      const textMatch = String(q.questionText || '').toLowerCase().includes(searchLower);
+      const examMatch = String(q.exam || '').toLowerCase().includes(searchLower);
+      const expMatch = q.explanation ? String(q.explanation).toLowerCase().includes(searchLower) : false;
+      const matchesSearch = !searchTerm || textMatch || examMatch || expMatch;
 
       const matchesTopic = selectedTopic === 'all' || q.topic === selectedTopic;
       const matchesBookmark = !onlyBookmarked || bookmarkedIds.includes(q.id);
@@ -553,11 +553,13 @@ export function QuestionBankView({
 
                 {/* Options Grid in Hindi */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                  {q.options.map((opt) => {
-                    const isCorrect = opt.key === q.correctOption;
+                  {(Array.isArray(q.options) ? q.options : []).map((opt) => {
+                    const optKey = String(opt?.key || '').toLowerCase();
+                    const correctKey = String(q.correctOption || '').toLowerCase();
+                    const isCorrect = Boolean(optKey && optKey === correctKey);
                     return (
                       <div
-                        key={opt.key}
+                        key={optKey || Math.random().toString()}
                         className={`px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm flex items-center gap-3 transition-colors ${
                           isCorrect
                             ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-400 dark:border-emerald-700 text-emerald-900 dark:text-emerald-100 font-bold shadow-2xs'
@@ -571,10 +573,10 @@ export function QuestionBankView({
                               : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
                           }`}
                         >
-                          {opt.key}
+                          {optKey}
                         </span>
                         <span className="flex-1 font-sans">
-                          <MathText text={opt.text} />
+                          <MathText text={String(opt?.text || '')} />
                         </span>
                         {isCorrect && (
                           <span className="text-[10px] uppercase font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded">

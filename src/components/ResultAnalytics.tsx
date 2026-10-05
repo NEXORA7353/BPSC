@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Trophy,
   CheckCircle2,
@@ -17,9 +17,15 @@ import {
   ChevronUp,
   Sparkles,
   BarChart3,
-  Printer
+  Printer,
+  Scale,
+  Users,
+  TrendingUp,
+  ShieldCheck,
+  Award
 } from 'lucide-react';
 import { MockTestSet, TestResult } from '../types';
+import { calculateBPSCNormalization } from '../utils/normalizationEngine';
 import {
   createReattemptMissedQuestionsTest,
   toggleBookmarkQuestion,
@@ -66,6 +72,12 @@ export function ResultAnalytics({
   };
 
   const avgSeconds = Math.round(result.totalTimeSpentSeconds / Math.max(1, result.totalQuestions));
+
+  // BPSC TRE 4.0 Scientific Normalization & Percentile Intelligence
+  const normAnalysis = useMemo(
+    () => calculateBPSCNormalization(result, testSet),
+    [result, testSet]
+  );
 
   // Identify missed questions
   const missedQuestionIds = testSet.questions
@@ -325,6 +337,211 @@ export function ResultAnalytics({
                   <span>Completed On Schedule</span>
                 </span>
               )}
+            </div>
+          </div>
+
+          {/* 🌟 BPSC TRE 4.0 SCIENTIFIC NORMALIZATION & PERCENTILE INTELLIGENCE */}
+          <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-indigo-950/60 via-slate-900 to-slate-950 border border-indigo-500/30 shadow-xl space-y-5">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 shrink-0">
+                  <Scale className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm sm:text-base font-black text-white tracking-wide">
+                      BPSC TRE 4.0 Normalization & Percentile Intelligence
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-[10px] font-bold uppercase tracking-wider border border-indigo-500/30">
+                      Z-Score Model
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    वैज्ञानिक Z-स्कोर, शिफ्ट जटिलता एवं 10,000 अभ्यर्थियों के मानक बेंचमार्क पर आधारित सामान्यीकृत रैंक
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 text-xs">
+                <span className="px-3 py-1 rounded-xl bg-white/5 border border-white/10 text-slate-300 font-medium flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>बेंचमार्क पूल: 10,000 Aspirants</span>
+                </span>
+              </div>
+            </div>
+
+            {/* 4 Core Intelligence Tiles */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+              {/* Normalized Score */}
+              <div className="p-4 rounded-2xl bg-white/5 border border-indigo-500/20 space-y-1 relative overflow-hidden">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center justify-between">
+                  <span>Normalized Score (सामान्यीकृत अंक)</span>
+                  <Award className="w-3.5 h-3.5 text-amber-400" />
+                </div>
+                <div className="text-2xl sm:text-3xl font-black font-mono text-amber-400 mt-1">
+                  {normAnalysis.normalizedScore.toFixed(2)}{' '}
+                  <span className="text-xs font-normal text-slate-400">/ {normAnalysis.totalMarks}</span>
+                </div>
+                <div className="text-[11px] text-slate-400 flex items-center gap-1.5 pt-1">
+                  <span>Raw: <strong>{normAnalysis.rawScore.toFixed(2)}</strong></span>
+                  <span className="text-slate-500">·</span>
+                  <span className="text-emerald-400 font-bold">
+                    {normAnalysis.scoreAdjustmentMarks > 0 ? `+${normAnalysis.scoreAdjustmentMarks.toFixed(2)} Boost` : 'Equalized'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Percentile Rank */}
+              <div className="p-4 rounded-2xl bg-white/5 border border-indigo-500/20 space-y-1 relative overflow-hidden">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center justify-between">
+                  <span>Percentile Rank (प्रतिशतक स्थान)</span>
+                  <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                </div>
+                <div className="text-2xl sm:text-3xl font-black font-mono text-emerald-400 mt-1">
+                  {normAnalysis.percentile}%
+                </div>
+                <div className="text-[11px] text-slate-400 pt-1">
+                  बिहार के शीर्ष <strong className="text-emerald-400">Top {Math.max(0.1, 100 - normAnalysis.percentile).toFixed(1)}%</strong> अभ्यर्थियों में शामिल
+                </div>
+              </div>
+
+              {/* Predicted All-Bihar Rank */}
+              <div className="p-4 rounded-2xl bg-white/5 border border-indigo-500/20 space-y-1 relative overflow-hidden">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center justify-between">
+                  <span>All-Bihar Rank (अनुमानित रैंक)</span>
+                  <Users className="w-3.5 h-3.5 text-indigo-400" />
+                </div>
+                <div className="text-2xl sm:text-3xl font-black font-mono text-indigo-300 mt-1">
+                  #{normAnalysis.predictedAllBiharRank.toLocaleString('en-IN')}
+                </div>
+                <div className="text-[11px] text-slate-400 pt-1">
+                  अनुमानित 10,000 परीक्षार्थियों में मेरिट स्थिति
+                </div>
+              </div>
+
+              {/* Shift Difficulty Factor */}
+              <div className="p-4 rounded-2xl bg-white/5 border border-indigo-500/20 space-y-1 relative overflow-hidden">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center justify-between">
+                  <span>Shift Factor (शिफ्ट जटिलता)</span>
+                  <Zap className="w-3.5 h-3.5 text-sky-400" />
+                </div>
+                <div className="text-2xl sm:text-3xl font-black font-mono text-sky-400 mt-1">
+                  {normAnalysis.shiftDifficultyFactor}x
+                </div>
+                <div className="text-[11px] text-sky-300/90 font-medium truncate pt-1">
+                  {normAnalysis.shiftDifficultyLabelHindi}
+                </div>
+              </div>
+            </div>
+
+            {/* Official BPSC Category Cutoff Readiness Milestones */}
+            <div className="space-y-2.5 pt-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-slate-300 flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  <span>BPSC Official Category Cutoff Status (श्रेणीवार अर्हता स्थिति):</span>
+                </span>
+                <span className="text-[11px] text-slate-400">
+                  न्यूनतम अर्हता अंक (BPSC TRE Rule)
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                {/* UR */}
+                <div className={`p-2.5 rounded-xl border text-center ${
+                  normAnalysis.categoryCutoffs.generalUR.qualified
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                    : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                }`}>
+                  <div className="text-[10px] uppercase font-bold text-slate-400">General (UR) 40%</div>
+                  <div className="text-xs font-black font-mono mt-0.5">
+                    {normAnalysis.categoryCutoffs.generalUR.requiredMarks} Marks
+                  </div>
+                  <div className="text-[10px] font-bold mt-1">
+                    {normAnalysis.categoryCutoffs.generalUR.qualified ? '✅ Qualified' : '❌ Missed'}
+                  </div>
+                </div>
+
+                {/* BC */}
+                <div className={`p-2.5 rounded-xl border text-center ${
+                  normAnalysis.categoryCutoffs.bc.qualified
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                    : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                }`}>
+                  <div className="text-[10px] uppercase font-bold text-slate-400">BC (पिछड़ा) 36.5%</div>
+                  <div className="text-xs font-black font-mono mt-0.5">
+                    {normAnalysis.categoryCutoffs.bc.requiredMarks} Marks
+                  </div>
+                  <div className="text-[10px] font-bold mt-1">
+                    {normAnalysis.categoryCutoffs.bc.qualified ? '✅ Qualified' : '❌ Missed'}
+                  </div>
+                </div>
+
+                {/* EBC */}
+                <div className={`p-2.5 rounded-xl border text-center ${
+                  normAnalysis.categoryCutoffs.ebc.qualified
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                    : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                }`}>
+                  <div className="text-[10px] uppercase font-bold text-slate-400">EBC (अत्यंत पिछड़ा) 34%</div>
+                  <div className="text-xs font-black font-mono mt-0.5">
+                    {normAnalysis.categoryCutoffs.ebc.requiredMarks} Marks
+                  </div>
+                  <div className="text-[10px] font-bold mt-1">
+                    {normAnalysis.categoryCutoffs.ebc.qualified ? '✅ Qualified' : '❌ Missed'}
+                  </div>
+                </div>
+
+                {/* SC/ST/Women */}
+                <div className={`p-2.5 rounded-xl border text-center ${
+                  normAnalysis.categoryCutoffs.scStWomen.qualified
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                    : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                }`}>
+                  <div className="text-[10px] uppercase font-bold text-slate-400">SC/ST/महिला 32%</div>
+                  <div className="text-xs font-black font-mono mt-0.5">
+                    {normAnalysis.categoryCutoffs.scStWomen.requiredMarks} Marks
+                  </div>
+                  <div className="text-[10px] font-bold mt-1">
+                    {normAnalysis.categoryCutoffs.scStWomen.qualified ? '✅ Qualified' : '❌ Missed'}
+                  </div>
+                </div>
+
+                {/* Merit Safe Zone */}
+                <div className={`p-2.5 rounded-xl border text-center ${
+                  normAnalysis.categoryCutoffs.meritSafeZone.qualified
+                    ? 'bg-amber-500/15 border-amber-500/40 text-amber-300 ring-1 ring-amber-500/30'
+                    : 'bg-white/5 border-white/10 text-slate-400'
+                }`}>
+                  <div className="text-[10px] uppercase font-bold text-amber-400">Safe Merit Zone 65%</div>
+                  <div className="text-xs font-black font-mono mt-0.5">
+                    {normAnalysis.categoryCutoffs.meritSafeZone.requiredMarks} Marks
+                  </div>
+                  <div className="text-[10px] font-bold mt-1">
+                    {normAnalysis.categoryCutoffs.meritSafeZone.qualified ? '🏆 High Merit' : 'Adv. Target'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Verdict Banner */}
+            <div className={`p-3.5 rounded-2xl border flex items-center justify-between gap-3 text-xs font-bold ${
+              normAnalysis.verdictColor === 'emerald'
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                : normAnalysis.verdictColor === 'indigo'
+                ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300'
+                : normAnalysis.verdictColor === 'amber'
+                ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+            }`}>
+              <div className="flex items-center gap-2">
+                <Award className="w-4 h-4 shrink-0" />
+                <span>निर्णय (Verdict): {normAnalysis.verdictHindi}</span>
+              </div>
+              <span className="hidden sm:inline font-normal text-[11px] text-slate-400">
+                {normAnalysis.verdictEnglish}
+              </span>
             </div>
           </div>
 

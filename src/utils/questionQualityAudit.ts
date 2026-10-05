@@ -55,7 +55,7 @@ export interface BatchAuditReport {
  * Advanced Hindi & Math String Normalization for Duplicate Detection
  */
 export function normalizeTextForDuplicateCheck(text: string): string {
-  if (!text) return '';
+  if (!text || typeof text !== 'string') return '';
 
   return (
     text
@@ -125,102 +125,119 @@ export function calculateStringSimilarity(str1: string, str2: string): number {
  */
 export function auditSingleQuestion(q: Question): QuestionIssue[] {
   const issues: QuestionIssue[] = [];
-
-  // 1. Question Stem Check
-  const stem = (q.questionText || '').trim();
-  if (!stem || stem.length < 3) {
-    issues.push({
+  if (!q || typeof q !== 'object') {
+    return [{
       type: 'EMPTY_STEM',
       severity: 'critical',
-      title: 'प्रश्न विवरण खाली है (Empty Question Stem)',
-      description: 'इस प्रश्न का मुख्य विवरण (Stem) खाली या बहुत छोटा है।',
+      title: 'अमान्य प्रश्न डेटा (Corrupt Question Object)',
+      description: 'यह प्रश्न ऑब्जेक्ट अमान्य या खाली है।',
       field: 'questionText'
-    });
+    }];
   }
 
-  // 2. Options Check
-  const options = Array.isArray(q.options) ? q.options : [];
-  const requiredKeys = ['a', 'b', 'c', 'd'];
-  const presentKeys = new Set(options.map((o) => (o.key || '').toLowerCase()));
-
-  // Check missing options
-  for (const key of requiredKeys) {
-    const opt = options.find((o) => (o.key || '').toLowerCase() === key);
-    if (!opt || !opt.text || opt.text.trim() === '') {
+  try {
+    // 1. Question Stem Check
+    const stem = String(q.questionText || '').trim();
+    if (!stem || stem.length < 3) {
       issues.push({
-        type: 'EMPTY_OPTION',
+        type: 'EMPTY_STEM',
         severity: 'critical',
-        title: `विकल्प (${key.toUpperCase()}) खाली है (Option ${key.toUpperCase()} is Empty)`,
-        description: `विकल्प (${key.toUpperCase()}) का मान खाली छूटा हुआ है।`,
-        field: 'options',
-        optionKey: key
+        title: 'प्रश्न विवरण खाली है (Empty Question Stem)',
+        description: 'इस प्रश्न का मुख्य विवरण (Stem) खाली या बहुत छोटा है।',
+        field: 'questionText'
       });
     }
-  }
 
-  // Check dummy options (Option A, Option B, Option C, Option D)
-  const dummyOptCount = options.filter(
-    (o) => o.text.trim().toLowerCase() === `option ${o.key.toLowerCase()}`
-  ).length;
-  if (dummyOptCount >= 2) {
-    issues.push({
-      type: 'DUMMY_OPTIONS',
-      severity: 'warning',
-      title: 'फ़र्ज़ी डमी विकल्प (Placeholder Dummy Options)',
-      description: `${dummyOptCount} विकल्पों में केवल 'Option A/B/C' जैसा डमी टेक्स्ट भरा हुआ है।`,
-      field: 'options'
-    });
-  }
+    // 2. Options Check
+    const rawOptions = Array.isArray(q.options) ? q.options : [];
+    const options = rawOptions.map((o) => ({
+      key: String(o?.key || '').toLowerCase(),
+      text: String(o?.text || '').trim()
+    }));
+    const requiredKeys = ['a', 'b', 'c', 'd'];
 
-  // Check duplicate options within question
-  const optTexts = options
-    .map((o) => normalizeTextForDuplicateCheck(o.text))
-    .filter((t) => t.length > 1);
-  const uniqueTexts = new Set(optTexts);
-  if (optTexts.length >= 3 && uniqueTexts.size < optTexts.length) {
-    issues.push({
-      type: 'DUPLICATE_OPTIONS',
-      severity: 'warning',
-      title: 'समान विकल्प मौजूद हैं (Duplicate Options in Question)',
-      description: 'इस प्रश्न में एक से अधिक विकल्पों का मान बिल्कुल एक जैसा है।',
-      field: 'options'
-    });
-  }
+    // Check missing options
+    for (const key of requiredKeys) {
+      const opt = options.find((o) => o.key === key);
+      if (!opt || !opt.text) {
+        issues.push({
+          type: 'EMPTY_OPTION',
+          severity: 'critical',
+          title: `विकल्प (${key.toUpperCase()}) खाली है (Option ${key.toUpperCase()} is Empty)`,
+          description: `विकल्प (${key.toUpperCase()}) का मान खाली छूटा हुआ है।`,
+          field: 'options',
+          optionKey: key
+        });
+      }
+    }
 
-  // 3. Explanation Check
-  const exp = (q.explanation || '').trim();
-  if (!exp) {
-    issues.push({
-      type: 'EMPTY_EXPLANATION',
-      severity: 'critical',
-      title: 'व्याख्या खाली है (Blank Explanation)',
-      description: 'इस प्रश्न के लिए कोई व्याख्या / हल नहीं दी गई है।',
-      field: 'explanation'
-    });
-  } else if (
-    exp === 'सही उत्तर व्याख्या सहित।' ||
-    exp === `सही उत्तर विकल्प (${(q.correctOption || 'a').toUpperCase()}) है।` ||
-    exp.length < 5
-  ) {
-    issues.push({
-      type: 'GENERIC_EXPLANATION',
-      severity: 'info',
-      title: 'सामान्य डिफ़ॉल्ट व्याख्या (Default Fallback Explanation)',
-      description: 'व्याख्या में विस्तृत चरण नहीं हैं, केवल डिफ़ॉल्ट संदेश है।',
-      field: 'explanation'
-    });
-  }
+    // Check dummy options (Option A, Option B, Option C, Option D)
+    const dummyOptCount = options.filter(
+      (o) => o.text && o.text.toLowerCase() === `option ${o.key}`
+    ).length;
+    if (dummyOptCount >= 2) {
+      issues.push({
+        type: 'DUMMY_OPTIONS',
+        severity: 'warning',
+        title: 'फ़र्ज़ी डमी विकल्प (Placeholder Dummy Options)',
+        description: `${dummyOptCount} विकल्पों में केवल 'Option A/B/C' जैसा डमी टेक्स्ट भरा हुआ है।`,
+        field: 'options'
+      });
+    }
 
-  // 4. Correct Answer Key Check
-  const key = (q.correctOption || '').toLowerCase();
-  if (!['a', 'b', 'c', 'd', 'e'].includes(key)) {
-    issues.push({
-      type: 'INVALID_ANSWER_KEY',
-      severity: 'critical',
-      title: 'अमान्य उत्तर कुंजी (Invalid Answer Key)',
-      description: `उत्तर कुंजी '${q.correctOption}' मान्य (A, B, C, D, E) नहीं है।`,
-      field: 'correctOption'
-    });
+    // Check duplicate options within question
+    const optTexts = options
+      .map((o) => normalizeTextForDuplicateCheck(o.text))
+      .filter((t) => t.length > 1);
+    const uniqueTexts = new Set(optTexts);
+    if (optTexts.length >= 3 && uniqueTexts.size < optTexts.length) {
+      issues.push({
+        type: 'DUPLICATE_OPTIONS',
+        severity: 'warning',
+        title: 'समान विकल्प मौजूद हैं (Duplicate Options in Question)',
+        description: 'इस प्रश्न में एक से अधिक विकल्पों का मान बिल्कुल एक जैसा है।',
+        field: 'options'
+      });
+    }
+
+    // 3. Explanation Check
+    const exp = String(q.explanation || '').trim();
+    const correctKeyUpper = String(q.correctOption || 'a').toUpperCase();
+    if (!exp) {
+      issues.push({
+        type: 'EMPTY_EXPLANATION',
+        severity: 'critical',
+        title: 'व्याख्या खाली है (Blank Explanation)',
+        description: 'इस प्रश्न के लिए कोई व्याख्या / हल नहीं दी गई है।',
+        field: 'explanation'
+      });
+    } else if (
+      exp === 'सही उत्तर व्याख्या सहित।' ||
+      exp === `सही उत्तर विकल्प (${correctKeyUpper}) है।` ||
+      exp.length < 5
+    ) {
+      issues.push({
+        type: 'GENERIC_EXPLANATION',
+        severity: 'info',
+        title: 'सामान्य डिफ़ॉल्ट व्याख्या (Default Fallback Explanation)',
+        description: 'व्याख्या में विस्तृत चरण नहीं हैं, केवल डिफ़ॉल्ट संदेश है।',
+        field: 'explanation'
+      });
+    }
+
+    // 4. Correct Answer Key Check
+    const key = String(q.correctOption || '').toLowerCase();
+    if (!['a', 'b', 'c', 'd', 'e'].includes(key)) {
+      issues.push({
+        type: 'INVALID_ANSWER_KEY',
+        severity: 'critical',
+        title: 'अमान्य उत्तर कुंजी (Invalid Answer Key)',
+        description: `उत्तर कुंजी '${q.correctOption}' मान्य (A, B, C, D, E) नहीं है।`,
+        field: 'correctOption'
+      });
+    }
+  } catch (err) {
+    console.warn('Error auditing single question:', err);
   }
 
   return issues;
@@ -233,23 +250,27 @@ export function auditQuestionBatch(
   batch: Question[],
   existingBank: Question[] = []
 ): BatchAuditReport {
+  const safeBatch = Array.isArray(batch) ? batch : [];
+  const safeBank = Array.isArray(existingBank) ? existingBank : [];
   const items: AuditedQuestionItem[] = [];
 
   // Normalized map for intra-batch duplicate detection
   const seenBatchStems: { id: string; index: number; text: string; norm: string }[] = [];
 
   // Normalized existing bank map
-  const bankIndex = existingBank.map((b) => ({
-    id: b.id,
-    text: b.questionText,
-    norm: normalizeTextForDuplicateCheck(b.questionText)
+  const bankIndex = safeBank.map((b) => ({
+    id: String(b?.id || ''),
+    text: String(b?.questionText || ''),
+    norm: normalizeTextForDuplicateCheck(String(b?.questionText || ''))
   }));
 
-  batch.forEach((q, index) => {
+  safeBatch.forEach((q, index) => {
+    if (!q) return;
     const issues = auditSingleQuestion(q);
     let duplicateInfo: DuplicateMatchInfo | undefined;
 
-    const normStem = normalizeTextForDuplicateCheck(q.questionText);
+    const stemText = String(q.questionText || '');
+    const normStem = normalizeTextForDuplicateCheck(stemText);
 
     if (normStem.length > 5) {
       // 1. Check against previous questions in current batch
@@ -305,11 +326,12 @@ export function auditQuestionBatch(
               matchedText: bankItem.text,
               source: 'question_bank'
             };
+            const previewSnippet = (bankItem.text || '').slice(0, 45);
             issues.push({
               type: 'BANK_DUPLICATE',
               severity: 'warning',
               title: 'बैंक में पहले से मौजूद है (Already in Question Bank)',
-              description: `यह प्रश्न आपके प्रश्न बैंक में पहले से सुरक्षित है: "${bankItem.text.slice(0, 45)}..."`,
+              description: `यह प्रश्न आपके प्रश्न बैंक में पहले से सुरक्षित है: "${previewSnippet}..."`,
               field: 'questionText'
             });
             break;
@@ -324,11 +346,12 @@ export function auditQuestionBatch(
               matchedText: bankItem.text,
               source: 'question_bank'
             };
+            const previewSnippet = (bankItem.text || '').slice(0, 45);
             issues.push({
               type: 'BANK_DUPLICATE',
               severity: 'info',
               title: `बैंक प्रश्न से मिलता-जुलता (${sim}% Match with Bank)`,
-              description: `यह प्रश्न बैंक के प्रश्न से ${sim}% मिलता है: "${bankItem.text.slice(0, 45)}..."`,
+              description: `यह प्रश्न बैंक के प्रश्न से ${sim}% मिलता है: "${previewSnippet}..."`,
               field: 'questionText'
             });
             break;
@@ -338,9 +361,9 @@ export function auditQuestionBatch(
 
       // Add to seen batch
       seenBatchStems.push({
-        id: q.id,
+        id: String(q.id || `q_${index}`),
         index,
-        text: q.questionText,
+        text: stemText,
         norm: normStem
       });
     }
@@ -350,7 +373,7 @@ export function auditQuestionBatch(
     const isDuplicate = Boolean(duplicateInfo);
 
     items.push({
-      id: q.id,
+      id: String(q.id || `q_${index}`),
       originalIndex: index,
       question: q,
       issues,
@@ -361,19 +384,18 @@ export function auditQuestionBatch(
     });
   });
 
-  const totalQuestions = batch.length;
-  const problemCount = items.filter((it) => it.issues.length > 0).length;
-  const duplicateCount = items.filter((it) => it.isDuplicate).length;
-  const blankOptionCount = items.filter((it) =>
-    it.issues.some((i) => i.type === 'EMPTY_OPTION')
+  const healthyCount = items.filter((i) => i.issues.length === 0).length;
+  const problemCount = items.filter((i) => i.issues.length > 0).length;
+  const duplicateCount = items.filter((i) => i.isDuplicate).length;
+  const blankOptionCount = items.filter((i) =>
+    i.issues.some((iss) => iss.type === 'EMPTY_OPTION')
   ).length;
-  const blankExplanationCount = items.filter((it) =>
-    it.issues.some((i) => i.type === 'EMPTY_EXPLANATION')
+  const blankExplanationCount = items.filter((i) =>
+    i.issues.some((iss) => iss.type === 'EMPTY_EXPLANATION')
   ).length;
-  const healthyCount = totalQuestions - problemCount;
 
   return {
-    totalQuestions,
+    totalQuestions: safeBatch.length,
     healthyCount,
     problemCount,
     duplicateCount,
@@ -387,15 +409,22 @@ export function auditQuestionBatch(
  * Auto-Heal Helpers
  */
 export function autoHealQuestion(q: Question): Question {
-  const updated = { ...q, options: [...q.options] };
+  const rawOptions = Array.isArray(q.options) ? q.options : [];
+  const updated = {
+    ...q,
+    options: rawOptions.map((o) => ({
+      key: (o?.key || 'a') as 'a' | 'b' | 'c' | 'd' | 'e',
+      text: String(o?.text || '')
+    }))
+  };
 
   // 1. Fill empty explanation
   if (!updated.explanation || updated.explanation.trim() === '') {
-    updated.explanation = `सही उत्तर विकल्प (${(updated.correctOption || 'a').toUpperCase()}) है।`;
+    updated.explanation = `सही उत्तर विकल्प (${String(updated.correctOption || 'a').toUpperCase()}) है।`;
   }
 
   // 2. Ensure Option E is present (BPSC standard)
-  const optEIndex = updated.options.findIndex((o) => (o.key || '').toLowerCase() === 'e');
+  const optEIndex = updated.options.findIndex((o) => String(o.key || '').toLowerCase() === 'e');
   const defaultOptEText =
     'अनुत्तरित प्रश्न (यदि किसी प्रश्न का उत्तर नहीं देना चाहते, तो विकल्प E चुनें — इससे न अंक मिलेगा, न कटेगा।)';
 
@@ -409,7 +438,7 @@ export function autoHealQuestion(q: Question): Question {
 
   // 3. Ensure Options A-D have non-empty text
   for (const key of ['a', 'b', 'c', 'd']) {
-    const idx = updated.options.findIndex((o) => (o.key || '').toLowerCase() === key);
+    const idx = updated.options.findIndex((o) => String(o.key || '').toLowerCase() === key);
     if (idx !== -1 && (!updated.options[idx].text || updated.options[idx].text.trim() === '')) {
       updated.options[idx].text = `विकल्प (${key.toUpperCase()})`;
     }

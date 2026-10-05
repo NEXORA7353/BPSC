@@ -69,8 +69,8 @@ export function SmartQualityReviewModal({
       const q = searchFilter.toLowerCase();
       list = list.filter(
         (it) =>
-          it.question.questionText.toLowerCase().includes(q) ||
-          it.issues.some((i) => i.title.toLowerCase().includes(q))
+          String(it.question?.questionText || '').toLowerCase().includes(q) ||
+          it.issues.some((i) => String(i?.title || '').toLowerCase().includes(q))
       );
     }
 
@@ -446,10 +446,10 @@ export function SmartQualityReviewModal({
 
                       {/* Options Grid */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {editForm.options.map((opt, oIdx) => {
+                        {(Array.isArray(editForm.options) ? editForm.options : []).map((opt, oIdx) => {
                           const isBlank = !opt.text || opt.text.trim() === '';
                           return (
-                            <div key={opt.key} className="space-y-1">
+                            <div key={opt.key || oIdx} className="space-y-1">
                               <div className="flex items-center justify-between text-[11px] font-bold">
                                 <span className="uppercase text-slate-500">
                                   Option ({opt.key}):
@@ -462,9 +462,9 @@ export function SmartQualityReviewModal({
                               </div>
                               <input
                                 type="text"
-                                value={opt.text}
+                                value={opt.text || ''}
                                 onChange={(e) => {
-                                  const updatedOpts = [...editForm.options];
+                                  const updatedOpts = [...(editForm.options || [])];
                                   updatedOpts[oIdx] = { ...opt, text: e.target.value };
                                   setEditForm({ ...editForm, options: updatedOpts });
                                 }}
@@ -545,14 +545,15 @@ export function SmartQualityReviewModal({
 
                       {/* Options Preview */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
-                        {item.question.options.map((opt) => {
-                          const isCorrect =
-                            opt.key.toLowerCase() === item.question.correctOption.toLowerCase();
-                          const isEmpty = !opt.text || opt.text.trim() === '';
+                        {(Array.isArray(item.question.options) ? item.question.options : []).map((opt) => {
+                          const optKey = String(opt?.key || '').toLowerCase();
+                          const correctKey = String(item.question.correctOption || '').toLowerCase();
+                          const isCorrect = Boolean(optKey && optKey === correctKey);
+                          const isEmpty = !opt?.text || String(opt.text).trim() === '';
 
                           return (
                             <div
-                              key={opt.key}
+                              key={optKey || Math.random().toString()}
                               className={`px-3 py-1.5 rounded-xl text-xs flex items-center gap-2 border ${
                                 isEmpty
                                   ? 'bg-red-500/10 border-red-500/40 text-red-600 dark:text-red-400 font-bold'
@@ -562,10 +563,10 @@ export function SmartQualityReviewModal({
                               }`}
                             >
                               <span className="font-mono font-bold uppercase shrink-0">
-                                ({opt.key})
+                                ({optKey || '?'})
                               </span>
                               <span className="truncate">
-                                {isEmpty ? '⚠️ [खाली विकल्प - Empty]' : opt.text}
+                                {isEmpty ? '⚠️ [खाली विकल्प - Empty]' : String(opt?.text || '')}
                               </span>
                             </div>
                           );
