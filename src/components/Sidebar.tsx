@@ -15,20 +15,25 @@ import {
   RotateCcw,
   PlusCircle,
   ShieldCheck,
-  ChevronRight
+  ChevronRight,
+  TrendingUp,
+  Zap,
+  Target
 } from 'lucide-react';
 import { ThemeMode } from '../types';
 
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
-  activeView: 'intro' | 'testing' | 'results' | 'bank' | 'history';
-  onNavigateView: (view: 'intro' | 'testing' | 'results' | 'bank' | 'history') => void;
+  activeView: 'intro' | 'testing' | 'results' | 'bank' | 'history' | 'progress';
+  onNavigateView: (view: 'intro' | 'testing' | 'results' | 'bank' | 'history' | 'progress') => void;
   onOpenRules: () => void;
   onOpenCustomTest: () => void;
   onOpenBulkImport: () => void;
   onOpenCloudModal: () => void;
   onRestoreTests: () => void;
+  onOpenAiWeakSpots: () => void;
+  onOpenRapidDrills: () => void;
   theme: ThemeMode;
   onToggleTheme: () => void;
   onInstallApp?: () => void;
@@ -45,6 +50,8 @@ export function Sidebar({
   onOpenBulkImport,
   onOpenCloudModal,
   onRestoreTests,
+  onOpenAiWeakSpots,
+  onOpenRapidDrills,
   theme,
   onToggleTheme,
   onInstallApp,
@@ -211,13 +218,63 @@ export function Sidebar({
               </div>
               <ChevronRight className="w-3.5 h-3.5 opacity-50" />
             </button>
+
+            <button
+              onClick={() => {
+                onNavigateView('progress');
+                onClose();
+              }}
+              className={`w-full p-2.5 rounded-xl font-bold text-xs flex items-center justify-between transition-all ${
+                activeView === 'progress'
+                  ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/40 text-emerald-300 shadow-sm'
+                  : 'text-slate-300 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <TrendingUp className="w-4 h-4 text-emerald-400" />
+                <span>Progress Trend Dashboard</span>
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 opacity-50" />
+            </button>
           </div>
 
           {/* Quick Creator Tools */}
           <div className="space-y-1.5 pt-2 border-t border-white/10">
             <div className="px-2 text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">
-              Test Tools & Cloud
+              AI Tools & Speed Drills
             </div>
+
+            <button
+              onClick={() => {
+                onOpenAiWeakSpots();
+                onClose();
+              }}
+              className="w-full p-2.5 rounded-xl font-bold text-xs flex items-center justify-between text-slate-300 hover:bg-white/5 hover:text-white transition-all"
+            >
+              <div className="flex items-center gap-3">
+                <Target className="w-4 h-4 text-rose-400" />
+                <span>AI Weakness Diagnostic</span>
+              </div>
+              <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded font-mono font-bold">
+                AI v2
+              </span>
+            </button>
+
+            <button
+              onClick={() => {
+                onOpenRapidDrills();
+                onClose();
+              }}
+              className="w-full p-2.5 rounded-xl font-bold text-xs flex items-center justify-between text-slate-300 hover:bg-white/5 hover:text-white transition-all"
+            >
+              <div className="flex items-center gap-3">
+                <Zap className="w-4 h-4 text-amber-400" />
+                <span>5-Min Rapid Chapter Drills</span>
+              </div>
+              <span className="text-[10px] bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded font-mono font-bold">
+                FAST
+              </span>
+            </button>
 
             <button
               onClick={() => {
@@ -227,12 +284,10 @@ export function Sidebar({
               className="w-full p-2.5 rounded-xl font-bold text-xs flex items-center justify-between text-slate-300 hover:bg-white/5 hover:text-white transition-all"
             >
               <div className="flex items-center gap-3">
-                <PlusCircle className="w-4 h-4 text-amber-400" />
+                <PlusCircle className="w-4 h-4 text-blue-400" />
                 <span>Create Custom Mock Test</span>
               </div>
-              <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded font-mono font-bold">
-                NEW
-              </span>
+              <ChevronRight className="w-3.5 h-3.5 opacity-50" />
             </button>
 
             <button

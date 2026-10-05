@@ -35,7 +35,11 @@ interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
 }
 
-type AppView = 'intro' | 'testing' | 'results' | 'bank' | 'history';
+import { AiWeakSpotModal } from './components/AiWeakSpotModal';
+import { RapidDrillModal } from './components/RapidDrillModal';
+import { ProgressAnalyticsView } from './components/ProgressAnalyticsView';
+
+type AppView = 'intro' | 'testing' | 'results' | 'bank' | 'history' | 'progress';
 
 export default function App() {
   const [theme, setTheme] = useState<ThemeMode>(() => getStoredTheme());
@@ -53,6 +57,8 @@ export default function App() {
   const [isCustomTestModalOpen, setIsCustomTestModalOpen] = useState(false);
   const [isBulkImportModalOpen, setIsBulkImportModalOpen] = useState(false);
   const [isCloudModalOpen, setIsCloudModalOpen] = useState(false);
+  const [isAiWeakSpotModalOpen, setIsAiWeakSpotModalOpen] = useState(false);
+  const [isRapidDrillModalOpen, setIsRapidDrillModalOpen] = useState(false);
   const [bulkImportTopic, setBulkImportTopic] = useState<string | undefined>(undefined);
 
   const candidateName = 'PrIyA PaTeL';
@@ -350,6 +356,8 @@ export default function App() {
         onOpenBulkImport={() => handleOpenBulkImportWithTopic(undefined)}
         onOpenCloudModal={() => setIsCloudModalOpen(true)}
         onRestoreTests={handleRestoreTests}
+        onOpenAiWeakSpots={() => setIsAiWeakSpotModalOpen(true)}
+        onOpenRapidDrills={() => setIsRapidDrillModalOpen(true)}
         theme={theme}
         onToggleTheme={toggleTheme}
         onInstallApp={handleInstallApp}
@@ -425,6 +433,14 @@ export default function App() {
           />
         )}
 
+        {activeView === 'progress' && (
+          <ProgressAnalyticsView
+            onBackToTests={handleGoBack}
+            onOpenCustomTest={() => setIsCustomTestModalOpen(true)}
+            onOpenRapidDrills={() => setIsRapidDrillModalOpen(true)}
+          />
+        )}
+
         {activeView === 'testing' && (
           <CBTTestView
             testSet={currentSet}
@@ -495,6 +511,22 @@ export default function App() {
             setAvailableSets(getAllAvailableTests());
             setTotalQuestionsCount(getAllQuestionBank().length);
           }}
+        />
+      )}
+
+      {isAiWeakSpotModalOpen && (
+        <AiWeakSpotModal
+          isOpen={isAiWeakSpotModalOpen}
+          onClose={() => setIsAiWeakSpotModalOpen(false)}
+          onStartTest={handleStartCustomCreatedTest}
+        />
+      )}
+
+      {isRapidDrillModalOpen && (
+        <RapidDrillModal
+          isOpen={isRapidDrillModalOpen}
+          onClose={() => setIsRapidDrillModalOpen(false)}
+          onStartTest={handleStartCustomCreatedTest}
         />
       )}
 

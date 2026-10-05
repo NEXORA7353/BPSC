@@ -40,7 +40,7 @@ interface TopBarProps {
   isTesting: boolean;
   theme: ThemeMode;
   onToggleTheme: () => void;
-  activeView: 'intro' | 'testing' | 'results' | 'bank' | 'history';
+  activeView: 'intro' | 'testing' | 'results' | 'bank' | 'history' | 'progress';
   totalQuestionsCount?: number;
   userName?: string;
 }

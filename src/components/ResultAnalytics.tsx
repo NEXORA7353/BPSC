@@ -16,7 +16,8 @@ import {
   ChevronDown,
   ChevronUp,
   Sparkles,
-  BarChart3
+  BarChart3,
+  Printer
 } from 'lucide-react';
 import { MockTestSet, TestResult } from '../types';
 import {
@@ -24,6 +25,7 @@ import {
   toggleBookmarkQuestion,
   getBookmarkedIds
 } from '../utils/questionBankStorage';
+import { exportTestToPrintablePdf } from '../utils/pdfExporter';
 import { BackButton } from './BackButton';
 
 interface ResultAnalyticsProps {
@@ -203,6 +205,15 @@ export function ResultAnalytics({
               >
                 <Share2 className="w-3.5 h-3.5 text-amber-500" />
                 <span>Share</span>
+              </button>
+
+              <button
+                onClick={() => exportTestToPrintablePdf(testSet)}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-900 bg-amber-400 hover:bg-amber-300 shadow-md transition-all active:scale-95 flex items-center gap-1.5"
+                title="Print or Save as BPSC PDF Exam Paper with OMR Sheet & Explanations"
+              >
+                <Printer className="w-3.5 h-3.5 fill-slate-950" />
+                <span>PDF Paper</span>
               </button>
 
               <button
