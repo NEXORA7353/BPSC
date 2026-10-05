@@ -17,10 +17,11 @@ import {
   Wand2,
   FileUp,
   Save,
-  Play
+  Play,
+  Calendar
 } from 'lucide-react';
 import { Question, MockTestSet } from '../types';
-import { parseBulkQuestionText, aiSmartFormatText } from '../utils/questionParser';
+import { parseBulkQuestionText, aiSmartFormatText, getFormattedImportDate } from '../utils/questionParser';
 import {
   addQuestionsToBank,
   getAllRegisteredTopics,
@@ -114,8 +115,25 @@ export function BulkImportModal({
   const currentTopicObj = registeredTopics.find((t) => t.key === selectedTopic);
   const topicNameHindi = currentTopicObj?.labelHindi || 'विविध गणित (Custom Topic)';
 
-  const handleParseText = (text: string) => {
-    const result = parseBulkQuestionText(text, selectedTopic, topicNameHindi);
+  const handleTopicChange = (newKey: string) => {
+    setSelectedTopic(newKey);
+    const topicObj = registeredTopics.find((t) => t.key === newKey);
+    const newHindi = topicObj?.labelHindi || 'विविध गणित (Custom Topic)';
+    if (previewQuestions.length > 0) {
+      const updated = previewQuestions.map((q) => ({
+        ...q,
+        topic: newKey,
+        topicNameHindi: newHindi
+      }));
+      setPreviewQuestions(updated);
+      setJsonText(JSON.stringify(updated, null, 2));
+    }
+  };
+
+  const handleParseText = (text: string, overrideTopicKey?: string, overrideTopicHindi?: string) => {
+    const targetKey = overrideTopicKey || selectedTopic;
+    const targetHindi = overrideTopicHindi || topicNameHindi;
+    const result = parseBulkQuestionText(text, targetKey, targetHindi);
     setPreviewQuestions(result.questions);
     setParseErrors(result.errors);
     if (result.questions.length > 0) {
@@ -169,7 +187,7 @@ export function BulkImportModal({
     const key = newTopicHindi.trim().toLowerCase().replace(/[^a-z0-9]/gi, '_');
     const created = registerNewTopic(key, newTopicHindi, newTopicEnglish || newTopicHindi);
     setRegisteredTopics(getAllRegisteredTopics());
-    setSelectedTopic(created.key);
+    handleTopicChange(created.key);
     setIsCreatingNewTopic(false);
     setNewTopicHindi('');
     setNewTopicEnglish('');
@@ -213,7 +231,15 @@ export function BulkImportModal({
   // Save to Question Bank
   const handleSaveImport = () => {
     if (previewQuestions.length === 0) return;
-    const { count } = addQuestionsToBank(previewQuestions);
+    const dateFormatted = getFormattedImportDate();
+    const stampedQuestions = previewQuestions.map((q) => ({
+      ...q,
+      topic: selectedTopic,
+      topicNameHindi: topicNameHindi,
+      createdAt: q.createdAt || dateFormatted
+    }));
+
+    const { count } = addQuestionsToBank(stampedQuestions);
     setIsSuccessToast(true);
     setTimeout(() => {
       setIsSuccessToast(false);
@@ -225,23 +251,31 @@ export function BulkImportModal({
   // Save & Create Dedicated Mock Test Set Immediately
   const handleSaveAndCreateTest = () => {
     if (previewQuestions.length === 0) return;
-    const { count } = addQuestionsToBank(previewQuestions);
-    const testTitle = testTitleInput.trim() || `Imported Test Set (${previewQuestions.length} Questions)`;
+    const dateFormatted = getFormattedImportDate();
+    const stampedQuestions = previewQuestions.map((q) => ({
+      ...q,
+      topic: selectedTopic,
+      topicNameHindi: topicNameHindi,
+      createdAt: q.createdAt || dateFormatted
+    }));
+
+    const { count } = addQuestionsToBank(stampedQuestions);
+    const testTitle = testTitleInput.trim() || `Imported Test Set (${stampedQuestions.length} Questions)`;
 
     const newTest: MockTestSet = {
       id: `custom_test_${Date.now()}`,
       title: testTitle,
-      subtitle: `Created from bulk import on ${new Date().toLocaleDateString()}`,
+      subtitle: `Created from bulk import on ${dateFormatted}`,
       targetExam: 'BPSC TRE 4.0 Mathematics (Custom Imported)',
       category: 'custom',
       categoryTitle: 'Custom Imported Tests',
       topicBadges: [topicNameHindi, 'Imported Test'],
-      totalQuestions: previewQuestions.length,
-      totalTimeMinutes: previewQuestions.length,
-      questions: previewQuestions,
+      totalQuestions: stampedQuestions.length,
+      totalTimeMinutes: stampedQuestions.length,
+      questions: stampedQuestions,
       negativeMarkingValue: 0.33,
       isCustom: true,
-      createdAt: new Date().toISOString()
+      createdAt: dateFormatted
     };
 
     saveCustomTest(newTest);
@@ -380,7 +414,7 @@ export function BulkImportModal({
                 <span className="font-bold text-slate-700 dark:text-slate-300">Assign to Topic:</span>
                 <select
                   value={selectedTopic}
-                  onChange={(e) => setSelectedTopic(e.target.value)}
+                  onChange={(e) => handleTopicChange(e.target.value)}
                   className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-1.5 font-bold text-slate-900 dark:text-slate-100 focus:outline-none"
                 >
                   {registeredTopics.map((t) => (
@@ -741,14 +775,23 @@ Smart parser automatically extracts:
                       key={idx}
                       className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 text-xs space-y-2.5"
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span className="w-6 h-6 rounded-md bg-amber-500/20 text-amber-600 dark:text-amber-300 font-mono font-bold flex items-center justify-center text-[11px]">
                             Q{idx + 1}
+                          </span>
+                          <span className="px-2 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950/70 text-indigo-800 dark:text-indigo-300 font-bold text-[11px]">
+                            {q.topicNameHindi || topicNameHindi}
                           </span>
                           <span className="font-semibold text-slate-500 dark:text-slate-400">
                             {q.exam}
                           </span>
+                          {q.createdAt && (
+                            <span className="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold text-[10px] flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              <span>{q.createdAt}</span>
+                            </span>
+                          )}
                         </div>
 
                         <div className="flex items-center gap-2">

@@ -25,26 +25,34 @@ const STORAGE_KEYS = {
 };
 
 export const DEFAULT_TOPICS: RegisteredTopic[] = [
-  {
-    key: 'lcm_hcf',
-    labelHindi: 'लघुत्तम और महत्तम समापवर्तक (LCM & HCF)',
-    labelEnglish: 'LCM & HCF'
-  },
-  {
-    key: 'percentage',
-    labelHindi: 'प्रतिशत (Percentage)',
-    labelEnglish: 'Percentage'
-  },
-  {
-    key: 'profit_loss',
-    labelHindi: 'लाभ और हानि (Profit & Loss)',
-    labelEnglish: 'Profit & Loss'
-  },
-  {
-    key: 'custom',
-    labelHindi: 'विविध / अन्य गणित (Custom Topics)',
-    labelEnglish: 'Custom & Miscellaneous'
-  }
+  { key: 'number_system', labelHindi: 'संख्या पद्धति (Number System)', labelEnglish: 'Number System' },
+  { key: 'lcm_hcf', labelHindi: 'लघुत्तम और महत्तम समापवर्तक (LCM & HCF)', labelEnglish: 'LCM & HCF' },
+  { key: 'equations', labelHindi: 'रैखिक / द्विघात समीकरण (Linear / Quadratic Equations)', labelEnglish: 'Linear / Quadratic Equations' },
+  { key: 'ratio_proportion', labelHindi: 'अनुपात और समानुपात (Ratio & Proportion)', labelEnglish: 'Ratio & Proportion' },
+  { key: 'age_problems', labelHindi: 'आयु संबंधित प्रश्न (Age Related Questions)', labelEnglish: 'Age Related Questions' },
+  { key: 'partnership', labelHindi: 'साझेदारी (Partnership)', labelEnglish: 'Partnership' },
+  { key: 'average', labelHindi: 'औसत (Average)', labelEnglish: 'Average' },
+  { key: 'percentage', labelHindi: 'प्रतिशत (Percentage)', labelEnglish: 'Percentage' },
+  { key: 'profit_loss', labelHindi: 'लाभ और हानि (Profit & Loss)', labelEnglish: 'Profit & Loss' },
+  { key: 'discount', labelHindi: 'बट्टा / छूट (Discount)', labelEnglish: 'Discount' },
+  { key: 'simple_interest', labelHindi: 'साधारण ब्याज (Simple Interest)', labelEnglish: 'Simple Interest' },
+  { key: 'compound_interest', labelHindi: 'चक्रवृद्धि ब्याज (Compound Interest)', labelEnglish: 'Compound Interest' },
+  { key: 'time_work', labelHindi: 'कार्य और समय (Time & Work)', labelEnglish: 'Time & Work' },
+  { key: 'pipe_cistern', labelHindi: 'पाइप और टंकी (Pipe & Cistern)', labelEnglish: 'Pipe & Cistern' },
+  { key: 'time_distance', labelHindi: 'समय और दूरी (Time & Distance)', labelEnglish: 'Time & Distance' },
+  { key: 'boats_stream', labelHindi: 'नाव और धारा (Boats & Stream)', labelEnglish: 'Boats & Stream' },
+  { key: 'mixture', labelHindi: 'मिश्रण (Mixture / Alligation)', labelEnglish: 'Mixture' },
+  { key: 'statistics', labelHindi: 'आंकड़े (Statistics)', labelEnglish: 'Statistics' },
+  { key: 'stocks_shares', labelHindi: 'स्टॉक और शेयर (Stock & Shares)', labelEnglish: 'Stock & Shares' },
+  { key: 'probability_perm_comb', labelHindi: 'प्रायिकता / क्रमचय और संचय (Probability / Permutation & Combination)', labelEnglish: 'Probability & Combination' },
+  { key: 'progression', labelHindi: 'श्रेणी (Progression AP/GP)', labelEnglish: 'Progression' },
+  { key: 'trigonometry', labelHindi: 'त्रिकोणमिति (Trigonometry)', labelEnglish: 'Trigonometry' },
+  { key: 'height_distance', labelHindi: 'ऊंचाई और दूरी (Height & Distance)', labelEnglish: 'Height & Distance' },
+  { key: 'mensuration', labelHindi: 'क्षेत्रमिति (Mensuration)', labelEnglish: 'Mensuration' },
+  { key: 'geometry', labelHindi: 'ज्यामिति (Geometry)', labelEnglish: 'Geometry' },
+  { key: 'coordinate_geometry', labelHindi: 'निर्देशांक ज्यामिति (Co-Ordinate Geometry)', labelEnglish: 'Coordinate Geometry' },
+  { key: 'miscellaneous', labelHindi: 'विविध गणित (Miscellaneous)', labelEnglish: 'Miscellaneous' },
+  { key: 'custom', labelHindi: 'विविध / अन्य गणित (Custom Topics)', labelEnglish: 'Custom & Miscellaneous' }
 ];
 
 // 🛡️ BULLETPROOF SANITIZERS (Prevents all .map crashes)
