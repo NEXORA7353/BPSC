@@ -540,9 +540,68 @@ export function getAllAvailableTests(): MockTestSet[] {
     .map(sanitizeTestSet);
 }
 
+export function getUsedQuestionsInfo(): {
+  usedIds: Set<string>;
+  usedTextSet: Set<string>;
+  questionUsageMap: Map<string, string[]>;
+} {
+  const tests = getAllAvailableTests();
+  const usedIds = new Set<string>();
+  const usedTextSet = new Set<string>();
+  const questionUsageMap = new Map<string, string[]>();
+
+  tests.forEach((t) => {
+    if (Array.isArray(t.questions)) {
+      t.questions.forEach((q) => {
+        if (q && q.id) {
+          usedIds.add(q.id);
+          const current = questionUsageMap.get(q.id) || [];
+          if (!current.includes(t.title)) {
+            current.push(t.title);
+          }
+          questionUsageMap.set(q.id, current);
+        }
+        if (q && q.questionText) {
+          const norm = q.questionText.trim().toLowerCase().replace(/\s+/g, ' ');
+          if (norm.length > 5) {
+            usedTextSet.add(norm);
+          }
+        }
+      });
+    }
+  });
+
+  return { usedIds, usedTextSet, questionUsageMap };
+}
+
 export function createCustomMockTest(config: CustomTestConfig): MockTestSet {
   const allQuestions = getAllQuestionBank();
   let selected: Question[] = [];
+
+  const { usedIds, usedTextSet } = getUsedQuestionsInfo();
+  const isQuestionUnused = (q: Question) => {
+    if (usedIds.has(q.id)) return false;
+    const norm = q.questionText.trim().toLowerCase().replace(/\s+/g, ' ');
+    if (norm.length > 5 && usedTextSet.has(norm)) return false;
+    return true;
+  };
+
+  const processPool = (pool: Question[], reqCount: number) => {
+    if (config.preferUnused) {
+      const unusedPool = pool.filter(isQuestionUnused);
+      const usedPool = pool.filter((q) => !isQuestionUnused(q));
+      if (config.selectionMode === 'random') {
+        const shuffUnused = [...unusedPool].sort(() => Math.random() - 0.5);
+        const shuffUsed = [...usedPool].sort(() => Math.random() - 0.5);
+        return [...shuffUnused, ...shuffUsed].slice(0, Math.min(reqCount, pool.length));
+      } else {
+        return [...unusedPool, ...usedPool].slice(0, Math.min(reqCount, pool.length));
+      }
+    } else {
+      const candidates = config.selectionMode === 'random' ? [...pool].sort(() => Math.random() - 0.5) : pool;
+      return candidates.slice(0, Math.min(reqCount, pool.length));
+    }
+  };
 
   if (config.creationMode === 'direct_paste' && Array.isArray(config.directQuestions)) {
     selected = [...config.directQuestions].map(sanitizeQuestion);
@@ -553,8 +612,7 @@ export function createCustomMockTest(config: CustomTestConfig): MockTestSet {
     Object.entries(config.topicDistribution).forEach(([tKey, reqCount]) => {
       if (reqCount <= 0) return;
       const topicPool = allQuestions.filter((q) => q.topic === tKey);
-      const shuffled = config.selectionMode === 'random' ? [...topicPool].sort(() => Math.random() - 0.5) : topicPool;
-      selected.push(...shuffled.slice(0, Math.min(reqCount, shuffled.length)));
+      selected.push(...processPool(topicPool, reqCount));
     });
   } else {
     let pool = allQuestions;
@@ -566,12 +624,7 @@ export function createCustomMockTest(config: CustomTestConfig): MockTestSet {
       pool = pool.filter((q) => bIds.has(q.id));
     }
     const count = config.questionCount || 20;
-    if (config.selectionMode === 'random' || config.selectionMode === 'bookmarked') {
-      const shuffled = [...pool].sort(() => Math.random() - 0.5);
-      selected = shuffled.slice(0, Math.min(count, shuffled.length));
-    } else {
-      selected = pool.slice(0, Math.min(count, pool.length));
-    }
+    selected = processPool(pool, count);
   }
 
   if (selected.length === 0) {

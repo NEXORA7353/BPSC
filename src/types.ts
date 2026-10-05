@@ -106,6 +106,7 @@ export interface CustomTestConfig {
   selectionMode: 'random' | 'sequential' | 'bookmarked';
   negativeMarking: number; // 0.33, 0.25, 0
   targetExam?: string;
+  preferUnused?: boolean;
 }
 
 export type ThemeMode = 'light' | 'dark';
