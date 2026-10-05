@@ -499,6 +499,19 @@ export function QuestionBankView({
                   <MathText text={q.questionText} />
                 </div>
 
+                {q.imageUrl && !q.questionText?.includes(q.imageUrl) && (
+                  <div className="my-3 flex flex-col items-center justify-center p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 shadow-xs max-w-md mx-auto">
+                    <img
+                      src={q.imageUrl}
+                      alt="प्रश्न आकृति / Diagram"
+                      className="max-h-60 w-auto object-contain rounded-xl"
+                    />
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-semibold">
+                      प्रश्न संबंधित आकृति (Diagram)
+                    </span>
+                  </div>
+                )}
+
                 {/* Options Grid in Hindi */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                   {q.options.map((opt) => {

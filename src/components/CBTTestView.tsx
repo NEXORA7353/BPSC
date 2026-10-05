@@ -509,6 +509,19 @@ export function CBTTestView({
               <MathText text={currentQ.questionText} />
             </div>
 
+            {currentQ.imageUrl && !currentQ.questionText?.includes(currentQ.imageUrl) && (
+              <div className="my-3 flex flex-col items-center justify-center p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 shadow-xs max-w-md mx-auto">
+                <img
+                  src={currentQ.imageUrl}
+                  alt="प्रश्न आकृति / Diagram"
+                  className="max-h-60 w-auto object-contain rounded-xl"
+                />
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-semibold">
+                  प्रश्न संबंधित आकृति (Diagram)
+                </span>
+              </div>
+            )}
+
             <div className="space-y-3 pt-2">
               <div className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                 Select Option (A, B, C, D, E):
