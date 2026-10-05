@@ -139,17 +139,19 @@ function hasRecognizableOptions(t: string): boolean {
 }
 
 const isKeywordQuestionStart = (t: string) =>
-  /^\s*(?:(?:प्रश्न|प्रश्नावली|Q(?:uestion)?|Prashna|Q\.)\s*[:\-.]?\s*\d+)/i.test(t);
+  /^\s*(?:(?:प्रश्न|प्रश्नावली|Q(?:uestion)?|Prashna|Q\.)\s*[:\-.]?\s*\d+(?:[\.:\)\-\]\}\s]|$)(?!\s*(?:का|के|की|में|से|पर|द्वारा|को|ने|वाला|वाली)))/i.test(t);
 
 const isBareNumberQuestionStart = (t: string) =>
   /^\s*(?:\(?\d{1,4}\)?[\.\)\-]|\[\d{1,4}\])\s+(?![=:\d\+\-\*\/])/.test(t) &&
   !/^\s*\d{1,4}\s*[:=]/.test(t);
 
 const hasExplanationStarted = (t: string) =>
-  /(?:^|\n)\s*(?:व्याख्या|Explanation|Solution|हल|Reason|तर्क)\s*[:\-]/i.test(t);
+  /(?:^|\n|[\s,;।|])(?:व्याख्या|Explanation|Solution|हल|Reason|तर्क)\.?\s*[:\-]/i.test(t) ||
+  /(?:^|\n|[\s,;।|])(?:Ans(?:wer)?|उत्तर|Key)\.?\s*[:\-]?\s*\(?[a-eA-E1-5]|अ|ब|स|द|य/i.test(t);
 
 const isMetadataOrExplanation = (t: string) =>
-  /(?:^|\n)\s*(?:व्याख्या|Explanation|Solution|हल|उत्तर|Ans|Key|परीक्षा|Exam|Source)\s*[:\-]/i.test(t);
+  /(?:^|\n|[\s,;।|])(?:व्याख्या|Explanation|Solution|हल|Reason|तर्क|परीक्षा|Exam|Source)\.?\s*[:\-]/i.test(t) ||
+  /(?:^|\n|[\s,;।|])(?:Ans(?:wer)?|उत्तर|Key)\.?\s*[:\-]?\s*\(?[a-eA-E1-5]|अ|ब|स|द|य/i.test(t);
 
 /**
  * Universal smart question splitter & consolidator.
@@ -158,9 +160,9 @@ const isMetadataOrExplanation = (t: string) =>
  */
 export function smartSplitQuestionBlocks(text: string): string[] {
   // Pre-normalize gaps before explicit keyword question starts, ensuring at least \n\n precedes each question
-  // even if it appears inline (e.g. "... = 79 प्रश्न 37.") or after a single newline.
+  // Note: Negative lookahead ensures references like "प्रश्न 24 का पुनरावृत्त रूप" are not split!
   const withNormalizedGaps = text.replace(
-    /(\n*)\s*(?=(?:(?:प्रश्न|प्रश्नावली|Q(?:uestion)?|Prashna|Q\.)\s*[:\-.]?\s*\d+))/gi,
+    /(\n*)\s*(?=(?:(?:प्रश्न|प्रश्नावली|Q(?:uestion)?|Prashna|Q\.)\s*[:\-.]?\s*\d+(?:[\.:\)\-\]\}\s]|$)(?!\s*(?:का|के|की|में|से|पर|द्वारा|को|ने|वाला|वाली))))/gi,
     (_m, _newlines, offset) => (offset === 0 ? '' : '\n\n')
   );
 
@@ -269,9 +271,9 @@ export function parseSingleQuestionBlock(
     }
   }
 
-  // 2. Extract Answer Key (safe against Hindi option text like 'उत्तर नहीं देना चाहते')
+  // 2. Extract Answer Key (Universal: handles newline, inline after options, Ans., Ans:, उत्तर:, etc.)
   let correctOption: 'a' | 'b' | 'c' | 'd' | 'e' = 'a';
-  const safeAnsRegex = /(?:^|\n)\s*(?:उत्तर|Ans(?:wer)?|Key|Correct|सही उत्तर)\s*(?:[:\-]\s*\(?|\s*\()\s*([a-eA-E1-5]|अ|ब|स|द|य|क|ख|ग|घ|ङ)\s*\)?/i;
+  const safeAnsRegex = /(?:^|\n|[\s,;।|])(?:उत्तर|Ans(?:wer)?|Key|Correct|सही उत्तर)\.?\s*[:\-]?\s*\(?\s*([a-eA-E1-5]|अ|ब|स|द|य|क|ख|ग|घ|ङ)\s*\)?[:\-]?/i;
   const ansMatch = body.match(safeAnsRegex);
 
   if (ansMatch) {
@@ -285,29 +287,25 @@ export function parseSingleQuestionBlock(
     else if (keyStr === '5' || keyStr === 'य' || keyStr === 'ङ') correctOption = 'e';
   }
 
-  // 3. Extract Explanation / Solution
+  // 3. Extract Explanation / Solution and completely separate it from body BEFORE option extraction
   let explanation = '';
-  const expRegex = /(?:^|\n)\s*(?:व्याख्या|हल|Explanation|Solution|Reason|तर्क)\s*[:\-]?\s*([\s\S]+?)(?=(?:\n\s*(?:(?:प्रश्न|प्रश्नावली|Q(?:uestion)?|Prashna|Q\.)\s*[:\-.]?\s*\d+[\.:\)\-\]\}\s]))|$)/i;
-  const expMatch = body.match(expRegex);
+  const expKeywordRegex = /(?:^|\n|[\s,;।|])(?:व्याख्या|हल|Explanation|Solution|Reason|तर्क)\.?\s*[:\-]?\s*([\s\S]+?)(?=(?:\n\s*(?:(?:प्रश्न|प्रश्नावली|Q(?:uestion)?|Prashna|Q\.)\s*[:\-.]?\s*\d+[\.:\)\-\]\}\s]))|$)/i;
+  const expMatch = body.match(expKeywordRegex);
 
-  if (expMatch) {
+  if (expMatch && typeof expMatch.index === 'number') {
     explanation = expMatch[1].trim();
     body = body.slice(0, expMatch.index).trim();
-  } else if (ansMatch) {
-    const afterAns = body.slice((ansMatch.index || 0) + ansMatch[0].length);
-    const trimmedAfter = afterAns.replace(/^[:\-\s]+/, '').trim();
-    if (trimmedAfter.length > 3) {
-      explanation = trimmedAfter;
+  } else if (ansMatch && typeof ansMatch.index === 'number') {
+    // If no explicit 'व्याख्या:', everything after the Answer Key is the solution!
+    const afterAns = body.slice(ansMatch.index + ansMatch[0].length).trim();
+    if (afterAns.length > 3) {
+      explanation = afterAns;
+      body = body.slice(0, ansMatch.index).trim();
     }
   }
 
-  if (ansMatch) {
-    body = body.replace(safeAnsRegex, '').trim();
-  }
-
-  if (!explanation) {
-    explanation = `सही उत्तर विकल्प (${correctOption.toUpperCase()}) है।`;
-  }
+  // Strip answer key if it remained in body (e.g. before an explicit व्याख्या)
+  body = body.replace(safeAnsRegex, '').trim();
 
   // 4. Extract Exam Tag (Strict: Must have colon/hyphen/brackets to avoid matching words like "एक परीक्षा में..." in question text)
   let exam = 'BPSC TRE 4.0 / STET';
@@ -318,7 +316,11 @@ export function parseSingleQuestionBlock(
     body = body.replace(examRegex, '').trim();
   }
 
-  // 5. Multi-Pattern Options Extractor
+  if (!explanation) {
+    explanation = `सही उत्तर विकल्प (${correctOption.toUpperCase()}) है।`;
+  }
+
+  // 5. Multi-Pattern Options Extractor (Body is now free of explanation and answer key!)
   const { questionText, optA, optB, optC, optD, optE } = extractOptionsAndText(body);
 
   const finalOptE = optE || 'अनुत्तरित प्रश्न (यदि किसी प्रश्न का उत्तर नहीं देना चाहते, तो विकल्प E चुनें — इससे न अंक मिलेगा, न कटेगा।)';
@@ -355,8 +357,8 @@ function extractOptionsAndText(body: string) {
       a: /(?:\((?:a|A|अ|क)\)|(?:^|\s)(?:a|A|अ|क)[\.\)])\s*([\s\S]*?)(?=(?:\((?:b|B|ब|ख)\)|(?:^|\s)(?:b|B|ब|ख)[\.\)]))/i,
       b: /(?:\((?:b|B|ब|ख)\)|(?:^|\s)(?:b|B|ब|ख)[\.\)])\s*([\s\S]*?)(?=(?:\((?:c|C|स|ग)\)|(?:^|\s)(?:c|C|स|ग)[\.\)]))/i,
       c: /(?:\((?:c|C|स|ग)\)|(?:^|\s)(?:c|C|स|ग)[\.\)])\s*([\s\S]*?)(?=(?:\((?:d|D|द|घ)\)|(?:^|\s)(?:d|D|द|घ)[\.\)]))/i,
-      d: /(?:\((?:d|D|द|घ)\)|(?:^|\s)(?:d|D|द|घ)[\.\)])\s*([\s\S]*?)(?=(?:\((?:e|E|य|ङ)\)|(?:^|\s)(?:e|E|य|ङ)[\.\)]|(?:\n\s*(?:परीक्षा|Exam)|(?:उत्तर|Ans|Answer|Key)\s*[:\-]|(?:व्याख्या|Solution|हल)\s*[:\-]|$)))/i,
-      e: /(?:\((?:e|E|य|ङ)\)|(?:^|\s)(?:e|E|य|ङ)[\.\)])\s*([\s\S]*?)(?=(?:\n\s*(?:परीक्षा|Exam)|(?:उत्तर|Ans|Answer|Key)\s*[:\-]|(?:व्याख्या|Solution|हल)\s*[:\-]|$))/i,
+      d: /(?:\((?:d|D|द|घ)\)|(?:^|\s)(?:d|D|द|घ)[\.\)])\s*([\s\S]*?)(?=(?:\((?:e|E|य|ङ)\)|(?:^|\s)(?:e|E|य|ङ)[\.\)]|(?:\n|[\s,;।|])(?:परीक्षा|Exam)\s*[:\-]|(?:\n|[\s,;।|])(?:उत्तर|Ans(?:wer)?|Key)\.?\s*[:\-]?|(?:\n|[\s,;।|])(?:व्याख्या|Solution|हल)\.?\s*[:\-]?|$))/i,
+      e: /(?:\((?:e|E|य|ङ)\)|(?:^|\s)(?:e|E|य|ङ)[\.\)])\s*([\s\S]*?)(?=(?:\n|[\s,;।|])(?:परीक्षा|Exam)\s*[:\-]|(?:\n|[\s,;।|])(?:उत्तर|Ans(?:wer)?|Key)\.?\s*[:\-]?|(?:\n|[\s,;।|])(?:व्याख्या|Solution|हल)\.?\s*[:\-]?|$)/i,
       splitRegex: /(?:\((?:a|A|अ|क)\)|(?:^|\s)(?:a|A|अ|क)[\.\)])/i
     },
     // (1) (2) (3) (4) (5) or 1) 2) 3) 4) 5) (excluding fractions like (1/3) or (2/5))
@@ -364,8 +366,8 @@ function extractOptionsAndText(body: string) {
       a: /(?:\((?:1)\)(?!\/)|(?:^|\s)(?:1)[\.\)](?!\/))\s*([\s\S]*?)(?=(?:\((?:2)\)(?!\/)|(?:^|\s)(?:2)[\.\)](?!\/)))/i,
       b: /(?:\((?:2)\)(?!\/)|(?:^|\s)(?:2)[\.\)](?!\/))\s*([\s\S]*?)(?=(?:\((?:3)\)(?!\/)|(?:^|\s)(?:3)[\.\)](?!\/)))/i,
       c: /(?:\((?:3)\)(?!\/)|(?:^|\s)(?:3)[\.\)](?!\/))\s*([\s\S]*?)(?=(?:\((?:4)\)(?!\/)|(?:^|\s)(?:4)[\.\)](?!\/)))/i,
-      d: /(?:\((?:4)\)(?!\/)|(?:^|\s)(?:4)[\.\)](?!\/))\s*([\s\S]*?)(?=(?:\((?:5)\)(?!\/)|(?:^|\s)(?:5)[\.\)](?!\/)|(?:\n\s*(?:परीक्षा|Exam)|(?:उत्तर|Ans|Answer|Key)\s*[:\-]|(?:व्याख्या|Solution|हल)\s*[:\-]|$)))/i,
-      e: /(?:\((?:5)\)(?!\/)|(?:^|\s)(?:5)[\.\)](?!\/))\s*([\s\S]*?)(?=(?:\n\s*(?:परीक्षा|Exam)|(?:उत्तर|Ans|Answer|Key)\s*[:\-]|(?:व्याख्या|Solution|हल)\s*[:\-]|$))/i,
+      d: /(?:\((?:4)\)(?!\/)|(?:^|\s)(?:4)[\.\)](?!\/))\s*([\s\S]*?)(?=(?:\((?:5)\)(?!\/)|(?:^|\s)(?:5)[\.\)](?!\/)|(?:\n|[\s,;।|])(?:परीक्षा|Exam)\s*[:\-]|(?:\n|[\s,;।|])(?:उत्तर|Ans(?:wer)?|Key)\.?\s*[:\-]?|(?:\n|[\s,;।|])(?:व्याख्या|Solution|हल)\.?\s*[:\-]?|$))/i,
+      e: /(?:\((?:5)\)(?!\/)|(?:^|\s)(?:5)[\.\)](?!\/))\s*([\s\S]*?)(?=(?:\n|[\s,;।|])(?:परीक्षा|Exam)\s*[:\-]|(?:\n|[\s,;।|])(?:उत्तर|Ans(?:wer)?|Key)\.?\s*[:\-]?|(?:\n|[\s,;।|])(?:व्याख्या|Solution|हल)\.?\s*[:\-]?|$)/i,
       splitRegex: /(?:\((?:1)\)(?!\/)|(?:^|\s)(?:1)[\.\)](?!\/))/i
     }
   ];
@@ -391,18 +393,22 @@ function extractOptionsAndText(body: string) {
     }
   }
 
-  // Fallback line-by-line extractor
+  // Fallback line-by-line extractor: ONLY when lines explicitly start with option identifiers like (a)/(b) or A./B. or 1)/2)
   const lines = body.split('\n').map((l) => l.trim()).filter(Boolean);
-  if (lines.length >= 5) {
-    questionText = lines[0];
-    optA = cleanOptionText(lines[1]);
-    optB = cleanOptionText(lines[2]);
-    optC = cleanOptionText(lines[3]);
-    optD = cleanOptionText(lines[4]);
-    if (lines[5]) optE = cleanOptionText(lines[5]);
-  } else {
-    questionText = body;
+  const optLineRegex = /^(?:\(?[a-eA-E1-5]\)?[\.\)\-]|\(?[अ-ङ]\)?[\.\)\-])\s+/;
+  if (lines.length >= 4) {
+    const hasLabeledLines = lines.slice(1, 5).some((l) => optLineRegex.test(l));
+    if (hasLabeledLines) {
+      questionText = lines[0];
+      optA = cleanOptionText(lines[1].replace(optLineRegex, ''));
+      optB = cleanOptionText(lines[2]?.replace(optLineRegex, '') || '');
+      optC = cleanOptionText(lines[3]?.replace(optLineRegex, '') || '');
+      optD = cleanOptionText(lines[4]?.replace(optLineRegex, '') || '');
+      if (lines[5]) optE = cleanOptionText(lines[5].replace(optLineRegex, ''));
+      return { questionText, optA, optB, optC, optD, optE };
+    }
   }
+  questionText = body;
 
   return { questionText, optA, optB, optC, optD, optE };
 }
@@ -412,9 +418,9 @@ function cleanOptionText(str: string): string {
   return str
     .replace(/\n/g, ' ')
     .replace(/\s+/g, ' ')
-    .replace(/(?:\n\s*(?:परीक्षा|Exam)\s*[:\-].*$)/i, '')
-    .replace(/(?:उत्तर|Ans|Answer|Key)\s*[:\-]\s*\(?[a-eA-E1-5].*$/i, '')
-    .replace(/(?:व्याख्या|Solution|हल|Explanation)\s*[:\-].*$/i, '')
+    .replace(/(?:(?:\n|[\s,;।|])(?:परीक्षा|Exam)\s*[:\-].*$)/i, '')
+    .replace(/(?:(?:\n|[\s,;।|])(?:उत्तर|Ans(?:wer)?|Key|Correct)\.?\s*[:\-]?\s*\(?[a-eA-E1-5].*$)/i, '')
+    .replace(/(?:(?:\n|[\s,;।|])(?:व्याख्या|Solution|हल|Explanation)\.?\s*[:\-].*$)/i, '')
     .trim();
 }
 
