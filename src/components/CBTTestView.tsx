@@ -522,6 +522,13 @@ export function CBTTestView({
               </div>
             )}
 
+            {currentQ.svgContent && (
+              <div
+                className="my-3 flex flex-col items-center justify-center p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 shadow-xs max-w-xs sm:max-w-sm mx-auto overflow-hidden"
+                dangerouslySetInnerHTML={{ __html: currentQ.svgContent }}
+              />
+            )}
+
             <div className="space-y-3 pt-2">
               <div className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                 Select Option (A, B, C, D, E):

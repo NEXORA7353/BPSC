@@ -4,14 +4,19 @@
       .box-front { fill: none; stroke: #3b82f6; stroke-width: 2.5; stroke-linecap: round; }
       .box-back { fill: none; stroke: #94a3b8; stroke-width: 1.5; stroke-dasharray: 4,4; }
       .box-diag { stroke: #ef4444; stroke-width: 2.5; stroke-linecap: round; }
-      .box-text { font-family: system-ui, -apple-system, sans-serif; font-size: 13px; font-weight: bold; fill: #1e293b; }
+      .box-text { font-family: system-ui, -apple-system, sans-serif; font-size: 13px; font-weight: bold; fill: #0f172a; text-anchor: middle; }
+      .badge-bg { rx: 6; fill: #ffffff; stroke: #cbd5e1; stroke-width: 1; }
       @media (prefers-color-scheme: dark) {
         .box-front { stroke: #60a5fa; }
         .box-back { stroke: #64748b; }
         .box-text { fill: #f8fafc; }
+        .badge-bg { fill: #0f172a; stroke: #334155; }
       }
     </style>
   </defs>
+
+  <!-- Background card -->
+  <rect width="340" height="280" fill="#f8fafc" class="dark:fill-slate-900" rx="16" />
 
   <!-- Front Face: (l=8, h=10) -->
   <polygon points="60,200 200,200 200,90 60,90" class="box-front" />
@@ -30,12 +35,19 @@
   <circle cx="60" cy="200" r="4.5" fill="#ef4444" />
   <circle cx="260" cy="40" r="4.5" fill="#ef4444" />
 
-  <!-- Labels -->
-  <text x="120" y="222" class="box-text">l = 8 मी</text>
-  <text x="235" y="190" class="box-text">b = 6 मी</text>
-  <text x="35" y="145" class="box-text">h = 10 मी</text>
+  <!-- Length l = 8 m badge -->
+  <rect x="95" y="210" width="70" height="22" class="badge-bg" />
+  <text x="130" y="226" class="box-text">l = 8 m</text>
+
+  <!-- Breadth b = 6 m badge -->
+  <rect x="210" y="175" width="70" height="22" class="badge-bg" />
+  <text x="245" y="191" class="box-text">b = 6 m</text>
+
+  <!-- Height h = 10 m badge -->
+  <rect x="15" y="130" width="75" height="22" class="badge-bg" />
+  <text x="52" y="146" class="box-text">h = 10 m</text>
 
   <!-- Diagonal label badge -->
-  <rect x="110" y="95" width="150" height="26" rx="6" fill="#fee2e2" stroke="#fca5a5" />
-  <text x="116" y="113" style="font-family: system-ui; font-size: 12px; font-weight: bold; fill: #b91c1c;">विकर्ण = 10√2 मी</text>
+  <rect x="95" y="95" width="150" height="26" rx="6" fill="#fee2e2" stroke="#fca5a5" />
+  <text x="170" y="113" class="box-text" style="fill: #b91c1c; font-size: 13px;">विकर्ण = 10√2 m</text>
 </svg>

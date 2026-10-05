@@ -524,6 +524,13 @@ export function QuestionBankView({
                   </div>
                 )}
 
+                {q.svgContent && (
+                  <div
+                    className="my-3 flex flex-col items-center justify-center p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 shadow-xs max-w-xs sm:max-w-sm mx-auto overflow-hidden"
+                    dangerouslySetInnerHTML={{ __html: q.svgContent }}
+                  />
+                )}
+
                 {/* Options Grid in Hindi */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                   {q.options.map((opt) => {

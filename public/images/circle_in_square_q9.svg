@@ -4,34 +4,47 @@
       .square-edge { fill: #f8fafc; stroke: #3b82f6; stroke-width: 3; rx: 8; }
       .circle-edge { fill: #eff6ff; stroke: #dc2626; stroke-width: 2.5; }
       .dim-line { stroke: #64748b; stroke-width: 1.5; stroke-dasharray: 4,4; }
-      .dim-text { font-family: system-ui, -apple-system, sans-serif; font-size: 13px; font-weight: bold; fill: #1e293b; }
+      .dim-text { font-family: system-ui, -apple-system, sans-serif; font-size: 13px; font-weight: bold; fill: #0f172a; text-anchor: middle; }
+      .dim-badge { rx: 6; fill: #ffffff; stroke: #cbd5e1; stroke-width: 1; }
       @media (prefers-color-scheme: dark) {
-        .square-edge { fill: #0f172a; stroke: #60a5fa; }
-        .circle-edge { fill: #1e293b; stroke: #f87171; }
+        .square-edge { fill: #1e293b; stroke: #60a5fa; }
+        .circle-edge { fill: #0f172a; stroke: #f87171; }
         .dim-text { fill: #f8fafc; }
+        .dim-badge { fill: #0f172a; stroke: #334155; }
       }
     </style>
   </defs>
 
+  <!-- Background container -->
+  <rect width="300" height="300" fill="#f1f5f9" class="dark:fill-slate-900" rx="16" />
+
   <!-- Square 10cm x 10cm -->
-  <rect x="50" y="50" width="200" height="200" class="square-edge" />
+  <rect x="50" y="40" width="200" height="200" class="square-edge" />
 
   <!-- Inscribed Circle d = 10cm, r = 5cm -->
-  <circle cx="150" cy="150" r="100" class="circle-edge" />
+  <circle cx="150" cy="140" r="100" class="circle-edge" />
 
   <!-- Diameter line -->
-  <line x1="50" y1="150" x2="250" y2="150" class="dim-line" style="stroke: #ef4444;" />
-  <circle cx="50" cy="150" r="3.5" fill="#ef4444" />
-  <circle cx="250" cy="150" r="3.5" fill="#ef4444" />
-  <circle cx="150" cy="150" r="3.5" fill="#ef4444" />
+  <line x1="50" y1="140" x2="250" y2="140" class="dim-line" style="stroke: #ef4444;" />
+  <circle cx="50" cy="140" r="4" fill="#ef4444" />
+  <circle cx="250" cy="140" r="4" fill="#ef4444" />
 
-  <!-- Diameter label -->
-  <text x="140" y="142" class="dim-text" style="fill: #dc2626;">d = 10 सेमी</text>
-  <text x="140" y="170" class="dim-text" style="font-size: 11px; fill: #dc2626;">(त्रिज्या r = 5 सेमी)</text>
+  <!-- Center point -->
+  <circle cx="150" cy="140" r="4" fill="#ef4444" />
 
-  <!-- Bottom Dimension: 10cm -->
-  <line x1="50" y1="265" x2="250" y2="265" class="dim-line" />
-  <line x1="50" y1="258" x2="50" y2="272" stroke="#64748b" stroke-width="1.5" />
-  <line x1="250" y1="258" x2="250" y2="272" stroke="#64748b" stroke-width="1.5" />
-  <text x="120" y="285" class="dim-text">भुजा = 10 सेमी</text>
+  <!-- Diameter badge & text -->
+  <rect x="90" y="115" width="120" height="24" class="dim-badge" style="stroke: #fca5a5; fill: #fff1f2;" />
+  <text x="150" y="132" class="dim-text" style="fill: #dc2626; font-size: 13px;">d = 10 cm</text>
+
+  <!-- Radius note badge -->
+  <rect x="95" y="148" width="110" height="20" class="dim-badge" style="stroke: #fca5a5; fill: #fff1f2;" />
+  <text x="150" y="163" class="dim-text" style="fill: #dc2626; font-size: 11px;">(r = 5 cm)</text>
+
+  <!-- Bottom Dimension: Side = 10 cm -->
+  <line x1="50" y1="255" x2="250" y2="255" class="dim-line" />
+  <line x1="50" y1="248" x2="50" y2="262" stroke="#64748b" stroke-width="2" />
+  <line x1="250" y1="248" x2="250" y2="262" stroke="#64748b" stroke-width="2" />
+  
+  <rect x="90" y="265" width="120" height="24" class="dim-badge" />
+  <text x="150" y="282" class="dim-text">भुजा = 10 cm</text>
 </svg>
