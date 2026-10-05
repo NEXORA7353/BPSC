@@ -3,7 +3,6 @@ import {
   Clock,
   ChevronLeft,
   ChevronRight,
-  RotateCcw,
   Bookmark,
   Send,
   User,
@@ -11,13 +10,15 @@ import {
   Maximize2,
   Minimize2,
   X,
-  Sparkles,
-  Trophy,
-  CheckCircle2,
-  AlertTriangle
+  Volume2,
+  VolumeX,
+  Edit3,
+  BookOpen
 } from 'lucide-react';
 import { MockTestSet, QuestionResponse, TestResult } from '../types';
 import { toggleBookmarkQuestion, getBookmarkedIds } from '../utils/questionBankStorage';
+import { ScratchpadModal } from './ScratchpadModal';
+import { FormulaSheetModal } from './FormulaSheetModal';
 
 interface CBTTestViewProps {
   testSet: MockTestSet;
@@ -48,6 +49,11 @@ export function CBTTestView({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [bookmarkedIds, setBookmarkedIds] = useState<string[]>(() => getBookmarkedIds());
 
+  // Modals & TTS
+  const [isScratchpadOpen, setIsScratchpadOpen] = useState(false);
+  const [isFormulaSheetOpen, setIsFormulaSheetOpen] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
   const [responses, setResponses] = useState<Record<string, QuestionResponse>>(() => {
     const init: Record<string, QuestionResponse> = {};
     testSet.questions.forEach((q, idx) => {
@@ -67,6 +73,14 @@ export function CBTTestView({
   const currentQ = testSet.questions[currentIdx];
   const currentResp = responses[currentQ.id];
   const isCurrentBookmarked = bookmarkedIds.includes(currentQ.id);
+
+  // Stop TTS when question changes
+  useEffect(() => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    }
+  }, [currentIdx]);
 
   // Timer effect
   useEffect(() => {
@@ -97,6 +111,25 @@ export function CBTTestView({
     } else {
       document.exitFullscreen?.().catch(() => {});
       setIsFullscreen(false);
+    }
+  };
+
+  const handleSpeakQuestion = () => {
+    if ('speechSynthesis' in window) {
+      if (isSpeaking) {
+        window.speechSynthesis.cancel();
+        setIsSpeaking(false);
+        return;
+      }
+      const utterance = new SpeechSynthesisUtterance(currentQ.questionText);
+      utterance.lang = 'hi-IN';
+      utterance.rate = 0.95;
+      utterance.onend = () => setIsSpeaking(false);
+      utterance.onerror = () => setIsSpeaking(false);
+      setIsSpeaking(true);
+      window.speechSynthesis.speak(utterance);
+    } else {
+      alert('Text-to-speech is not supported on this browser.');
     }
   };
 
@@ -210,7 +243,6 @@ export function CBTTestView({
     setIsMobilePaletteOpen(false);
   };
 
-  // Palette counts
   let answeredCount = 0;
   let notAnsweredCount = 0;
   let markedReviewCount = 0;
@@ -292,7 +324,7 @@ export function CBTTestView({
   const progressPercent = Math.round(((currentIdx + 1) / totalQuestions) * 100);
 
   return (
-    <div className="flex flex-col min-h-screen blueprint-grid-34 text-slate-900 font-sans">
+    <div className="flex flex-col min-h-screen blueprint-grid-34 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-200">
       {/* Contrasting Deep Navy Header (#0E1B34) */}
       <header className="bg-[#0E1B34] text-white sticky top-0 z-40 shadow-xl border-b border-white/10">
         <div className="px-4 py-2.5 flex items-center justify-between">
@@ -323,30 +355,42 @@ export function CBTTestView({
             </div>
           </div>
 
-          {/* Timers & Actions */}
-          <div className="flex items-center gap-2 sm:gap-4">
-            {/* Question Counter Pill */}
-            <div className="bg-white/10 px-3 py-1 rounded-lg text-xs font-mono font-bold text-slate-200">
-              Q: <span className="text-amber-300">{currentIdx + 1}</span> / {totalQuestions}
-            </div>
+          {/* Timers & Utility Actions */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Scratchpad Button */}
+            <button
+              onClick={() => setIsScratchpadOpen(true)}
+              className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-amber-300 border border-white/10 text-xs font-bold transition-all flex items-center gap-1.5"
+              title="Open Digital Rough Scratchpad"
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Rough Work</span>
+            </button>
+
+            {/* Formula Cheat Sheet Button */}
+            <button
+              onClick={() => setIsFormulaSheetOpen(true)}
+              className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-blue-300 border border-white/10 text-xs font-bold transition-all flex items-center gap-1.5"
+              title="Open Formula Reference Sheet"
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Formulas</span>
+            </button>
 
             {/* Timer Chip */}
             <div
-              className={`px-3.5 py-1 rounded-lg font-mono text-xs font-black transition-all ${
+              className={`px-3 py-1 rounded-lg font-mono text-xs font-black transition-all ${
                 remainingTime <= 60
                   ? 'bg-rose-600 text-white animate-bounce ring-2 ring-rose-400'
                   : remainingTime <= 300
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 ring-1 ring-amber-400/50'
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
                   : 'bg-white/10 text-amber-300 border border-white/10'
               }`}
             >
-              <span className="text-[9px] uppercase tracking-widest text-slate-400 block text-[8px] leading-none mb-0.5">
-                TIME REMAINING
-              </span>
               <span>{formatTime(remainingTime)}</span>
             </div>
 
-            {/* Primary Submit CTA */}
+            {/* Submit CTA */}
             <button
               onClick={() => setIsSubmitModalOpen(true)}
               className="px-4 py-1.5 rounded-xl text-xs font-black text-slate-950 bg-amber-400 hover:bg-amber-300 shadow-md transition-all active:scale-95 flex items-center gap-1.5"
@@ -357,7 +401,7 @@ export function CBTTestView({
           </div>
         </div>
 
-        {/* 4px Animated Progress Hairline */}
+        {/* 4px Progress Hairline */}
         <div className="w-full bg-white/10 h-1">
           <div
             className="bg-gradient-to-r from-amber-400 to-emerald-400 h-full transition-all duration-300"
@@ -369,19 +413,34 @@ export function CBTTestView({
       {/* Main Paper Workspace Layout */}
       <div className="flex-1 flex flex-col lg:flex-row max-w-7xl w-full mx-auto p-3 sm:p-5 gap-4 overflow-hidden">
         {/* Left Side: Paper Question Card */}
-        <section className="flex-1 bg-white rounded-3xl border border-slate-200 shadow-md flex flex-col overflow-hidden">
+        <section className="flex-1 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-md flex flex-col overflow-hidden">
           {/* Question Meta Bar */}
-          <div className="px-5 py-3.5 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2 bg-slate-50/70">
+          <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 bg-slate-50/70 dark:bg-slate-800/50">
             <div className="flex items-center gap-3">
-              <div className="text-base sm:text-lg font-black text-slate-900">
+              <div className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100">
                 Question No. {currentIdx + 1}
               </div>
+
+              {/* Text-to-Speech Read Aloud Button */}
+              <button
+                onClick={handleSpeakQuestion}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold border transition-all ${
+                  isSpeaking
+                    ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-700 text-rose-600 dark:text-rose-400 animate-pulse'
+                    : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100'
+                }`}
+                title="Read question aloud in Hindi"
+              >
+                {isSpeaking ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5 text-amber-500" />}
+                <span>{isSpeaking ? 'Stop Audio' : 'Read Aloud'}</span>
+              </button>
+
               <button
                 onClick={handleToggleCurrentBookmark}
                 className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold border transition-all ${
                   isCurrentBookmarked
-                    ? 'bg-amber-50 border-amber-300 text-amber-700 shadow-xs'
-                    : 'border-slate-200 text-slate-500 hover:text-slate-900'
+                    ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 shadow-xs'
+                    : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900'
                 }`}
               >
                 <Bookmark className={`w-3.5 h-3.5 ${isCurrentBookmarked ? 'fill-amber-500 text-amber-500' : ''}`} />
@@ -390,10 +449,10 @@ export function CBTTestView({
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200">
+              <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                 {currentQ.exam}
               </span>
-              <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+              <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                 {currentQ.topicNameHindi}
               </span>
             </div>
@@ -401,22 +460,19 @@ export function CBTTestView({
 
           {/* Question Content */}
           <div className="flex-1 p-6 sm:p-8 overflow-y-auto space-y-6">
-            {/* Warning Callout Strip */}
-            <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5">
-              <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2.5">
+              <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
               <div>
                 <strong>BPSC TRE 4.0 Rule:</strong> Select <strong>Option (E)</strong> to skip safely without negative penalty. Unselected blank questions incur a <strong>-{negPenalty.toFixed(2)} penalty</strong>.
               </div>
             </div>
 
-            {/* Question Text in Hindi */}
-            <div className={`font-semibold text-slate-900 font-sans ${getTextClass()}`}>
+            <div className={`font-semibold text-slate-900 dark:text-slate-100 font-sans ${getTextClass()}`}>
               {currentQ.questionText}
             </div>
 
-            {/* 5 Option Tiles */}
             <div className="space-y-3 pt-2">
-              <div className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              <div className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                 Select Option (A, B, C, D, E):
               </div>
 
@@ -432,21 +488,20 @@ export function CBTTestView({
                     className={`w-full text-left p-4 rounded-2xl border transition-all flex items-start gap-4 ${
                       isOptionE
                         ? isSelected
-                          ? 'bg-amber-500/15 border-amber-500 text-amber-950 font-bold shadow-md ring-2 ring-amber-400'
-                          : 'bg-amber-50/40 border-dashed border-amber-300 text-amber-900 hover:bg-amber-50'
+                          ? 'bg-amber-500/20 border-amber-500 text-amber-950 dark:text-amber-100 font-bold shadow-md ring-2 ring-amber-400'
+                          : 'bg-amber-50/40 dark:bg-amber-950/20 border-dashed border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 hover:bg-amber-50'
                         : isSelected
-                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-md font-bold'
-                        : 'bg-white border-slate-200 text-slate-800 hover:border-slate-300 hover:bg-slate-50/80'
+                        ? 'bg-indigo-600 dark:bg-indigo-600 text-white border-indigo-600 shadow-md font-bold'
+                        : 'bg-white dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50/80'
                     }`}
                   >
-                    {/* Square Letter Badge */}
                     <div
                       className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 font-bold text-xs uppercase transition-colors ${
                         isSelected
                           ? isOptionE
                             ? 'bg-amber-600 text-white'
                             : 'bg-white text-indigo-950'
-                          : 'bg-slate-100 text-slate-600 border border-slate-200'
+                          : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600'
                       }`}
                     >
                       {opt.key}
@@ -455,7 +510,7 @@ export function CBTTestView({
                     <div className="flex-1 text-sm sm:text-base font-medium leading-relaxed font-sans">
                       {opt.text}
                       {isOptionE && (
-                        <span className="block text-[11px] font-bold text-amber-600 mt-1">
+                        <span className="block text-[11px] font-bold text-amber-600 dark:text-amber-400 mt-1">
                           (Safe Skip Option E - No Penalty)
                         </span>
                       )}
@@ -467,19 +522,19 @@ export function CBTTestView({
           </div>
 
           {/* Sticky Bottom Action Bar */}
-          <div className="border-t border-slate-200 p-4 bg-slate-50 flex flex-wrap items-center justify-between gap-3">
+          <div className="border-t border-slate-200 dark:border-slate-800 p-4 bg-slate-50 dark:bg-slate-800/50 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <button
                 onClick={handleClearResponse}
                 disabled={currentResp.selectedOption === null}
-                className="px-3.5 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-100 disabled:opacity-40 transition-colors"
+                className="px-3.5 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 transition-colors"
               >
                 Clear Response
               </button>
 
               <button
                 onClick={handleMarkForReviewAndNext}
-                className="px-3.5 py-2 text-xs font-bold text-violet-700 bg-violet-50 border border-violet-200 rounded-xl hover:bg-violet-100 transition-colors"
+                className="px-3.5 py-2 text-xs font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-xl hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors"
               >
                 Mark for Review & Next
               </button>
@@ -489,7 +544,7 @@ export function CBTTestView({
               <button
                 onClick={handlePrev}
                 disabled={currentIdx === 0}
-                className="px-4 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-100 disabled:opacity-40 transition-colors flex items-center gap-1"
+                className="px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 transition-colors flex items-center gap-1"
               >
                 <ChevronLeft className="w-4 h-4" />
                 <span>Previous</span>
@@ -497,7 +552,7 @@ export function CBTTestView({
 
               <button
                 onClick={handleSaveAndNext}
-                className="px-6 py-2 text-xs sm:text-sm font-black text-white bg-slate-900 hover:bg-slate-800 rounded-xl shadow-md transition-all active:scale-95 flex items-center gap-1.5"
+                className="px-6 py-2 text-xs sm:text-sm font-black text-white bg-slate-900 dark:bg-blue-600 hover:bg-slate-800 dark:hover:bg-blue-500 rounded-xl shadow-md transition-all active:scale-95 flex items-center gap-1.5"
               >
                 <span>Save & Next</span>
                 <ChevronRight className="w-4 h-4" />
@@ -506,32 +561,30 @@ export function CBTTestView({
           </div>
         </section>
 
-        {/* Right Side: Candidate Profile & Dense Palette Panel */}
+        {/* Right Side: Candidate Profile & Palette */}
         <aside
-          className={`lg:w-80 w-full bg-white rounded-3xl border border-slate-200 shadow-md flex flex-col overflow-hidden shrink-0 ${
+          className={`lg:w-80 w-full bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-md flex flex-col overflow-hidden shrink-0 ${
             isMobilePaletteOpen ? 'block fixed inset-4 z-50 lg:static' : 'hidden lg:flex'
           }`}
         >
-          {/* Candidate Profile Box */}
-          <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-slate-900 text-amber-400 flex items-center justify-center font-black text-sm shrink-0">
+          <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-slate-900 dark:bg-amber-500 text-amber-400 dark:text-slate-950 flex items-center justify-center font-black text-sm shrink-0">
               PP
             </div>
             <div className="min-w-0">
-              <div className="text-xs font-black text-slate-900 truncate">
+              <div className="text-xs font-black text-slate-900 dark:text-slate-100 truncate">
                 Candidate: {userName}
               </div>
-              <div className="text-[10px] font-mono text-slate-500">
+              <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
                 Roll: TRE4-2026-MATH
               </div>
             </div>
           </div>
 
-          {/* Palette Grid & Legend */}
           <div className="p-4 flex-1 overflow-y-auto space-y-4">
-            <div className="text-xs font-bold text-slate-700 flex items-center justify-between">
+            <div className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
               <span>Question Palette</span>
-              <span className="font-mono text-emerald-600 font-bold">
+              <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">
                 {answeredCount + answeredMarkedCount} / {totalQuestions} Done
               </span>
             </div>
@@ -541,15 +594,15 @@ export function CBTTestView({
                 const r = responses[q.id];
                 const isCurrent = idx === currentIdx;
 
-                let stateClass = 'bg-slate-100 text-slate-700 border-slate-200';
+                let stateClass = 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700';
                 if (r.status === 'answered') {
                   stateClass = 'bg-emerald-600 text-white border-emerald-600';
                 } else if (r.status === 'not_answered') {
                   stateClass = 'bg-rose-500 text-white border-rose-500';
                 } else if (r.status === 'marked_review') {
-                  stateClass = 'bg-violet-600 text-white border-violet-600';
+                  stateClass = 'bg-purple-600 text-white border-purple-600';
                 } else if (r.status === 'answered_marked_review') {
-                  stateClass = 'bg-violet-800 text-white border-violet-800';
+                  stateClass = 'bg-purple-800 text-white border-purple-800';
                 }
 
                 return (
@@ -557,7 +610,7 @@ export function CBTTestView({
                     key={q.id}
                     onClick={() => handleJumpToQuestion(idx)}
                     className={`h-9 rounded-xl font-bold text-xs flex items-center justify-center border transition-all relative ${stateClass} ${
-                      isCurrent ? 'ring-2 ring-amber-500 ring-offset-2 scale-105 z-10' : ''
+                      isCurrent ? 'ring-2 ring-amber-500 ring-offset-2 dark:ring-offset-slate-900 scale-105 z-10' : ''
                     }`}
                   >
                     <span>{idx + 1}</span>
@@ -568,33 +621,9 @@ export function CBTTestView({
                 );
               })}
             </div>
-
-            {/* 6 Mini Legend Items Beneath */}
-            <div className="pt-3 border-t border-slate-100 text-[11px] grid grid-cols-2 gap-2 text-slate-600 font-medium">
-              <div className="flex items-center gap-1.5">
-                <span className="w-3.5 h-3.5 rounded bg-emerald-600 shrink-0" />
-                <span>Answered ({answeredCount})</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-3.5 h-3.5 rounded bg-rose-500 shrink-0" />
-                <span>Not Answered ({notAnsweredCount})</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-3.5 h-3.5 rounded bg-violet-600 shrink-0" />
-                <span>Marked Review ({markedReviewCount})</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-3.5 h-3.5 rounded bg-violet-800 shrink-0" />
-                <span>Ans & Marked ({answeredMarkedCount})</span>
-              </div>
-              <div className="flex items-center gap-1.5 col-span-2">
-                <span className="w-3.5 h-3.5 rounded bg-slate-200 shrink-0" />
-                <span>Not Visited ({notVisitedCount})</span>
-              </div>
-            </div>
           </div>
 
-          <div className="p-4 border-t border-slate-100 bg-slate-50">
+          <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40">
             <button
               onClick={() => setIsSubmitModalOpen(true)}
               className="w-full py-3 rounded-2xl text-xs font-black text-slate-950 bg-amber-400 hover:bg-amber-300 shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
@@ -606,21 +635,36 @@ export function CBTTestView({
         </aside>
       </div>
 
-      {/* Submit Confirmation Modal */}
+      {/* Modals */}
+      {isScratchpadOpen && (
+        <ScratchpadModal
+          isOpen={isScratchpadOpen}
+          onClose={() => setIsScratchpadOpen(false)}
+        />
+      )}
+
+      {isFormulaSheetOpen && (
+        <FormulaSheetModal
+          isOpen={isFormulaSheetOpen}
+          onClose={() => setIsFormulaSheetOpen(false)}
+        />
+      )}
+
+      {/* Submit Modal */}
       {isSubmitModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-5 text-slate-900 shadow-2xl border border-slate-200">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 space-y-5 text-slate-900 dark:text-slate-100 shadow-2xl border border-slate-200 dark:border-slate-800">
             <div className="text-center space-y-2">
-              <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto">
+              <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
                 <Send className="w-6 h-6" />
               </div>
               <h3 className="text-lg font-black tracking-tight">Submit Test Examination?</h3>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Are you ready to submit your test and view score analytics for {userName}?
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-4 rounded-2xl border border-slate-200 font-mono">
+            <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 font-mono">
               <div>Total: <strong>{totalQuestions}</strong></div>
               <div className="text-emerald-600 font-bold">Answered: {answeredCount + answeredMarkedCount}</div>
               <div className="text-rose-600 font-bold">Not Answered: {notAnsweredCount}</div>
@@ -630,7 +674,7 @@ export function CBTTestView({
             <div className="grid grid-cols-2 gap-3 pt-2">
               <button
                 onClick={() => setIsSubmitModalOpen(false)}
-                className="py-2.5 rounded-xl text-xs font-bold border border-slate-300 text-slate-700 hover:bg-slate-100"
+                className="py-2.5 rounded-xl text-xs font-bold border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 Resume Test
               </button>
