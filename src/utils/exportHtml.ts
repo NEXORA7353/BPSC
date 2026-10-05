@@ -737,12 +737,32 @@ export function generateStandaloneHtml(set: MockTestSet): string {
       qTimerEl.textContent = String(qm).padStart(2, '0') + ':' + String(qs).padStart(2, '0');
     }, 1000);
 
+    function formatMathToHtml(str) {
+      if (!str) return '';
+      let html = String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      html = html.replace(/\\times\b|\b\*([^\*\n]+)\*/g, ' &times; ').replace(/\\div\b/g, ' &divide; ');
+      html = html.replace(/([\(\)a-zA-Z0-9\.\_\-\+]+|\([^)]+\))\^\{?\\frac\{([^{}]+)\}\{([^{}]+)\}\}?/g, function(_, base, num, den) {
+        return base + '<sup style="vertical-align: super; font-size: 0.75em;"><span style="display: inline-flex; flex-direction: column; align-items: center; justify-content: center; vertical-align: middle; padding: 0 0.15em; line-height: 1;"><span style="border-bottom: 1.5px solid currentColor; font-weight: 700;">' + num + '</span><span style="font-weight: 700;">' + den + '</span></span></sup>';
+      });
+      html = html.replace(/([\(\)a-zA-Z0-9\.\_\-\+]+|\([^)]+\))\^\(\s*(-?\d+|[a-zA-Z]+)\s*\/\s*(\d+|[a-zA-Z]+)\s*\)/g, function(_, base, num, den) {
+        return base + '<sup style="vertical-align: super; font-size: 0.75em;"><span style="display: inline-flex; flex-direction: column; align-items: center; justify-content: center; vertical-align: middle; padding: 0 0.15em; line-height: 1;"><span style="border-bottom: 1.5px solid currentColor; font-weight: 700;">' + num + '</span><span style="font-weight: 700;">' + den + '</span></span></sup>';
+      });
+      html = html.replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, function(_, num, den) {
+        return '<span style="display: inline-flex; flex-direction: column; align-items: center; justify-content: center; vertical-align: middle; padding: 0 0.15em; line-height: 1;"><span style="border-bottom: 1.5px solid currentColor; font-weight: 700;">' + num + '</span><span style="font-weight: 700;">' + den + '</span></span>';
+      });
+      html = html.replace(/\\sqrt\[([^\]]+)\]\{([^{}]+)\}/g, '<span style="display:inline-flex;align-items:center;"><sup style="font-size:0.65em;font-weight:bold;">$1</sup><span style="font-size:1.1em;">&radic;</span><span style="border-top:1.5px solid currentColor;">$2</span></span>');
+      html = html.replace(/\\sqrt\{([^{}]+)\}|sqrt\(([^)]+)\)/g, '<span style="display:inline-flex;align-items:center;"><span style="font-size:1.1em;">&radic;</span><span style="border-top:1.5px solid currentColor;">$1$2</span></span>');
+      html = html.replace(/([\(\)a-zA-Z0-9\.\_\-]+)\^\{([^{}]+)\}/g, '$1<sup>$2</sup>');
+      html = html.replace(/([\(\)a-zA-Z0-9\.\_\-]+)\^([a-zA-Z0-9\+\-]+)/g, '$1<sup>$2</sup>');
+      return html;
+    }
+
     function renderCurrentQuestion() {
       const q = questions[currentIdx];
       document.getElementById('q-number-display').textContent = 'प्रश्न ' + (currentIdx + 1) + ' / ' + questions.length;
       document.getElementById('q-exam-source').textContent = q.exam;
       document.getElementById('q-topic-name').textContent = q.topicNameHindi;
-      document.getElementById('q-text-display').textContent = q.questionText;
+      document.getElementById('q-text-display').innerHTML = formatMathToHtml(q.questionText);
 
       const resp = responses[q.id];
       if (resp.status === 'not_visited') {
@@ -769,7 +789,7 @@ export function generateStandaloneHtml(set: MockTestSet): string {
 
         const textSpan = document.createElement('span');
         textSpan.className = 'option-text';
-        textSpan.textContent = opt.text;
+        textSpan.innerHTML = formatMathToHtml(opt.text);
 
         item.appendChild(radio);
         item.appendChild(keySpan);

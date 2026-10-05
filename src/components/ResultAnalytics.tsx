@@ -27,6 +27,7 @@ import {
 } from '../utils/questionBankStorage';
 import { exportTestToPrintablePdf } from '../utils/pdfExporter';
 import { BackButton } from './BackButton';
+import { MathText } from './MathText';
 
 interface ResultAnalyticsProps {
   result: TestResult;
@@ -449,7 +450,7 @@ export function ResultAnalytics({
                         #{idx + 1}
                       </span>
                       <div className="font-semibold text-sm sm:text-base text-slate-900 dark:text-white truncate font-sans">
-                        {q.questionText}
+                        <MathText text={q.questionText} />
                       </div>
                     </div>
 
@@ -496,7 +497,7 @@ export function ResultAnalytics({
                                 {opt.key}
                               </span>
                               <div className="flex-1 font-sans">
-                                {opt.text}
+                                <MathText text={opt.text} />
                                 {isCandidateChoice && (
                                   <span className="ml-2 text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-slate-900 text-white dark:bg-white dark:text-slate-900">
                                     Your Choice
@@ -519,7 +520,7 @@ export function ResultAnalytics({
                           <span>विस्तृत चरणबद्ध हल (Hindi Explanation):</span>
                         </div>
                         <div className="text-slate-800 dark:text-slate-200 whitespace-pre-line leading-relaxed font-sans">
-                          {q.explanation}
+                          <MathText text={q.explanation} />
                         </div>
                       </div>
                     </div>

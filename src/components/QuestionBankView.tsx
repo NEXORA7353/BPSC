@@ -28,10 +28,11 @@ import {
   getBookmarkedIds,
   getAllRegisteredTopics,
   exportFullDatabaseJson,
-  importFullDatabaseJson
+  importFullDatabaseJson,
+  clearEntireDatabase
 } from '../utils/questionBankStorage';
-import { syncFromFirestore, seedAllQuestionsToCloud } from '../services/firebaseSyncService';
-
+import { syncFromFirestore, seedAllQuestionsToCloud, clearCloudDatabase } from '../services/firebaseSyncService';
+import { MathText } from './MathText';
 import { BackButton } from './BackButton';
 
 interface QuestionBankViewProps {
@@ -176,6 +177,21 @@ export function QuestionBankView({
     if (e.target) e.target.value = '';
   };
 
+  // Clear Entire Database
+  const handleClearDatabase = async () => {
+    if (
+      window.confirm(
+        '⚠️ चेतावनी: क्या आप पूरा डेटाबेस खाली (Wipe/Clear All Data) करना चाहते हैं?\n(WARNING: This will permanently delete all custom questions, mock tests, attempt history, and bookmarks. This action cannot be undone!)'
+      )
+    ) {
+      await clearCloudDatabase();
+      clearEntireDatabase();
+      refreshData();
+      setDbNotification('🧹 पूरा डेटाबेस सफलतापूर्वक साफ़ (Database Cleared) हो गया है!');
+      setTimeout(() => setDbNotification(null), 4000);
+    }
+  };
+
   const filteredQuestions = useMemo(() => {
     return allQuestions.filter((q) => {
       const searchLower = searchTerm.toLowerCase();
@@ -266,6 +282,16 @@ export function QuestionBankView({
             className="p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shadow-2xs"
           >
             <Upload className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+          </button>
+
+          {/* Clear Entire Database Button */}
+          <button
+            onClick={handleClearDatabase}
+            title="Clear Entire Database (Wipe All Data)"
+            className="flex items-center gap-1 px-3 py-2.5 rounded-xl border border-rose-300 dark:border-rose-900 text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors text-xs font-bold shadow-2xs"
+          >
+            <Trash2 className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+            <span className="hidden md:inline">Clear Database</span>
           </button>
 
           {/* Cloud Sync Button */}
@@ -467,7 +493,7 @@ export function QuestionBankView({
 
                 {/* Question Text in Hindi */}
                 <div className="text-base sm:text-lg font-semibold text-slate-900 dark:text-slate-100 leading-relaxed font-sans">
-                  {q.questionText}
+                  <MathText text={q.questionText} />
                 </div>
 
                 {/* Options Grid in Hindi */}
@@ -492,7 +518,9 @@ export function QuestionBankView({
                         >
                           {opt.key}
                         </span>
-                        <span className="flex-1 font-sans">{opt.text}</span>
+                        <span className="flex-1 font-sans">
+                          <MathText text={opt.text} />
+                        </span>
                         {isCorrect && (
                           <span className="text-[10px] uppercase font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded">
                             Official Key
@@ -520,7 +548,7 @@ export function QuestionBankView({
                         <span>सही उत्तर: विकल्प ({q.correctOption.toUpperCase()})</span>
                       </div>
                       <div className="whitespace-pre-line pt-1 text-slate-800 dark:text-slate-200 font-sans">
-                        {q.explanation}
+                        <MathText text={q.explanation} />
                       </div>
                     </div>
                   )}

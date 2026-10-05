@@ -704,6 +704,29 @@ export function clearAllHistoryRecords(): void {
 }
 
 // --- FULL DATABASE BACKUP & RESTORE ---
+export function clearEntireDatabase(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEYS.CUSTOM_QUESTIONS);
+    localStorage.removeItem(STORAGE_KEYS.DELETED_QUESTION_IDS);
+    localStorage.removeItem(STORAGE_KEYS.CUSTOM_TESTS);
+    localStorage.removeItem(STORAGE_KEYS.DELETED_TEST_IDS);
+    localStorage.removeItem(STORAGE_KEYS.BOOKMARKED_IDS);
+    localStorage.removeItem(STORAGE_KEYS.ATTEMPT_HISTORY);
+    localStorage.removeItem(STORAGE_KEYS.FULL_SAVED_RESULTS);
+    localStorage.removeItem(STORAGE_KEYS.REGISTERED_TOPICS);
+
+    liveCloudQuestionsCache = [];
+    liveCloudTestsCache = [];
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('bpsc_cloud_data_updated'));
+      window.dispatchEvent(new CustomEvent('bpsc_database_cleared'));
+    }
+  } catch (err) {
+    console.error('Failed to clear entire database:', err);
+  }
+}
+
 export function exportFullDatabaseJson(): string {
   const dbDump = {
     version: '2.0',

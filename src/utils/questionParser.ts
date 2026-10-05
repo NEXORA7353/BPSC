@@ -1,4 +1,5 @@
 import { Question } from '../types';
+import { normalizeMathSyntax } from './mathFormatter';
 
 export interface ParseResult {
   questions: Question[];
@@ -30,7 +31,7 @@ export function parseBulkQuestionText(
     return { questions: [], errors: ['No text provided.'], totalDetected: 0 };
   }
 
-  const trimmed = rawText.trim();
+  const trimmed = normalizeMathSyntax(rawText.trim());
   const dateFormatted = getFormattedImportDate();
 
   // 1. Direct JSON Check
@@ -229,14 +230,14 @@ function extractOptionsAndText(body: string) {
       e: /(?:\((?:e|E|य|ङ)\)|(?:^|\s)(?:e|E|य|ङ)[\.\)])\s*([\s\S]*?)(?=(?:उत्तर|Ans|Answer|Key|व्याख्या|Solution)|$)/i,
       splitRegex: /(?:\((?:a|A|अ|क)\)|(?:^|\s)(?:a|A|अ|क)[\.\)])/i
     },
-    // (1) (2) (3) (4) (5) or 1) 2) 3) 4) 5)
+    // (1) (2) (3) (4) (5) or 1) 2) 3) 4) 5) (excluding fractions like (1/3) or (2/5))
     {
-      a: /(?:\((?:1)\)|(?:^|\s)(?:1)[\.\)])\s*([\s\S]*?)(?=(?:\((?:2)\)|(?:^|\s)(?:2)[\.\)]))/i,
-      b: /(?:\((?:2)\)|(?:^|\s)(?:2)[\.\)])\s*([\s\S]*?)(?=(?:\((?:3)\)|(?:^|\s)(?:3)[\.\)]))/i,
-      c: /(?:\((?:3)\)|(?:^|\s)(?:3)[\.\)])\s*([\s\S]*?)(?=(?:\((?:4)\)|(?:^|\s)(?:4)[\.\)]))/i,
-      d: /(?:\((?:4)\)|(?:^|\s)(?:4)[\.\)])\s*([\s\S]*?)(?=(?:\((?:5)\)|(?:^|\s)(?:5)[\.\)]|(?:उत्तर|Ans|Answer|Key|व्याख्या|Solution)|$))/i,
-      e: /(?:\((?:5)\)|(?:^|\s)(?:5)[\.\)])\s*([\s\S]*?)(?=(?:उत्तर|Ans|Answer|Key|व्याख्या|Solution)|$)/i,
-      splitRegex: /(?:\((?:1)\)|(?:^|\s)(?:1)[\.\)])/i
+      a: /(?:\((?:1)\)(?!\/)|(?:^|\s)(?:1)[\.\)](?!\/))\s*([\s\S]*?)(?=(?:\((?:2)\)(?!\/)|(?:^|\s)(?:2)[\.\)](?!\/)))/i,
+      b: /(?:\((?:2)\)(?!\/)|(?:^|\s)(?:2)[\.\)](?!\/))\s*([\s\S]*?)(?=(?:\((?:3)\)(?!\/)|(?:^|\s)(?:3)[\.\)](?!\/)))/i,
+      c: /(?:\((?:3)\)(?!\/)|(?:^|\s)(?:3)[\.\)](?!\/))\s*([\s\S]*?)(?=(?:\((?:4)\)(?!\/)|(?:^|\s)(?:4)[\.\)](?!\/)))/i,
+      d: /(?:\((?:4)\)(?!\/)|(?:^|\s)(?:4)[\.\)](?!\/))\s*([\s\S]*?)(?=(?:\((?:5)\)(?!\/)|(?:^|\s)(?:5)[\.\)](?!\/)|(?:उत्तर|Ans|Answer|Key|व्याख्या|Solution)|$))/i,
+      e: /(?:\((?:5)\)(?!\/)|(?:^|\s)(?:5)[\.\)](?!\/))\s*([\s\S]*?)(?=(?:उत्तर|Ans|Answer|Key|व्याख्या|Solution)|$)/i,
+      splitRegex: /(?:\((?:1)\)(?!\/)|(?:^|\s)(?:1)[\.\)](?!\/))/i
     }
   ];
 

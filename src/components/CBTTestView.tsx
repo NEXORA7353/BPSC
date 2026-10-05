@@ -19,6 +19,7 @@ import { MockTestSet, QuestionResponse, TestResult } from '../types';
 import { toggleBookmarkQuestion, getBookmarkedIds } from '../utils/questionBankStorage';
 import { ScratchpadModal } from './ScratchpadModal';
 import { FormulaSheetModal } from './FormulaSheetModal';
+import { MathText } from './MathText';
 
 interface CBTTestViewProps {
   testSet: MockTestSet;
@@ -477,7 +478,7 @@ export function CBTTestView({
             </div>
 
             <div className={`font-semibold text-slate-900 dark:text-slate-100 font-sans ${getTextClass()}`}>
-              {currentQ.questionText}
+              <MathText text={currentQ.questionText} />
             </div>
 
             <div className="space-y-3 pt-2">
@@ -517,7 +518,7 @@ export function CBTTestView({
                     </div>
 
                     <div className="flex-1 text-sm sm:text-base font-medium leading-relaxed font-sans">
-                      {opt.text}
+                      <MathText text={opt.text} />
                       {isOptionE && (
                         <span className="block text-[11px] font-bold text-amber-600 dark:text-amber-400 mt-1">
                           (Safe Skip Option E - No Penalty)

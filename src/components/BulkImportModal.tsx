@@ -28,6 +28,7 @@ import {
   registerNewTopic,
   saveCustomTest
 } from '../utils/questionBankStorage';
+import { MathText } from './MathText';
 
 interface BulkImportModalProps {
   isOpen: boolean;
@@ -38,33 +39,71 @@ interface BulkImportModalProps {
 }
 
 const SAMPLE_BPSC_TEXT = `प्रश्न 1.
-a × b = ल.स. (a, b) × म.स. (a, b) यह केवल सत्य है-
-(a) दो संख्याओं के लिए
-(b) तीन संख्याओं के लिए
-(c) चार संख्याओं के लिए
-(d) इनमें से कोई नहीं
+मूल्यांकित करें : (-343 × 512)^(1/3)
+(a) -56
+(b) -42
+(c) -84
+(d) 56
 (e) उपर्युक्त में से कोई नहीं / उपर्युक्त में से एक से अधिक
 
-परीक्षा: Bihar STET (9 & 10) 23/05/2024 (Shift-II)
+परीक्षा: Bihar STET 15/09/2020 (Shift-I)
 उत्तर: (a)
 व्याख्या:
-a × b = ल.स.(a,b) × म.स.(a,b) यह केवल दो संख्याओं के लिए सत्य है। क्योंकि दो संख्याओं का गुणनफल, उनके लघुत्तम समापवर्त्य (ल.स.) और महत्तम समापवर्तक (म.स.) के गुणनफल के बराबर होता है।
+(-343 × 512)^(1/3) = ((-7)^3 × 8^3)^(1/3) = -7 × 8 = -56.
 
 प्रश्न 2.
-एक दुकानदार अपनी साड़ियों का मूल्य लागत मूल्य से 20% अधिक निर्धारित करता है तथा खरीददार को 10% बट्टा भी देता है। इस प्रकार दुकानदार को कुल कितने प्रतिशत का लाभ होगा?
-(a) 10%
-(b) 8%
-(c) 12%
-(d) 15%
-(e) उपर्युक्त में से कोई नहीं
+(0.03125)^(2/5) का मान ज्ञात कीजिए:
+(a) 0.25
+(b) 0.04
+(c) 0.5
+(d) 0.125
+(e) उपर्युक्त में से कोई नहीं / उपर्युक्त में से एक से अधिक
 
-परीक्षा: BPSC TRE 3.0 (9 & 10) 21/07/2024
+परीक्षा: BPSC TRE 4.0 Real Mock Question
 उत्तर: (b)
 व्याख्या:
-माना क्रय मूल्य (CP) = ₹100
-अंकित मूल्य (MP) = ₹120
-10% बट्टे के बाद विक्रय मूल्य = 120 × 90/100 = ₹108
-लाभ% = 108 - 100 = 8%.`;
+0.03125 = (0.5)^5.
+अतः (0.03125)^(2/5) = ((0.5)^5)^(2/5) = (0.5)^2 = 0.04.
+
+प्रश्न 3.
+(64/125)^(-2/3) का सरलीकृत रूप क्या होगा?
+(a) 16/25
+(b) 25/16
+(c) 4/5
+(d) 5/4
+(e) उपर्युक्त में से कोई नहीं
+
+परीक्षा: BPSC Mathematics Specialist
+उत्तर: (b)
+व्याख्या:
+(64/125)^(-2/3) = (125/64)^(2/3) = ((5/4)^3)^(2/3) = (5/4)^2 = 25/16.
+
+प्रश्न 4.
+यदि x^2 - 5x + 6 = 0 है, तो x के मूल (Roots) होंगे:
+(a) 2, 3
+(b) -2, -3
+(c) 1, 6
+(d) -1, -6
+(e) उपर्युक्त में से कोई नहीं
+
+परीक्षा: BPSC TRE 3.0 Algebra
+उत्तर: (a)
+व्याख्या:
+x^2 - 5x + 6 = 0 => (x - 2)(x - 3) = 0 => x = 2, 3.
+
+प्रश्न 5.
+\\sqrt{144} + \\sqrt[3]{512} \\times 2^3 का मान क्या है?
+(a) 76
+(b) 64
+(c) 80
+(d) 96
+(e) उपर्युक्त में से कोई नहीं
+
+परीक्षा: STET Mathematics
+उत्तर: (a)
+व्याख्या:
+\\sqrt{144} = 12, \\sqrt[3]{512} = 8, 2^3 = 8.
+12 + (8 × 8) = 12 + 64 = 76.`;
 
 export function BulkImportModal({
   isOpen,
@@ -818,9 +857,9 @@ Smart parser automatically extracts:
                         </div>
                       </div>
 
-                      <p className="font-semibold text-slate-900 dark:text-slate-100 text-sm font-sans leading-relaxed">
-                        {q.questionText}
-                      </p>
+                      <div className="font-semibold text-slate-900 dark:text-slate-100 text-sm font-sans leading-relaxed">
+                        <MathText text={q.questionText} />
+                      </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
                         {q.options.map((opt) => (
@@ -833,7 +872,9 @@ Smart parser automatically extracts:
                             }`}
                           >
                             <span className="font-bold uppercase shrink-0">({opt.key})</span>
-                            <span className="truncate">{opt.text}</span>
+                            <span className="truncate">
+                              <MathText text={opt.text} />
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -841,7 +882,7 @@ Smart parser automatically extracts:
                       {q.explanation && (
                         <div className="p-2.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 text-amber-950 dark:text-amber-200 text-xs leading-relaxed">
                           <span className="font-bold">व्याख्या: </span>
-                          {q.explanation}
+                          <MathText text={q.explanation} />
                         </div>
                       )}
                     </div>

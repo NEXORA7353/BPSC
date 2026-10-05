@@ -17,8 +17,10 @@ import {
   CloudSyncState,
   subscribeToSyncState,
   syncFromFirestore,
-  seedAllQuestionsToCloud
+  seedAllQuestionsToCloud,
+  clearCloudDatabase
 } from '../services/firebaseSyncService';
+import { clearEntireDatabase } from '../utils/questionBankStorage';
 import { auth, loginWithGoogle, logoutUser, onAuthStateChanged } from '../firebase';
 import { User } from 'firebase/auth';
 
@@ -75,6 +77,19 @@ export function CloudSyncModal({ isOpen, onClose, onDataRefreshed }: CloudSyncMo
       setSeedSuccessMsg(null);
     } finally {
       setIsSeeding(false);
+    }
+  };
+
+  const handleClearAll = async () => {
+    if (
+      window.confirm(
+        '⚠️ चेतावनी: क्या आप पूरा डेटाबेस खाली (Clear All Data) करना चाहते हैं?\n(WARNING: This will erase all stored questions, mock tests, attempt records, and cloud items.)'
+      )
+    ) {
+      await clearCloudDatabase();
+      clearEntireDatabase();
+      setSeedSuccessMsg('🧹 पूरा डेटाबेस सफलतापूर्वक साफ़ (Clear) हो गया!');
+      if (onDataRefreshed) onDataRefreshed();
     }
   };
 
@@ -227,7 +242,13 @@ export function CloudSyncModal({ isOpen, onClose, onDataRefreshed }: CloudSyncMo
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 flex justify-end">
+        <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 flex items-center justify-between">
+          <button
+            onClick={handleClearAll}
+            className="px-3 py-2 text-xs font-bold rounded-xl text-rose-600 border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 transition-colors"
+          >
+            Clear Database (डेटाबेस खाली करें)
+          </button>
           <button
             onClick={onClose}
             className="px-4 py-2 text-xs font-bold rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 transition-colors shadow-xs"

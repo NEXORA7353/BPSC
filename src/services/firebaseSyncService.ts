@@ -591,6 +591,28 @@ export async function saveAttemptRecordToCloud(record: TestAttemptRecord): Promi
 /**
  * Publish / Seed all built-in base questions to Firestore so the database is populated for all users
  */
+/**
+ * Clear all questions, custom tests, and tombstones from cloud Firestore and local database
+ */
+export async function clearCloudDatabase(): Promise<void> {
+  try {
+    const collectionsToClear = ['questions', 'custom_tests', 'deleted_question_ids', 'deleted_test_ids', 'topics'];
+    for (const colName of collectionsToClear) {
+      const snap = await getDocs(collection(db, colName)).catch(() => null);
+      if (snap && !snap.empty) {
+        const batch = writeBatch(db);
+        snap.forEach((d) => batch.delete(d.ref));
+        await batch.commit().catch((e) => console.warn(`Error batch clearing ${colName}:`, e));
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to clear cloud database:', err);
+  } finally {
+    const { clearEntireDatabase } = await import('../utils/questionBankStorage');
+    clearEntireDatabase();
+  }
+}
+
 export async function seedAllQuestionsToCloud(): Promise<{ count: number; testsCount: number }> {
   // Deduplicate by ID so count is 100% accurate and no duplicate writes occur
   const questionMap = new Map<string, Question>();
