@@ -17,7 +17,8 @@ import {
   RefreshCw,
   Edit2,
   Cloud,
-  Calendar
+  Calendar,
+  Image as ImageIcon
 } from 'lucide-react';
 import { Question, RegisteredTopic } from '../types';
 import {
@@ -34,6 +35,7 @@ import {
 import { syncFromFirestore, seedAllQuestionsToCloud, clearCloudDatabase } from '../services/firebaseSyncService';
 import { MathText } from './MathText';
 import { BackButton } from './BackButton';
+import { ImageKitUploadModal } from './ImageKitUploadModal';
 
 interface QuestionBankViewProps {
   onBackToTests: () => void;
@@ -56,6 +58,7 @@ export function QuestionBankView({
   const [allQuestions, setAllQuestions] = useState<Question[]>(() => getAllQuestionBank());
   const [registeredTopics, setRegisteredTopics] = useState<RegisteredTopic[]>(() => getAllRegisteredTopics());
   const [dbNotification, setDbNotification] = useState<string | null>(null);
+  const [isImageKitModalOpen, setIsImageKitModalOpen] = useState(false);
 
   const refreshData = () => {
     setAllQuestions(getAllQuestionBank());
@@ -257,6 +260,15 @@ export function QuestionBankView({
           >
             <Sparkles className="w-4 h-4" />
             <span>Bulk Paste / Import</span>
+          </button>
+
+          <button
+            onClick={() => setIsImageKitModalOpen(true)}
+            title="Upload Diagram/PNG to ImageKit CDN"
+            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors text-xs sm:text-sm font-bold shadow-2xs active:scale-95"
+          >
+            <ImageIcon className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <span>Upload Diagram</span>
           </button>
 
           <button
@@ -574,6 +586,12 @@ export function QuestionBankView({
           })
         )}
       </div>
+
+      {/* ImageKit Cloud Upload Modal */}
+      <ImageKitUploadModal
+        isOpen={isImageKitModalOpen}
+        onClose={() => setIsImageKitModalOpen(false)}
+      />
     </div>
   );
 }

@@ -21,7 +21,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Layers,
-  RotateCcw
+  RotateCcw,
+  Image as ImageIcon
 } from 'lucide-react';
 import { Question, MockTestSet } from '../types';
 import { parseBulkQuestionText, aiSmartFormatText, getFormattedImportDate } from '../utils/questionParser';
@@ -32,6 +33,7 @@ import {
   saveCustomTest
 } from '../utils/questionBankStorage';
 import { MathText } from './MathText';
+import { ImageKitUploadModal } from './ImageKitUploadModal';
 
 interface BulkImportModalProps {
   isOpen: boolean;
@@ -225,6 +227,17 @@ export function BulkImportModal({
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 50; // chunk size for super smooth rendering
+
+  // ImageKit Cloud Uploader Modal
+  const [isImageKitModalOpen, setIsImageKitModalOpen] = useState(false);
+
+  const handleImageUploaded = (markdownSnippet: string) => {
+    setRawText((prev) => {
+      const updated = prev ? `${prev}\n\n${markdownSnippet}\n` : `${markdownSnippet}\n`;
+      handleParseText(updated);
+      return updated;
+    });
+  };
 
   // Toast & UX Feedback
   const [isSuccessToast, setIsSuccessToast] = useState(false);
@@ -733,6 +746,16 @@ export function BulkImportModal({
                       >
                         <FileUp className="w-3 h-3 text-indigo-500" />
                         <span>Upload File</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setIsImageKitModalOpen(true)}
+                        className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 text-[11px] font-bold hover:bg-emerald-500/20 transition-colors flex items-center gap-1"
+                        title="Upload Diagram or PNG to ImageKit Cloud CDN"
+                      >
+                        <ImageIcon className="w-3 h-3 text-emerald-500" />
+                        <span>Upload Diagram (ImageKit)</span>
                       </button>
 
                       <button
@@ -1346,6 +1369,16 @@ export function BulkImportModal({
             <span>Questions imported successfully!</span>
           </div>
         )}
+
+        {/* ImageKit Cloud Upload Modal */}
+        <ImageKitUploadModal
+          isOpen={isImageKitModalOpen}
+          onClose={() => setIsImageKitModalOpen(false)}
+          onImageUploaded={(snippet) => {
+            handleImageUploaded(snippet);
+            setIsImageKitModalOpen(false);
+          }}
+        />
       </div>
     </div>
   );

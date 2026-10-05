@@ -31,7 +31,7 @@ d = \\sqrt{(x_2 - x_1)^2 + (y_2 - y_1)^2}
 
 अतः माध्यिका AD की लम्बाई \\sqrt{10} इकाई होगी। सही उत्तर विकल्प (c) है।`,
     isCustomE: true,
-    imageUrl: '/images/triangle_q39.svg'
+    imageUrl: 'https://ik.imagekit.io/bk52vah91/bpsc_questions/triangle_q39.svg'
   },
   {
     id: 'circle_geom_184',
@@ -39,8 +39,8 @@ d = \\sqrt{(x_2 - x_1)^2 + (y_2 - y_1)^2}
     topic: 'geometry',
     topicNameHindi: 'ज्यामिति (Geometry - Circle)',
     exam: 'Bihar STET (9 & 10) 14/09/2020 (Shift-I)',
-    questionText: 'दी गई आकृति में, PT तथा PBA एक वृत्त पर खींची गई क्रमशः स्पर्श रेखा तथा छेदक रेखा है। यदि PT = 12 सेमी, PB = 8 सेमी है, तब जीवा AB का मान होगा:\n\n![वृत्त पर स्पर्श रेखा PT तथा छेदक रेखा PBA](/images/circle_q184.svg)',
-    imageUrl: '/images/circle_q184.svg',
+    questionText: 'दी गई आकृति में, PT तथा PBA एक वृत्त पर खींची गई क्रमशः स्पर्श रेखा तथा छेदक रेखा है। यदि PT = 12 सेमी, PB = 8 सेमी है, तब जीवा AB का मान होगा:\n\n![वृत्त पर स्पर्श रेखा PT तथा छेदक रेखा PBA](https://ik.imagekit.io/bk52vah91/bpsc_questions/circle_q184.svg)',
+    imageUrl: 'https://ik.imagekit.io/bk52vah91/bpsc_questions/circle_q184.svg',
     options: [
       { key: 'a', text: '16 सेमी' },
       { key: 'b', text: '10 सेमी' },
