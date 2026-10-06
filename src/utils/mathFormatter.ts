@@ -44,6 +44,14 @@ export function normalizeMathSyntax(raw: string): string {
   if (!raw) return '';
   let str = raw;
 
+  // 0. Heal mangled LaTeX escapes where \f became form feed (\x0c) or unicode arrow (⬆/↑) or \t became tab
+  str = str
+    .replace(/(?:\\?[\x0c\u2B06\u2191\u21E7\u25B2\u25B4]|\b)rac\s*\{/gi, '\\frac{')
+    .replace(/[\x0c\u2B06\u2191\u21E7\u25B2\u25B4]\s*rac\b/gi, '\\frac')
+    .replace(/\x0crac/gi, '\\frac')
+    .replace(/\x09ext/gi, '\\text')
+    .replace(/\x08inom/gi, '\\binom');
+
   // 1. Normalize Unicode fractions
   for (const [k, v] of Object.entries(UNICODE_FRACTIONS)) {
     str = str.split(k).join(v);
@@ -212,7 +220,7 @@ export function renderMathToHtml(input: string): string {
     if (!trimmed) return segment;
 
     // Check if this segment contains mathematical indicators
-    const hasMathIndicators = /[\^\\_=+*±×÷√≤≥≠⇒⇔→~·•]|\d+\s*\/\s*\d+|\(\s*[0-9a-zA-Z.\-+]+\s*\/\s*[0-9a-zA-Z.\-+]+\s*\)|(?:sqrt|cbrt|sin|cos|tan|log)\b/i.test(trimmed);
+    const hasMathIndicators = /[\^\\_=+*±×÷√≤≥≠⇒⇔→~·•]|\d+\s*\/\s*\d+|\(\s*[0-9a-zA-Z.\-+]+\s*\/\s*[0-9a-zA-Z.\-+]+\s*\)|(?:sqrt|cbrt|sin|cos|tan|log|frac|dfrac)\b|rac\{/i.test(trimmed);
 
     // Exclude strings that are just labels or dates like "15/09/2020", "(a)", "(b)", etc.
     const isJustDate = /^\(?\d{1,2}\/\d{1,2}\/\d{2,4}\)?$/.test(trimmed);

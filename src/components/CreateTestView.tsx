@@ -26,7 +26,11 @@ import {
   History,
   ChevronLeft,
   ChevronRight,
-  Printer
+  Printer,
+  RefreshCw,
+  ArrowUp,
+  ArrowDown,
+  Eye
 } from 'lucide-react';
 import { CustomTestConfig, MockTestSet, RegisteredTopic, Question } from '../types';
 import {
@@ -488,6 +492,120 @@ export function CreateTestView({
     printQuestionPaperWithOmr(testSet);
     setStatusNotification('Question Paper & 5-Option OMR Sheet ready for print / PDF!');
     setTimeout(() => setStatusNotification(null), 3000);
+  };
+
+  // Preview Questions Manager State & Methods (Step 3)
+  const [previewTabFilter, setPreviewTabFilter] = useState<'all' | 'fresh' | 'used'>('all');
+
+  const handleRemoveQuestionFromPreview = (qId: string) => {
+    if (!generatedPreviewSet) return;
+    const remaining = generatedPreviewSet.questions.filter((q) => q.id !== qId);
+    if (remaining.length === 0) {
+      alert('टेस्ट में कम से कम 1 प्रश्न होना अनिवार्य है!');
+      return;
+    }
+    setGeneratedPreviewSet({
+      ...generatedPreviewSet,
+      questions: remaining,
+      totalQuestions: remaining.length,
+      totalTimeMinutes: Math.max(5, remaining.length)
+    });
+    setStatusNotification('प्रश्न टेस्ट से हटा दिया गया!');
+    setTimeout(() => setStatusNotification(null), 2000);
+  };
+
+  const handleSwapQuestionWithFresh = (qId: string) => {
+    if (!generatedPreviewSet) return;
+    const targetQ = generatedPreviewSet.questions.find((q) => q.id === qId);
+    if (!targetQ) return;
+
+    const currentIds = new Set(generatedPreviewSet.questions.map((q) => q.id));
+    const freshCandidates = allBankQuestions.filter(
+      (q) => q.topic === targetQ.topic && !isQuestionUsed(q) && !currentIds.has(q.id)
+    );
+
+    if (freshCandidates.length === 0) {
+      alert(`इस अध्याय (${targetQ.topicNameHindi || targetQ.topic}) में कोई अन्य ताज़ा प्रश्न उपलब्ध नहीं है!`);
+      return;
+    }
+
+    const randomFresh = freshCandidates[Math.floor(Math.random() * freshCandidates.length)];
+    const updated = generatedPreviewSet.questions.map((q) => (q.id === qId ? randomFresh : q));
+    setGeneratedPreviewSet({
+      ...generatedPreviewSet,
+      questions: updated
+    });
+    setStatusNotification('प्रश्न को नए ताज़ा प्रश्न से बदल दिया गया!');
+    setTimeout(() => setStatusNotification(null), 2000);
+  };
+
+  const handleShufflePreviewQuestions = () => {
+    if (!generatedPreviewSet) return;
+    const shuffled = [...generatedPreviewSet.questions].sort(() => Math.random() - 0.5);
+    setGeneratedPreviewSet({
+      ...generatedPreviewSet,
+      questions: shuffled
+    });
+    setStatusNotification('सभी प्रश्नों को सफलतापूर्वक रैंडम शफ़ल कर दिया गया!');
+    setTimeout(() => setStatusNotification(null), 2000);
+  };
+
+  const handleReplaceAllUsedWithFresh = () => {
+    if (!generatedPreviewSet) return;
+    const currentIds = new Set(generatedPreviewSet.questions.map((q) => q.id));
+    let replacedCount = 0;
+
+    const updated = generatedPreviewSet.questions.map((q) => {
+      if (!isQuestionUsed(q)) return q;
+      const candidates = allBankQuestions.filter(
+        (cand) => cand.topic === q.topic && !isQuestionUsed(cand) && !currentIds.has(cand.id)
+      );
+      if (candidates.length > 0) {
+        const picked = candidates[Math.floor(Math.random() * candidates.length)];
+        currentIds.add(picked.id);
+        replacedCount++;
+        return picked;
+      }
+      return q;
+    });
+
+    setGeneratedPreviewSet({
+      ...generatedPreviewSet,
+      questions: updated
+    });
+    setStatusNotification(`${replacedCount} प्रयुक्त प्रश्नों को ताज़ा प्रश्नों से बदल दिया गया!`);
+    setTimeout(() => setStatusNotification(null), 2500);
+  };
+
+  const handleRemoveAllUsed = () => {
+    if (!generatedPreviewSet) return;
+    const freshOnly = generatedPreviewSet.questions.filter((q) => !isQuestionUsed(q));
+    if (freshOnly.length === 0) {
+      alert('सूची में सभी प्रश्न प्रयुक्त हैं! आप "Replace with Fresh" चुन सकते हैं।');
+      return;
+    }
+    setGeneratedPreviewSet({
+      ...generatedPreviewSet,
+      questions: freshOnly,
+      totalQuestions: freshOnly.length,
+      totalTimeMinutes: Math.max(5, freshOnly.length)
+    });
+    setStatusNotification('सभी प्रयुक्त प्रश्न हटा दिए गए!');
+    setTimeout(() => setStatusNotification(null), 2000);
+  };
+
+  const handleMoveQuestionInPreview = (index: number, direction: 'up' | 'down') => {
+    if (!generatedPreviewSet) return;
+    const qs = [...generatedPreviewSet.questions];
+    const targetIdx = direction === 'up' ? index - 1 : index + 1;
+    if (targetIdx < 0 || targetIdx >= qs.length) return;
+    const temp = qs[index];
+    qs[index] = qs[targetIdx];
+    qs[targetIdx] = temp;
+    setGeneratedPreviewSet({
+      ...generatedPreviewSet,
+      questions: qs
+    });
   };
 
   return (
@@ -1596,36 +1714,202 @@ export function CreateTestView({
               </div>
             </div>
 
-            {/* Sample Questions Preview Card */}
-            {generatedPreviewSet && generatedPreviewSet.questions.length > 0 && (
-              <div className="glass-panel p-6 rounded-3xl space-y-4">
-                <h4 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-amber-500" />
-                  <span>Sample Questions Preview:</span>
-                </h4>
+            {/* All Questions Preview & Interactive Manager Card */}
+            {generatedPreviewSet && generatedPreviewSet.questions.length > 0 && (() => {
+              const allQs = generatedPreviewSet.questions;
+              const freshQs = allQs.filter((q) => !isQuestionUsed(q));
+              const usedQs = allQs.filter((q) => isQuestionUsed(q));
+              const displayQs =
+                previewTabFilter === 'fresh' ? freshQs :
+                previewTabFilter === 'used' ? usedQs : allQs;
 
-                <div className="space-y-3">
-                  {generatedPreviewSet.questions.slice(0, 2).map((q, idx) => (
-                    <div
-                      key={q.id || idx}
-                      className="p-4 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 space-y-2 text-xs"
-                    >
-                      <div className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                        <span className="text-amber-500 font-mono">Q{idx + 1}.</span>
-                        <MathText text={q.questionText} />
+              return (
+                <div className="glass-panel p-6 sm:p-7 rounded-3xl space-y-5 border-amber-500/30">
+                  {/* Header & Quick Action Toolbar */}
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-white/10">
+                    <div>
+                      <div className="text-xs font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                        <Eye className="w-4 h-4" />
+                        <span>चयनित प्रश्नों का पूर्ण पूर्वावलोकन (All Selected Questions Preview)</span>
                       </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[11px] text-slate-500">
-                        {q.options.map((opt) => (
-                          <div key={opt.key} className="truncate">
-                            <span className="font-bold uppercase">({opt.key})</span> {opt.text}
-                          </div>
-                        ))}
-                      </div>
+                      <h4 className="text-base sm:text-lg font-black text-slate-900 dark:text-white mt-0.5">
+                        कुल {allQs.length} प्रश्न • ताज़ा: <span className="text-emerald-600 dark:text-emerald-400">{freshQs.length}</span> • प्रयुक्त: <span className="text-amber-600 dark:text-amber-400">{usedQs.length}</span>
+                      </h4>
                     </div>
-                  ))}
+
+                    {/* Batch Actions */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleShufflePreviewQuestions}
+                        className="px-3 py-2 rounded-xl text-xs font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 transition-all flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+                        title="Randomly shuffle all questions in this test"
+                      >
+                        <Shuffle className="w-3.5 h-3.5" />
+                        <span>रैंडम शफ़ल (Shuffle All)</span>
+                      </button>
+
+                      {usedQs.length > 0 && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={handleReplaceAllUsedWithFresh}
+                            className="px-3 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-all flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+                            title="Replace all used questions with fresh unused questions from the same chapter"
+                          >
+                            <RefreshCw className="w-3.5 h-3.5" />
+                            <span>प्रयुक्त प्रश्न बदलें ({usedQs.length})</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={handleRemoveAllUsed}
+                            className="px-3 py-2 rounded-xl text-xs font-bold bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20 transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                            title="Remove all previously used questions from this test"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>प्रयुक्त प्रश्न हटाएं</span>
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Filter Tabs */}
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setPreviewTabFilter('all')}
+                      className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
+                        previewTabFilter === 'all'
+                          ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xs'
+                          : 'bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                      }`}
+                    >
+                      सभी प्रश्न ({allQs.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewTabFilter('fresh')}
+                      className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
+                        previewTabFilter === 'fresh'
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20'
+                      }`}
+                    >
+                      🟢 ताज़ा प्रश्न ({freshQs.length})
+                    </button>
+                    {usedQs.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setPreviewTabFilter('used')}
+                        className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
+                          previewTabFilter === 'used'
+                            ? 'bg-amber-600 text-white shadow-xs'
+                            : 'bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20'
+                        }`}
+                      >
+                        🟠 पूर्व प्रयुक्त प्रश्न ({usedQs.length})
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Questions List with Action Controls */}
+                  <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
+                    {displayQs.map((q, idx) => {
+                      const isUsed = isQuestionUsed(q);
+                      const actualIdx = allQs.findIndex((item) => item.id === q.id);
+                      return (
+                        <div
+                          key={q.id || idx}
+                          className="p-4 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 space-y-3 text-xs shadow-2xs hover:border-amber-500/40 transition-all"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-mono font-black text-amber-600 dark:text-amber-400 text-sm">
+                                Q.{actualIdx + 1}
+                              </span>
+                              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                {q.topicNameHindi || q.topic}
+                              </span>
+                              {isUsed ? (
+                                <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                                  🟠 पूर्व टेस्ट में प्रयुक्त (Used)
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                                  🟢 ताज़ा प्रश्न (Fresh)
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Action Controls for Single Question */}
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => handleSwapQuestionWithFresh(q.id)}
+                                className="p-1.5 rounded-lg text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 transition-colors"
+                                title="Swap this question with a fresh unused question from this chapter"
+                              >
+                                <RefreshCw className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={actualIdx === 0}
+                                onClick={() => handleMoveQuestionInPreview(actualIdx, 'up')}
+                                className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 disabled:opacity-30 transition-colors"
+                                title="Move up"
+                              >
+                                <ArrowUp className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={actualIdx === allQs.length - 1}
+                                onClick={() => handleMoveQuestionInPreview(actualIdx, 'down')}
+                                className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 disabled:opacity-30 transition-colors"
+                                title="Move down"
+                              >
+                                <ArrowDown className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveQuestionFromPreview(q.id)}
+                                className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 transition-colors"
+                                title="Delete/Remove question from test"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Question Text */}
+                          <div className="font-semibold text-slate-900 dark:text-white leading-relaxed text-[13px]">
+                            <MathText text={q.questionText} />
+                          </div>
+
+                          {/* 5 Options Grid */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2 pt-1 text-[11px]">
+                            {(q.options || []).map((opt) => (
+                              <div
+                                key={opt.key}
+                                className={`p-2 rounded-xl border ${
+                                  opt.key.toLowerCase() === (q.correctOption || '').toLowerCase()
+                                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-800 dark:text-emerald-300 font-bold'
+                                    : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'
+                                }`}
+                              >
+                                <span className="font-mono font-black uppercase mr-1">({opt.key})</span>
+                                <MathText text={opt.text} />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Scheduling and Publication Settings Card */}
             <div className="glass-panel p-5 sm:p-6 rounded-3xl border border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 space-y-3">

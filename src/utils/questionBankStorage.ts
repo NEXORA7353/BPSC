@@ -958,15 +958,10 @@ export function createCustomMockTest(config: CustomTestConfig): MockTestSet {
 
   const processPool = (pool: Question[], reqCount: number) => {
     if (config.preferUnused) {
+      // Strictly fresh questions only - never reuse already tested questions
       const unusedPool = pool.filter(isQuestionUnused);
-      const usedPool = pool.filter((q) => !isQuestionUnused(q));
-      if (config.selectionMode === 'random') {
-        const shuffUnused = [...unusedPool].sort(() => Math.random() - 0.5);
-        const shuffUsed = [...usedPool].sort(() => Math.random() - 0.5);
-        return [...shuffUnused, ...shuffUsed].slice(0, Math.min(reqCount, pool.length));
-      } else {
-        return [...unusedPool, ...usedPool].slice(0, Math.min(reqCount, pool.length));
-      }
+      const candidates = [...unusedPool].sort(() => Math.random() - 0.5);
+      return candidates.slice(0, Math.min(reqCount, candidates.length));
     } else {
       const candidates = config.selectionMode === 'random' ? [...pool].sort(() => Math.random() - 0.5) : pool;
       return candidates.slice(0, Math.min(reqCount, pool.length));
@@ -979,7 +974,13 @@ export function createCustomMockTest(config: CustomTestConfig): MockTestSet {
     const idSet = new Set(config.specificQuestionIds);
     selected = allQuestions.filter((q) => idSet.has(q.id));
   } else if (config.topicDistribution && Object.keys(config.topicDistribution).length > 0) {
+    // Only process topics that are currently selected (filter out stale keys from other topics)
+    const allowedKeys = Array.isArray(config.selectedTopics) && config.selectedTopics.length > 0 && !config.selectedTopics.includes('all')
+      ? new Set(config.selectedTopics)
+      : null;
+
     Object.entries(config.topicDistribution).forEach(([tKey, reqCount]) => {
+      if (allowedKeys && !allowedKeys.has(tKey)) return;
       if (reqCount <= 0) return;
       const topicPool = allQuestions.filter((q) => q.topic === tKey);
       selected.push(...processPool(topicPool, reqCount));
@@ -997,8 +998,20 @@ export function createCustomMockTest(config: CustomTestConfig): MockTestSet {
     selected = processPool(pool, count);
   }
 
-  if (selected.length === 0) {
-    selected = allQuestions.slice(0, Math.min(config.questionCount || 10, allQuestions.length));
+  // Ensure total questions count strictly respects user request limit if defined
+  if (config.questionCount && config.questionCount > 0 && selected.length > config.questionCount) {
+    selected = selected.slice(0, config.questionCount);
+  }
+
+  if (selected.length === 0 && config.creationMode !== 'handpick') {
+    const fallbackPool = config.preferUnused ? allQuestions.filter(isQuestionUnused) : allQuestions;
+    const targetPool = fallbackPool.length > 0 ? fallbackPool : allQuestions;
+    selected = targetPool.slice(0, Math.min(config.questionCount || 10, targetPool.length));
+  }
+
+  // Universal Random Shuffle: Always mix & shuffle questions so tests are unpredictable and realistic
+  if (config.selectionMode !== 'sequential') {
+    selected = [...selected].sort(() => Math.random() - 0.5);
   }
 
   const testId = `custom_test_${Date.now()}`;

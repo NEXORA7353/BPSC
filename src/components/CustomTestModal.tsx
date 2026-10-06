@@ -28,7 +28,11 @@ import {
   CheckCheck,
   ChevronLeft,
   ChevronRight,
-  Printer
+  Printer,
+  Eye,
+  RefreshCw,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { CustomTestConfig, MockTestSet, RegisteredTopic, Question } from '../types';
 import {
@@ -39,10 +43,12 @@ import {
   deleteMultipleQuestions,
   getBookmarkedIds,
   getUsedQuestionsInfo,
-  cleanTitleToEnglish
+  cleanTitleToEnglish,
+  saveCustomTest
 } from '../utils/questionBankStorage';
 import { parseBulkQuestionText } from '../utils/questionParser';
 import { printQuestionPaperWithOmr } from '../utils/exportPdfOmr';
+import { MathText } from './MathText';
 
 interface CustomTestModalProps {
   isOpen: boolean;
@@ -85,7 +91,11 @@ export function CustomTestModal({
   onOpenBulkImport,
   initialTopicKey
 }: CustomTestModalProps) {
-  const [creationMode, setCreationMode] = useState<'topic_distribution' | 'handpick' | 'direct_paste'>('topic_distribution');
+  const [creationMode, setCreationMode] = useState<'topic_distribution' | 'handpick' | 'direct_paste' | 'preview'>('topic_distribution');
+
+  // Preview & Management State
+  const [previewQuestions, setPreviewQuestions] = useState<Question[]>([]);
+  const [previewFilter, setPreviewFilter] = useState<'all' | 'fresh' | 'used'>('all');
 
   // Topics & Questions State
   const [registeredTopics, setRegisteredTopics] = useState<RegisteredTopic[]>(() => getAllRegisteredTopics());
@@ -187,6 +197,9 @@ export function CustomTestModal({
 
   // Total questions count calculation
   const totalQuestionsCount = useMemo(() => {
+    if (creationMode === 'preview') {
+      return previewQuestions.length;
+    }
     if (creationMode === 'topic_distribution') {
       return selectedTopicKeys.reduce((sum, key) => sum + (topicDistribution[key] || 0), 0);
     }
@@ -197,7 +210,7 @@ export function CustomTestModal({
       return directParsedQuestions.length;
     }
     return 0;
-  }, [creationMode, selectedTopicKeys, topicDistribution, handpickedIds, directParsedQuestions]);
+  }, [creationMode, previewQuestions.length, selectedTopicKeys, topicDistribution, handpickedIds, directParsedQuestions]);
 
   // Topic Breakdown of Handpicked Questions
   const handpickedTopicCounts = useMemo(() => {
@@ -475,30 +488,173 @@ export function CustomTestModal({
     setIsTitleCustomLocked(true);
   };
 
+  // Generate preview questions set based on current configuration
+  const generatePreviewSet = () => {
+    if (creationMode === 'handpick') {
+      const picked = allBankQuestions.filter((q) => handpickedIds.includes(q.id));
+      const res = selectionMode === 'random' ? [...picked].sort(() => Math.random() - 0.5) : picked;
+      setPreviewQuestions(res);
+      return res;
+    }
+    if (creationMode === 'direct_paste') {
+      const res = selectionMode === 'random' ? [...directParsedQuestions].sort(() => Math.random() - 0.5) : directParsedQuestions;
+      setPreviewQuestions(res);
+      return res;
+    }
+    // topic_distribution or default:
+    const activeTopics = selectedTopicKeys.filter((k) => (topicDistribution[k] || 0) > 0);
+    const config: CustomTestConfig = {
+      title: testTitle.trim() || `BPSC TRE 4.0 Custom Test (${totalQuestionsCount} Qs)`,
+      creationMode: 'topic_distribution',
+      selectedTopics: activeTopics.length > 0 ? activeTopics : selectedTopicKeys,
+      topicDistribution,
+      questionCount: totalQuestionsCount,
+      timeMinutes: timeMode === 'auto' ? Math.max(5, totalQuestionsCount) : customTimeMinutes,
+      selectionMode,
+      negativeMarking,
+      targetExam: 'BPSC TRE 4.0 Mathematics (Custom Studio)',
+      preferUnused
+    };
+    const generated = createCustomMockTest(config);
+    setPreviewQuestions(generated.questions);
+    return generated.questions;
+  };
+
+  const handleOpenPreviewTab = () => {
+    generatePreviewSet();
+    setCreationMode('preview');
+  };
+
+  const handleRemoveQuestionFromPreview = (qId: string) => {
+    const remaining = previewQuestions.filter((q) => q.id !== qId);
+    if (remaining.length === 0) {
+      alert('टेस्ट में कम से कम 1 प्रश्न होना अनिवार्य है!');
+      return;
+    }
+    setPreviewQuestions(remaining);
+    setBulkStatusMsg('प्रश्न टेस्ट से हटा दिया गया!');
+    setTimeout(() => setBulkStatusMsg(null), 2000);
+  };
+
+  const handleSwapQuestionWithFresh = (qId: string) => {
+    const targetQ = previewQuestions.find((q) => q.id === qId);
+    if (!targetQ) return;
+
+    const currentIds = new Set(previewQuestions.map((q) => q.id));
+    const freshCandidates = allBankQuestions.filter(
+      (q) => q.topic === targetQ.topic && !isQuestionUsed(q) && !currentIds.has(q.id)
+    );
+
+    if (freshCandidates.length === 0) {
+      alert(`इस अध्याय (${targetQ.topicNameHindi || targetQ.topic}) में कोई अन्य ताज़ा प्रश्न उपलब्ध नहीं है!`);
+      return;
+    }
+
+    const randomFresh = freshCandidates[Math.floor(Math.random() * freshCandidates.length)];
+    const updated = previewQuestions.map((q) => (q.id === qId ? randomFresh : q));
+    setPreviewQuestions(updated);
+    setBulkStatusMsg('प्रश्न को नए ताज़ा प्रश्न से बदल दिया गया!');
+    setTimeout(() => setBulkStatusMsg(null), 2000);
+  };
+
+  const handleShufflePreviewQuestions = () => {
+    const shuffled = [...previewQuestions].sort(() => Math.random() - 0.5);
+    setPreviewQuestions(shuffled);
+    setBulkStatusMsg('सभी प्रश्नों को सफलतापूर्वक रैंडम शफ़ल कर दिया गया!');
+    setTimeout(() => setBulkStatusMsg(null), 2000);
+  };
+
+  const handleReplaceAllUsedWithFresh = () => {
+    const currentIds = new Set(previewQuestions.map((q) => q.id));
+    let replacedCount = 0;
+
+    const updated = previewQuestions.map((q) => {
+      if (!isQuestionUsed(q)) return q;
+      const candidates = allBankQuestions.filter(
+        (cand) => cand.topic === q.topic && !isQuestionUsed(cand) && !currentIds.has(cand.id)
+      );
+      if (candidates.length > 0) {
+        const picked = candidates[Math.floor(Math.random() * candidates.length)];
+        currentIds.add(picked.id);
+        replacedCount++;
+        return picked;
+      }
+      return q;
+    });
+
+    setPreviewQuestions(updated);
+    setBulkStatusMsg(`${replacedCount} प्रयुक्त प्रश्नों को ताज़ा प्रश्नों से बदल दिया गया!`);
+    setTimeout(() => setBulkStatusMsg(null), 2500);
+  };
+
+  const handleRemoveAllUsed = () => {
+    const freshOnly = previewQuestions.filter((q) => !isQuestionUsed(q));
+    if (freshOnly.length === 0) {
+      alert('सूची में सभी प्रश्न प्रयुक्त हैं! आप "Replace with Fresh" चुन सकते हैं।');
+      return;
+    }
+    setPreviewQuestions(freshOnly);
+    setBulkStatusMsg('सभी प्रयुक्त प्रश्न हटा दिए गए!');
+    setTimeout(() => setBulkStatusMsg(null), 2000);
+  };
+
+  const handleMoveQuestionInPreview = (index: number, direction: 'up' | 'down') => {
+    const qs = [...previewQuestions];
+    const targetIdx = direction === 'up' ? index - 1 : index + 1;
+    if (targetIdx < 0 || targetIdx >= qs.length) return;
+    const temp = qs[index];
+    qs[index] = qs[targetIdx];
+    qs[targetIdx] = temp;
+    setPreviewQuestions(qs);
+  };
+
   // Create Mock Test
   const handleCreateTestSet = (autoStart: boolean = false) => {
     const finalTime = timeMode === 'auto' ? Math.max(5, totalQuestionsCount) : customTimeMinutes;
 
-    const activeTopics = creationMode === 'topic_distribution'
-      ? selectedTopicKeys.filter((k) => (topicDistribution[k] || 0) > 0)
-      : undefined;
+    let newTestSet: MockTestSet;
 
-    const config: CustomTestConfig = {
-      title: cleanTitleToEnglish(testTitle.trim() || `BPSC TRE 4.0 Custom Test (${totalQuestionsCount} Qs)`),
-      creationMode,
-      selectedTopics: activeTopics && activeTopics.length > 0 ? activeTopics : selectedTopicKeys,
-      topicDistribution: creationMode === 'topic_distribution' ? topicDistribution : undefined,
-      specificQuestionIds: creationMode === 'handpick' ? handpickedIds : undefined,
-      directQuestions: creationMode === 'direct_paste' ? directParsedQuestions : undefined,
-      questionCount: totalQuestionsCount,
-      timeMinutes: finalTime,
-      selectionMode,
-      negativeMarking,
-      targetExam: 'BPSC TRE 4.0 Mathematics (Custom Studio)',
-      preferUnused: preferUnused
-    };
+    if (previewQuestions.length > 0) {
+      const distinctTopicLabels = Array.from(
+        new Set(previewQuestions.map((q) => q.topicNameHindi || q.topic || 'Mathematics'))
+      );
+      newTestSet = {
+        id: `custom_test_${Date.now()}`,
+        title: cleanTitleToEnglish(testTitle.trim() || `BPSC TRE 4.0 Custom Practice Test (${previewQuestions.length} Qs)`),
+        subtitle: `Chapters: ${distinctTopicLabels.join(', ')}`,
+        targetExam: 'BPSC TRE 4.0 Mathematics (Custom Studio)',
+        category: 'custom',
+        categoryTitle: 'Custom Generated Tests',
+        topicBadges: distinctTopicLabels.slice(0, 4),
+        totalQuestions: previewQuestions.length,
+        totalTimeMinutes: finalTime,
+        questions: previewQuestions,
+        negativeMarkingValue: negativeMarking ?? 0.33,
+        isCustom: true,
+        createdAt: new Date().toISOString()
+      };
+      saveCustomTest(newTestSet);
+    } else {
+      const activeTopics = creationMode === 'topic_distribution'
+        ? selectedTopicKeys.filter((k) => (topicDistribution[k] || 0) > 0)
+        : undefined;
 
-    const newTestSet = createCustomMockTest(config);
+      const config: CustomTestConfig = {
+        title: cleanTitleToEnglish(testTitle.trim() || `BPSC TRE 4.0 Custom Test (${totalQuestionsCount} Qs)`),
+        creationMode: creationMode === 'preview' ? 'topic_distribution' : creationMode,
+        selectedTopics: activeTopics && activeTopics.length > 0 ? activeTopics : selectedTopicKeys,
+        topicDistribution: creationMode === 'topic_distribution' ? topicDistribution : undefined,
+        specificQuestionIds: creationMode === 'handpick' ? handpickedIds : undefined,
+        directQuestions: creationMode === 'direct_paste' ? directParsedQuestions : undefined,
+        questionCount: totalQuestionsCount,
+        timeMinutes: finalTime,
+        selectionMode,
+        negativeMarking,
+        targetExam: 'BPSC TRE 4.0 Mathematics (Custom Studio)',
+        preferUnused: preferUnused
+      };
+      newTestSet = createCustomMockTest(config);
+    }
 
     if (autoStart) {
       onStartCustomTest(newTestSet);
@@ -515,26 +671,49 @@ export function CustomTestModal({
   const handlePrintPaperOmrFromModal = () => {
     const finalTime = timeMode === 'auto' ? Math.max(5, totalQuestionsCount) : customTimeMinutes;
 
-    const activeTopics = creationMode === 'topic_distribution'
-      ? selectedTopicKeys.filter((k) => (topicDistribution[k] || 0) > 0)
-      : undefined;
+    let newTestSet: MockTestSet;
 
-    const config: CustomTestConfig = {
-      title: testTitle.trim() || `BPSC TRE 4.0 Custom Test (${totalQuestionsCount} Qs)`,
-      creationMode,
-      selectedTopics: activeTopics && activeTopics.length > 0 ? activeTopics : selectedTopicKeys,
-      topicDistribution: creationMode === 'topic_distribution' ? topicDistribution : undefined,
-      specificQuestionIds: creationMode === 'handpick' ? handpickedIds : undefined,
-      directQuestions: creationMode === 'direct_paste' ? directParsedQuestions : undefined,
-      questionCount: totalQuestionsCount,
-      timeMinutes: finalTime,
-      selectionMode,
-      negativeMarking,
-      targetExam: 'BPSC TRE 4.0 Mathematics (Custom Studio)',
-      preferUnused: preferUnused
-    };
+    if (previewQuestions.length > 0) {
+      const distinctTopicLabels = Array.from(
+        new Set(previewQuestions.map((q) => q.topicNameHindi || q.topic || 'Mathematics'))
+      );
+      newTestSet = {
+        id: `custom_test_${Date.now()}`,
+        title: testTitle.trim() || `BPSC TRE 4.0 Custom Practice Test (${previewQuestions.length} Qs)`,
+        subtitle: `Chapters: ${distinctTopicLabels.join(', ')}`,
+        targetExam: 'BPSC TRE 4.0 Mathematics (Custom Studio)',
+        category: 'custom',
+        categoryTitle: 'Custom Generated Tests',
+        topicBadges: distinctTopicLabels.slice(0, 4),
+        totalQuestions: previewQuestions.length,
+        totalTimeMinutes: finalTime,
+        questions: previewQuestions,
+        negativeMarkingValue: negativeMarking ?? 0.33,
+        isCustom: true,
+        createdAt: new Date().toISOString()
+      };
+    } else {
+      const activeTopics = creationMode === 'topic_distribution'
+        ? selectedTopicKeys.filter((k) => (topicDistribution[k] || 0) > 0)
+        : undefined;
 
-    const newTestSet = createCustomMockTest(config);
+      const config: CustomTestConfig = {
+        title: testTitle.trim() || `BPSC TRE 4.0 Custom Test (${totalQuestionsCount} Qs)`,
+        creationMode: creationMode === 'preview' ? 'topic_distribution' : creationMode,
+        selectedTopics: activeTopics && activeTopics.length > 0 ? activeTopics : selectedTopicKeys,
+        topicDistribution: creationMode === 'topic_distribution' ? topicDistribution : undefined,
+        specificQuestionIds: creationMode === 'handpick' ? handpickedIds : undefined,
+        directQuestions: creationMode === 'direct_paste' ? directParsedQuestions : undefined,
+        questionCount: totalQuestionsCount,
+        timeMinutes: finalTime,
+        selectionMode,
+        negativeMarking,
+        targetExam: 'BPSC TRE 4.0 Mathematics (Custom Studio)',
+        preferUnused: preferUnused
+      };
+      newTestSet = createCustomMockTest(config);
+    }
+
     printQuestionPaperWithOmr(newTestSet);
   };
 
@@ -668,6 +847,18 @@ export function CustomTestModal({
           >
             <FileText className="w-4 h-4" />
             <span>Direct PDF / Notes Paste</span>
+          </button>
+
+          <button
+            onClick={handleOpenPreviewTab}
+            className={`pb-3 border-b-2 flex items-center gap-2 transition-all ${
+              creationMode === 'preview'
+                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+            }`}
+          >
+            <Eye className="w-4 h-4 text-emerald-500" />
+            <span>📋 प्रश्न पूर्वावलोकन एवं प्रबंधन ({previewQuestions.length > 0 ? previewQuestions.length : totalQuestionsCount})</span>
           </button>
         </div>
 
@@ -1359,6 +1550,238 @@ export function CustomTestModal({
             </div>
           )}
 
+          {/* MODE 4: FULL QUESTIONS PREVIEW & INTERACTIVE MANAGEMENT */}
+          {creationMode === 'preview' && (
+            <div className="space-y-4">
+              {previewQuestions.length === 0 ? (
+                <div className="p-8 text-center bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-3xl space-y-3">
+                  <p className="text-sm font-semibold text-slate-500">
+                    पूर्वावलोकन के लिए कोई प्रश्न नहीं लोड हुए हैं।
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      generatePreviewSet();
+                    }}
+                    className="px-4 py-2 bg-blue-600 text-white font-bold text-xs rounded-xl shadow-xs hover:bg-blue-700 transition-colors"
+                  >
+                    प्रश्न लोड करें (Generate Preview)
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {/* Top Summary Stats & Batch Toolbar */}
+                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-extrabold text-sm text-slate-900 dark:text-slate-100">
+                          कुल चयनित प्रश्न ({previewQuestions.length}):
+                        </span>
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 text-xs font-bold">
+                          🟢 {previewQuestions.filter((q) => !isQuestionUsed(q)).length} ताज़ा (Unused)
+                        </span>
+                        {previewQuestions.some(isQuestionUsed) && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 text-xs font-bold">
+                            🟠 {previewQuestions.filter(isQuestionUsed).length} पूर्व प्रयुक्त
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Filter Pills */}
+                      <div className="flex items-center gap-1.5 text-xs font-bold">
+                        <button
+                          type="button"
+                          onClick={() => setPreviewFilter('all')}
+                          className={`px-3 py-1 rounded-xl border transition-colors ${
+                            previewFilter === 'all'
+                              ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                          }`}
+                        >
+                          सभी ({previewQuestions.length})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPreviewFilter('fresh')}
+                          className={`px-3 py-1 rounded-xl border transition-colors ${
+                            previewFilter === 'fresh'
+                              ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                              : 'bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-400 border-slate-200 dark:border-slate-700'
+                          }`}
+                        >
+                          ताज़ा केवल ({previewQuestions.filter((q) => !isQuestionUsed(q)).length})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPreviewFilter('used')}
+                          className={`px-3 py-1 rounded-xl border transition-colors ${
+                            previewFilter === 'used'
+                              ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                              : 'bg-white dark:bg-slate-800 text-amber-700 dark:text-amber-400 border-slate-200 dark:border-slate-700'
+                          }`}
+                        >
+                          प्रयुक्त केवल ({previewQuestions.filter(isQuestionUsed).length})
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Batch Actions Toolbar */}
+                    <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex flex-wrap items-center gap-2 text-xs">
+                      <button
+                        type="button"
+                        onClick={handleShufflePreviewQuestions}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:border-blue-500 hover:text-blue-600 transition-colors shadow-2xs"
+                        title="Randomly shuffle all questions in this test"
+                      >
+                        <Shuffle className="w-3.5 h-3.5 text-blue-500" />
+                        <span>रैंडम शफ़ल (Shuffle All)</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleReplaceAllUsedWithFresh}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold bg-white dark:bg-slate-800 border border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors shadow-2xs"
+                        title="Replace all used questions with fresh unused questions from the same chapters"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
+                        <span>प्रयुक्त प्रश्न बदलें (Replace Used with Fresh)</span>
+                      </button>
+
+                      {previewQuestions.some(isQuestionUsed) && (
+                        <button
+                          type="button"
+                          onClick={handleRemoveAllUsed}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors shadow-2xs"
+                          title="Remove all previously used questions from this test"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-amber-500" />
+                          <span>प्रयुक्त प्रश्न हटाएं (Remove All Used)</span>
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => generatePreviewSet()}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl font-bold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 ml-auto"
+                        title="Re-generate test question set from settings"
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                        <span>रीसेट / रीलोड</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Questions List */}
+                  <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+                    {previewQuestions
+                      .filter((q) => {
+                        if (previewFilter === 'fresh') return !isQuestionUsed(q);
+                        if (previewFilter === 'used') return isQuestionUsed(q);
+                        return true;
+                      })
+                      .map((q) => {
+                        const isUsed = isQuestionUsed(q);
+                        const actualIdx = previewQuestions.findIndex((item) => item.id === q.id);
+
+                        return (
+                          <div
+                            key={q.id}
+                            className={`p-4 rounded-2xl border transition-all text-xs space-y-2.5 ${
+                              isUsed
+                                ? 'bg-amber-50/30 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/50'
+                                : 'bg-white dark:bg-slate-800/40 border-slate-200 dark:border-slate-800'
+                            }`}
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-extrabold text-slate-400">#{actualIdx + 1}</span>
+                                <span className="px-2 py-0.5 rounded-md font-bold bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20">
+                                  {q.topicNameHindi || q.topic}
+                                </span>
+                                {isUsed ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 text-[10px] font-bold">
+                                    <History className="w-3 h-3 text-amber-500" />
+                                    <span>पूर्व टेस्ट में प्रयुक्त</span>
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">
+                                    <Sparkles className="w-3 h-3 text-emerald-500" />
+                                    <span>🟢 ताज़ा प्रश्न</span>
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Question Management Advance Controls */}
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  disabled={actualIdx === 0}
+                                  onClick={() => handleMoveQuestionInPreview(actualIdx, 'up')}
+                                  className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 disabled:opacity-30"
+                                  title="Move Up"
+                                >
+                                  <ArrowUp className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={actualIdx === previewQuestions.length - 1}
+                                  onClick={() => handleMoveQuestionInPreview(actualIdx, 'down')}
+                                  className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 disabled:opacity-30"
+                                  title="Move Down"
+                                >
+                                  <ArrowDown className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSwapQuestionWithFresh(q.id)}
+                                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors"
+                                  title="इस प्रश्न को इसी अध्याय के नए ताज़ा प्रश्न से बदलें"
+                                >
+                                  <RefreshCw className="w-3 h-3" />
+                                  <span>ताज़ा प्रश्न से बदलें</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveQuestionFromPreview(q.id)}
+                                  className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                                  title="इस प्रश्न को टेस्ट से हटाएं"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Question text with KaTeX Math rendering */}
+                            <div className="font-semibold text-slate-900 dark:text-slate-100 leading-relaxed text-sm">
+                              <MathText text={q.questionText} />
+                            </div>
+
+                            {/* 5 Options with MathText */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
+                              {q.options.map((opt, optIdx) => {
+                                const letters = ['A', 'B', 'C', 'D', 'E'];
+                                return (
+                                  <div
+                                    key={optIdx}
+                                    className="px-2.5 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs flex items-start gap-2"
+                                  >
+                                    <span className="font-bold text-slate-400">({letters[optIdx]})</span>
+                                    <div className="flex-1">
+                                      <MathText text={opt} />
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
           {/* Time Duration, Order & Negative Penalty Settings */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-3 border-t border-slate-200 dark:border-slate-800">
             {/* Timer Duration */}
@@ -1475,6 +1898,27 @@ export function CustomTestModal({
             >
               Cancel
             </button>
+
+            {creationMode !== 'preview' ? (
+              <button
+                type="button"
+                disabled={totalQuestionsCount === 0}
+                onClick={handleOpenPreviewTab}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800 disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs transition-all active:scale-95 cursor-pointer"
+                title="सभी चयनित प्रश्नों का पूर्वावलोकन देखें, बदलें, शफ़ल करें या हटाएं"
+              >
+                <Eye className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <span>📋 पूर्वावलोकन ({totalQuestionsCount})</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setCreationMode('topic_distribution')}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                <span>⬅️ चयन बदलें</span>
+              </button>
+            )}
 
             <button
               disabled={totalQuestionsCount === 0}

@@ -319,23 +319,34 @@ export function QuestionBankView({
   };
 
   const handlePrintChapterPaperWithOmr = (topic: RegisteredTopic) => {
-    const chapterQs = allQuestions.filter((q) => q.topic === topic.key);
+    let chapterQs: Question[] = [];
+    if (selectedIds.length > 0) {
+      chapterQs = allQuestions.filter((q) => selectedIds.includes(q.id));
+    } else if (selectedFolderKey === topic.key && filteredFolderQuestions.length > 0) {
+      chapterQs = [...filteredFolderQuestions];
+    } else {
+      chapterQs = allQuestions.filter((q) => q.topic === topic.key);
+    }
+
     if (chapterQs.length === 0) {
       alert(`इस अध्याय (${topic.labelHindi}) में कोई प्रश्न उपलब्ध नहीं है।`);
       return;
     }
+
+    // Always random shuffle questions for realistic exam simulation
+    const shuffledQs = [...chapterQs].sort(() => Math.random() - 0.5);
     const hindiName = topic.labelHindi.split('(')[0].trim() || topic.labelEnglish;
     const testSet: MockTestSet = {
       id: `chapter_${topic.key}_${Date.now()}`,
-      title: `BPSC TRE 4.0: ${hindiName} स्पेशल मॉक टेस्ट`,
+      title: `BPSC TRE 4.0: ${hindiName} स्पेशल मॉक टेस्ट (${shuffledQs.length} प्रश्न)`,
       subtitle: `${topic.labelEnglish || topic.labelHindi} Chapter Practice Paper`,
       targetExam: 'BPSC TRE 4.0 Mathematics',
       category: 'custom',
       categoryTitle: hindiName,
       topicBadges: [topic.labelHindi],
-      totalQuestions: chapterQs.length,
-      totalTimeMinutes: Math.max(20, Math.round(chapterQs.length * 1.25)),
-      questions: chapterQs
+      totalQuestions: shuffledQs.length,
+      totalTimeMinutes: Math.max(20, Math.round(shuffledQs.length * 1.25)),
+      questions: shuffledQs
     };
     printQuestionPaperWithOmr(testSet);
   };
