@@ -352,7 +352,7 @@ export function ResultAnalytics({
             </div>
           </div>
 
-          {/* 🌟 BPSC TRE 4.0 SCIENTIFIC NORMALIZATION & PERCENTILE INTELLIGENCE */}
+          {/* BPSC TRE 4.0 SCIENTIFIC NORMALIZATION & PERCENTILE INTELLIGENCE */}
           <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-indigo-950/60 via-slate-900 to-slate-950 border border-indigo-500/30 shadow-xl space-y-5">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-white/10">

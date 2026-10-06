@@ -102,7 +102,17 @@ export function CreateTestView({
   };
 
   // Form Parameters
-  const [testTitle, setTestTitle] = useState('BPSC TRE 4.0: Mathematics Mock Test');
+  const [testTitle, setTestTitle] = useState(() => {
+    if (preselectedTopic) {
+      const topics = getAllRegisteredTopics();
+      const topicObj = topics.find((t) => t.key === preselectedTopic);
+      if (topicObj) {
+        const engName = cleanTitleToEnglish(topicObj.labelEnglish || topicObj.labelHindi || topicObj.key);
+        return `BPSC TRE 4.0: ${engName} Mock Test`;
+      }
+    }
+    return 'BPSC TRE 4.0: Mathematics Mock Test';
+  });
   const [titleStyle, setTitleStyle] = useState<TitleStyle>('mock');
   const [isTitleCustomLocked, setIsTitleCustomLocked] = useState(false);
 
@@ -122,15 +132,29 @@ export function CreateTestView({
 
   const [topicDistribution, setTopicDistribution] = useState<Record<string, number>>(() => {
     const dist: Record<string, number> = {};
+    if (preselectedTopic) {
+      dist[preselectedTopic] = 20;
+      return dist;
+    }
     const topics = getAllRegisteredTopics();
     topics.slice(0, 4).forEach((t) => {
       dist[t.key] = 5;
     });
-    if (preselectedTopic) {
-      dist[preselectedTopic] = 10;
-    }
     return dist;
   });
+
+  // Automatically sync preselected topic changes
+  useEffect(() => {
+    if (preselectedTopic) {
+      const topicObj = registeredTopics.find((t) => t.key === preselectedTopic);
+      if (topicObj) {
+        const engName = cleanTitleToEnglish(topicObj.labelEnglish || topicObj.labelHindi || topicObj.key);
+        setTestTitle(`BPSC TRE 4.0: ${engName} Mock Test`);
+        setSelectedTopicKeys([preselectedTopic]);
+        setTopicDistribution({ [preselectedTopic]: 20 });
+      }
+    }
+  }, [preselectedTopic, registeredTopics]);
 
   // Handpick Selection
   const [handpickedIds, setHandpickedIds] = useState<string[]>([]);
@@ -602,7 +626,8 @@ export function CreateTestView({
             {/* General Parameters Card */}
             <div className="glass-panel p-6 sm:p-8 rounded-3xl space-y-6">
               <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
-                <span>⚙️ Exam Parameters & Timing</span>
+                <SlidersHorizontal className="w-5 h-5 text-indigo-500" />
+                <span>Exam Parameters & Timing</span>
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

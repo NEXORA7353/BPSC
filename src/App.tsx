@@ -117,7 +117,7 @@ export default function App() {
       }
     } else {
       alert(
-        '📱 Mobile Web App Setup Instructions:\n\n' +
+        'Mobile Web App Setup Instructions:\n\n' +
         '• Android / Chrome: Tap browser menu (⋮) -> Select "Install App" or "Add to Home Screen"\n' +
         '• iPhone / Safari: Tap Share button (↑) -> Scroll down & tap "Add to Home Screen"\n\n' +
         'This allows the BPSC Portal to run directly like a native app without Chrome address bar!'
@@ -309,7 +309,7 @@ export default function App() {
     setTestResult(null);
   };
 
-  // ✅ Universal Delete Test Handler (Works on ANY test)
+  // Universal Delete Test Handler (Works on ANY test)
   const handleDeleteTest = (testId: string) => {
     deleteTest(testId);
     const updated = getAllAvailableTests();
@@ -464,6 +464,7 @@ export default function App() {
             onBackToTests={handleGoBack}
             onOpenBulkImport={handleOpenBulkImportWithTopic}
             onOpenCustomTest={handleOpenCustomTest}
+            onStartTest={(testId) => handleStartTest(testId)}
           />
         )}
 

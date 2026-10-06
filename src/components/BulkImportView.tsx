@@ -451,7 +451,8 @@ export function BulkImportView({
             {/* Target Chapter & Exam Configuration Card */}
             <div className="glass-panel p-6 rounded-3xl space-y-4">
               <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
-                <span>📚 Target Mathematics Chapter:</span>
+                <BookOpen className="w-5 h-5 text-indigo-500" />
+                <span>Target Mathematics Chapter:</span>
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

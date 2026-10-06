@@ -289,8 +289,24 @@ export function getAllRegisteredTopics(): RegisteredTopic[] {
     const safeUserTopics = (Array.isArray(userTopics) ? userTopics : []).filter(
       (t) => t && t.key && typeof t.key === 'string' && /[a-z0-9]/i.test(t.key) && t.key !== '_____'
     );
-    const existingKeys = new Set(DEFAULT_TOPICS.map((t) => t.key));
-    const merged = [...DEFAULT_TOPICS, ...safeUserTopics.filter((t) => !existingKeys.has(t.key))];
+    const userTopicsMap = new Map<string, RegisteredTopic>();
+    safeUserTopics.forEach((t) => userTopicsMap.set(t.key, t));
+
+    // Merge overrides with DEFAULT_TOPICS preserving original order
+    const merged = DEFAULT_TOPICS.map((t) => {
+      if (userTopicsMap.has(t.key)) {
+        return { ...t, ...userTopicsMap.get(t.key) };
+      }
+      return t;
+    });
+
+    // Append any custom registered topics not present in DEFAULT_TOPICS
+    safeUserTopics.forEach((t) => {
+      if (!merged.some((m) => m.key === t.key)) {
+        merged.push(t);
+      }
+    });
+
     return merged;
   } catch {
     return DEFAULT_TOPICS;
@@ -307,18 +323,70 @@ export function registerNewTopic(key: string, labelHindi: string, labelEnglish: 
   };
 
   try {
-    const existing = getAllRegisteredTopics();
-    const filtered = existing.filter((t) => t.key !== safeKey);
+    const raw = localStorage.getItem(STORAGE_KEYS.REGISTERED_TOPICS);
+    const userTopics: RegisteredTopic[] = raw ? JSON.parse(raw) : [];
+    const filtered = (Array.isArray(userTopics) ? userTopics : []).filter((t) => t.key !== safeKey);
     const updated = [...filtered, newTopic];
     localStorage.setItem(STORAGE_KEYS.REGISTERED_TOPICS, JSON.stringify(updated));
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('bpsc_topic_added', { detail: newTopic }));
+      window.dispatchEvent(new CustomEvent('bpsc_cloud_data_updated'));
     }
   } catch (err) {
     console.error('Failed to register topic', err);
   }
 
   return newTopic;
+}
+
+export function updateRegisteredTopic(
+  key: string,
+  newLabelHindi: string,
+  newLabelEnglish: string
+): RegisteredTopic {
+  const existing = getAllRegisteredTopics();
+  const current = existing.find((t) => t.key === key);
+  const updatedTopic: RegisteredTopic = {
+    key,
+    labelHindi: newLabelHindi.trim() || (current?.labelHindi || key),
+    labelEnglish: newLabelEnglish.trim() || (current?.labelEnglish || key),
+    isUserCreated: current?.isUserCreated ?? false
+  };
+
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.REGISTERED_TOPICS);
+    const userTopics: RegisteredTopic[] = raw ? JSON.parse(raw) : [];
+    const filtered = (Array.isArray(userTopics) ? userTopics : []).filter((t) => t.key !== key);
+    filtered.push(updatedTopic);
+    localStorage.setItem(STORAGE_KEYS.REGISTERED_TOPICS, JSON.stringify(filtered));
+
+    // Also update custom questions that reference this topic key
+    const custom = getCustomQuestions();
+    let questionsChanged = false;
+    const updatedQuestions = custom.map((q) => {
+      if (q.topic === key) {
+        questionsChanged = true;
+        return {
+          ...q,
+          topicNameHindi: updatedTopic.labelHindi
+        };
+      }
+      return q;
+    });
+
+    if (questionsChanged) {
+      saveCustomQuestions(updatedQuestions);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('bpsc_topic_updated', { detail: updatedTopic }));
+      window.dispatchEvent(new CustomEvent('bpsc_cloud_data_updated'));
+    }
+  } catch (err) {
+    console.error('Failed to update topic', err);
+  }
+
+  return updatedTopic;
 }
 
 // --- QUESTIONS DATABASE & LIVE CLOUD CACHE ---
@@ -680,6 +748,63 @@ export function getAllAvailableTests(): MockTestSet[] {
       return true;
     })
     .map(sanitizeTestSet);
+}
+
+export function getTestsForTopic(
+  topicKey: string,
+  topicLabelEn?: string,
+  topicLabelHi?: string
+): MockTestSet[] {
+  const allTests = getAllAvailableTests();
+  const lowerEn = (topicLabelEn || '').trim().toLowerCase();
+  const lowerHi = (topicLabelHi || '').trim().toLowerCase();
+  const keyLower = topicKey.trim().toLowerCase();
+
+  return allTests.filter((test) => {
+    // 1. Check topicBreakdown
+    if (test.topicBreakdown) {
+      for (const [k, count] of Object.entries(test.topicBreakdown)) {
+        if (count > 0) {
+          const kLower = k.toLowerCase();
+          if (kLower === keyLower || (lowerEn && kLower.includes(lowerEn)) || (lowerHi && kLower.includes(lowerHi))) {
+            return true;
+          }
+        }
+      }
+    }
+    // 2. Check topicBadges
+    if (Array.isArray(test.topicBadges)) {
+      for (const badge of test.topicBadges) {
+        const bLower = badge.toLowerCase();
+        if (bLower === keyLower || (lowerEn && bLower.includes(lowerEn)) || (lowerHi && bLower.includes(lowerHi))) {
+          return true;
+        }
+      }
+    }
+    // 3. Check title & subtitle
+    const titleLower = (test.title || '').toLowerCase();
+    const subLower = (test.subtitle || '').toLowerCase();
+    if (lowerEn && (titleLower.includes(lowerEn) || subLower.includes(lowerEn))) {
+      return true;
+    }
+    if (lowerHi && (titleLower.includes(lowerHi) || subLower.includes(lowerHi))) {
+      return true;
+    }
+    // 4. Check questions inside the test
+    if (Array.isArray(test.questions) && test.questions.length > 0) {
+      const matchCount = test.questions.filter((q) => {
+        if (!q) return false;
+        if (q.topic && q.topic.toLowerCase() === keyLower) return true;
+        if (lowerEn && q.topic && q.topic.toLowerCase().includes(lowerEn)) return true;
+        if (lowerHi && q.topicNameHindi && q.topicNameHindi.toLowerCase().includes(lowerHi)) return true;
+        return false;
+      }).length;
+      if (matchCount >= 2 || (test.questions.length > 0 && matchCount / test.questions.length >= 0.25)) {
+        return true;
+      }
+    }
+    return false;
+  });
 }
 
 export function getUsedQuestionsInfo(): {

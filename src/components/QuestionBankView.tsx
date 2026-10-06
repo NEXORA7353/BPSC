@@ -30,11 +30,22 @@ import {
   Wand2,
   Copy,
   FolderOpen,
+  Folder,
   ShieldCheck,
   Zap,
-  HelpCircle
+  HelpCircle,
+  Edit3,
+  Languages,
+  Play,
+  ArrowLeft,
+  Trophy,
+  FileText,
+  Clock,
+  Target,
+  ExternalLink,
+  X
 } from 'lucide-react';
-import { Question, RegisteredTopic } from '../types';
+import { Question, RegisteredTopic, MockTestSet, CustomTestConfig } from '../types';
 import {
   getAllQuestionBank,
   deleteCustomQuestion,
@@ -50,7 +61,12 @@ import {
   getQuestionCorrectKeys,
   getQuestionCorrectDisplay,
   registerNewTopic,
-  cleanTitleToEnglish
+  updateRegisteredTopic,
+  cleanTitleToEnglish,
+  getAllAvailableTests,
+  getTestsForTopic,
+  createCustomMockTest,
+  saveCustomTest
 } from '../utils/questionBankStorage';
 import { syncFromFirestore, seedAllQuestionsToCloud } from '../services/firebaseSyncService';
 import { auditQuestionBatch, autoHealQuestion } from '../utils/questionQualityAudit';
@@ -62,12 +78,14 @@ interface QuestionBankViewProps {
   onBackToTests: () => void;
   onOpenBulkImport: (topicKey?: string) => void;
   onOpenCustomTest: (topicKey?: string) => void;
+  onStartTest?: (testId: string) => void;
 }
 
 export function QuestionBankView({
   onBackToTests,
   onOpenBulkImport,
-  onOpenCustomTest
+  onOpenCustomTest,
+  onStartTest
 }: QuestionBankViewProps) {
   // Navigation Tabs: 'browse' | 'chapters' | 'audit' | 'data'
   const [activeTab, setActiveTab] = useState<'browse' | 'chapters' | 'audit' | 'data'>('browse');
@@ -84,6 +102,17 @@ export function QuestionBankView({
   const [dbNotification, setDbNotification] = useState<string | null>(null);
   const [isImageKitModalOpen, setIsImageKitModalOpen] = useState(false);
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
+
+  // Chapter Folder System State
+  const [chapterLangMode, setChapterLangMode] = useState<'en' | 'hi'>('en');
+  const [selectedFolderKey, setSelectedFolderKey] = useState<string | null>(null);
+  const [folderTab, setFolderTab] = useState<'questions' | 'tests' | 'quick_sprint'>('questions');
+  const [folderSearch, setFolderSearch] = useState('');
+  const [chapterSearchQuery, setChapterSearchQuery] = useState('');
+  const [editingTopic, setEditingTopic] = useState<RegisteredTopic | null>(null);
+  const [editHindiName, setEditHindiName] = useState('');
+  const [editEnglishName, setEditEnglishName] = useState('');
+  const [allAvailableTests, setAllAvailableTests] = useState<MockTestSet[]>(() => getAllAvailableTests());
 
   // In-line Chapter Creator
   const [isAddingTopic, setIsAddingTopic] = useState(false);
@@ -123,6 +152,7 @@ export function QuestionBankView({
     setAllQuestions(getAllQuestionBank());
     setRegisteredTopics(getAllRegisteredTopics());
     setBookmarkedIds(getBookmarkedIds());
+    setAllAvailableTests(getAllAvailableTests());
   };
 
   useEffect(() => {
@@ -131,11 +161,19 @@ export function QuestionBankView({
     window.addEventListener('bpsc_questions_added', handleUpdate);
     window.addEventListener('bpsc_questions_deleted', handleUpdate);
     window.addEventListener('bpsc_question_updated', handleUpdate);
+    window.addEventListener('bpsc_topic_updated', handleUpdate);
+    window.addEventListener('bpsc_topic_added', handleUpdate);
+    window.addEventListener('bpsc_test_saved', handleUpdate);
+    window.addEventListener('bpsc_test_deleted', handleUpdate);
     return () => {
       window.removeEventListener('bpsc_cloud_data_updated', handleUpdate);
       window.removeEventListener('bpsc_questions_added', handleUpdate);
       window.removeEventListener('bpsc_questions_deleted', handleUpdate);
       window.removeEventListener('bpsc_question_updated', handleUpdate);
+      window.removeEventListener('bpsc_topic_updated', handleUpdate);
+      window.removeEventListener('bpsc_topic_added', handleUpdate);
+      window.removeEventListener('bpsc_test_saved', handleUpdate);
+      window.removeEventListener('bpsc_test_deleted', handleUpdate);
     };
   }, []);
 
@@ -148,6 +186,94 @@ export function QuestionBankView({
     });
     return counts;
   }, [allQuestions]);
+
+  // Folder System Computations
+  const testsByTopic = useMemo(() => {
+    const map: Record<string, MockTestSet[]> = {};
+    registeredTopics.forEach((t) => {
+      map[t.key] = getTestsForTopic(t.key, t.labelEnglish, t.labelHindi);
+    });
+    return map;
+  }, [registeredTopics, allAvailableTests]);
+
+  const activeTopicObj = useMemo(() => {
+    if (!selectedFolderKey) return null;
+    return registeredTopics.find((t) => t.key === selectedFolderKey) || null;
+  }, [selectedFolderKey, registeredTopics]);
+
+  const questionsInCurrentFolder = useMemo(() => {
+    if (!selectedFolderKey) return [];
+    return allQuestions.filter((q) => q.topic === selectedFolderKey);
+  }, [selectedFolderKey, allQuestions]);
+
+  const testsInCurrentFolder = useMemo(() => {
+    if (!selectedFolderKey || !activeTopicObj) return [];
+    return testsByTopic[selectedFolderKey] || [];
+  }, [selectedFolderKey, activeTopicObj, testsByTopic]);
+
+  const filteredFolderQuestions = useMemo(() => {
+    if (!folderSearch.trim()) return questionsInCurrentFolder;
+    const q = folderSearch.toLowerCase().trim();
+    return questionsInCurrentFolder.filter(
+      (item) =>
+        item.questionText.toLowerCase().includes(q) ||
+        item.explanation.toLowerCase().includes(q) ||
+        item.options.some((opt) => opt.text.toLowerCase().includes(q))
+    );
+  }, [questionsInCurrentFolder, folderSearch]);
+
+  const filteredChapters = useMemo(() => {
+    if (!chapterSearchQuery.trim()) return registeredTopics;
+    const q = chapterSearchQuery.toLowerCase().trim();
+    return registeredTopics.filter(
+      (t) =>
+        t.labelHindi.toLowerCase().includes(q) ||
+        t.labelEnglish.toLowerCase().includes(q) ||
+        t.key.toLowerCase().includes(q)
+    );
+  }, [registeredTopics, chapterSearchQuery]);
+
+  const handleOpenEditTopic = (topic: RegisteredTopic, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setEditingTopic(topic);
+    setEditHindiName(topic.labelHindi);
+    setEditEnglishName(topic.labelEnglish || topic.labelHindi);
+  };
+
+  const handleSaveEditTopic = () => {
+    if (!editingTopic) return;
+    const updated = updateRegisteredTopic(editingTopic.key, editHindiName, editEnglishName);
+    setRegisteredTopics(getAllRegisteredTopics());
+    setAllQuestions(getAllQuestionBank());
+    setEditingTopic(null);
+    setDbNotification(`Chapter updated to "${updated.labelEnglish}"!`);
+    setTimeout(() => setDbNotification(null), 3000);
+  };
+
+  const handleLaunchQuickSprint = (count: number, minutes: number) => {
+    if (!activeTopicObj) return;
+    const cleanEng = cleanTitleToEnglish(activeTopicObj.labelEnglish || activeTopicObj.labelHindi);
+    const config: CustomTestConfig = {
+      title: `BPSC TRE 4.0: ${cleanEng} Sprint (${count} Qs)`,
+      creationMode: 'topic_distribution',
+      selectedTopics: [activeTopicObj.key],
+      topicDistribution: { [activeTopicObj.key]: count },
+      questionCount: count,
+      timeMinutes: minutes,
+      selectionMode: 'random',
+      negativeMarking: 0.33,
+      targetExam: 'BPSC TRE 4.0 Mathematics',
+      preferUnused: true
+    };
+    const testSet = createCustomMockTest(config);
+    saveCustomTest(testSet);
+    refreshData();
+    if (onStartTest) {
+      onStartTest(testSet.id);
+    } else {
+      onOpenCustomTest(activeTopicObj.key);
+    }
+  };
 
   // Filtered Questions in Browse tab
   const filteredQuestions = useMemo(() => {
@@ -864,47 +990,135 @@ export function QuestionBankView({
       )}
 
         {/* ======================================================== */}
-        {/* TAB 2: CHAPTERS & SYLLABUS MANAGEMENT                    */}
+        {/* TAB 2: CHAPTERS & SYLLABUS DIRECTORY (FOLDER FORMAT)     */}
         {/* ======================================================== */}
         {activeTab === 'chapters' && (
           <div className="space-y-6 animate-in fade-in duration-300">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h3 className="text-xl font-black text-slate-900 dark:text-white">
-                  Mathematics Chapters ({registeredTopics.length})
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Manage syllabus topics and launch topic-specific mock tests directly
-                </p>
-              </div>
+            {/* Top Toolbar / Breadcrumbs */}
+            {selectedFolderKey === null ? (
+              /* ROOT DIRECTORY HEADER */
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                    <Folder className="w-6 h-6 text-amber-500 fill-amber-500/20" />
+                    <span>Mathematics Chapters Directory ({registeredTopics.length})</span>
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Interactive chapter folder format. Open any chapter to explore questions, view existing mock tests, edit titles, or create dedicated exams.
+                  </p>
+                </div>
 
-              <button
-                type="button"
-                onClick={() => setIsAddingTopic(!isAddingTopic)}
-                className="px-4 py-2 rounded-2xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-500 transition-colors flex items-center gap-1.5 self-start"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add New Chapter</span>
-              </button>
-            </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  {/* Hindi / English Language Toggle */}
+                  <div className="flex items-center gap-1 p-1 rounded-2xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 shadow-xs">
+                    <Languages className="w-4 h-4 text-indigo-500 ml-1.5" />
+                    <span className="text-[11px] font-bold text-slate-500 hidden sm:inline px-1">Display:</span>
+                    <button
+                      type="button"
+                      onClick={() => setChapterLangMode('en')}
+                      className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+                        chapterLangMode === 'en'
+                          ? 'bg-amber-400 text-slate-950 font-black shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      English
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setChapterLangMode('hi')}
+                      className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+                        chapterLangMode === 'hi'
+                          ? 'bg-amber-400 text-slate-950 font-black shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      हिंदी
+                    </button>
+                  </div>
+
+                  {/* Chapter Filter / Search */}
+                  <div className="relative min-w-[190px]">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                    <input
+                      type="text"
+                      placeholder="Search chapters..."
+                      value={chapterSearchQuery}
+                      onChange={(e) => setChapterSearchQuery(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 rounded-2xl text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 font-bold focus:outline-hidden"
+                    />
+                  </div>
+
+                  {/* Add New Chapter */}
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingTopic(!isAddingTopic)}
+                    className="px-4 py-2 rounded-2xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-500 transition-colors flex items-center gap-1.5"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add Chapter</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* FOLDER VIEW BREADCRUMB */
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-200 dark:border-white/10">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedFolderKey(null);
+                      setFolderSearch('');
+                    }}
+                    className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors flex items-center gap-1.5 text-slate-700 dark:text-slate-300"
+                  >
+                    <ArrowLeft className="w-4 h-4 text-amber-500" />
+                    <span>All Chapters</span>
+                  </button>
+                  <span className="text-slate-400 text-sm">/</span>
+                  <div className="flex items-center gap-2 font-black text-sm text-slate-900 dark:text-white">
+                    <FolderOpen className="w-4 h-4 text-amber-500 fill-amber-500/20" />
+                    <span>
+                      {chapterLangMode === 'en'
+                        ? activeTopicObj?.labelEnglish || activeTopicObj?.labelHindi
+                        : activeTopicObj?.labelHindi}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Switch Language Inside Folder */}
+                <div className="flex items-center gap-1.5 self-start sm:self-auto">
+                  <span className="text-xs text-slate-400 font-bold">Language:</span>
+                  <button
+                    type="button"
+                    onClick={() => setChapterLangMode(chapterLangMode === 'en' ? 'hi' : 'en')}
+                    className="px-2.5 py-1 rounded-xl text-xs font-bold bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:border-amber-400/50 flex items-center gap-1 transition-colors"
+                  >
+                    <Languages className="w-3.5 h-3.5 text-indigo-500" />
+                    <span>{chapterLangMode === 'en' ? 'Switch to हिंदी' : 'Switch to English'}</span>
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* In-place Chapter Registration */}
             {isAddingTopic && (
               <div className="glass-panel p-6 rounded-3xl space-y-4 border-indigo-500/40">
-                <h4 className="text-sm font-black text-indigo-700 dark:text-indigo-300">
-                  Register New Chapter:
+                <h4 className="text-sm font-black text-indigo-700 dark:text-indigo-300 flex items-center gap-2">
+                  <Plus className="w-4 h-4" />
+                  <span>Register New Chapter Folder:</span>
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <input
                     type="text"
-                    placeholder="Chapter Hindi Name (e.g. द्विघात समीकरण)"
+                    placeholder="Chapter Hindi Name (e.g. प्रायिकता)"
                     value={newTopicHindi}
                     onChange={(e) => setNewTopicHindi(e.target.value)}
                     className="p-3 rounded-2xl text-xs bg-white dark:bg-slate-900 border focus:outline-hidden font-bold"
                   />
                   <input
                     type="text"
-                    placeholder="Chapter English Name (e.g. Quadratic Equations)"
+                    placeholder="Chapter English Name (e.g. Probability)"
                     value={newTopicEnglish}
                     onChange={(e) => setNewTopicEnglish(e.target.value)}
                     className="p-3 rounded-2xl text-xs bg-white dark:bg-slate-900 border focus:outline-hidden font-bold"
@@ -916,7 +1130,7 @@ export function QuestionBankView({
                     onClick={handleCreateNewChapter}
                     className="px-5 py-2.5 rounded-xl text-xs font-black bg-indigo-600 text-white"
                   >
-                    Confirm & Save
+                    Confirm & Save Chapter
                   </button>
                   <button
                     type="button"
@@ -929,49 +1143,688 @@ export function QuestionBankView({
               </div>
             )}
 
-            {/* Chapters Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {registeredTopics.map((topic) => {
-                const count = statsByTopic[topic.key] || 0;
+            {/* ======================================================== */}
+            {/* VIEW A: ROOT CHAPTER FOLDERS GRID                       */}
+            {/* ======================================================== */}
+            {selectedFolderKey === null ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {filteredChapters.map((topic) => {
+                  const count = statsByTopic[topic.key] || 0;
+                  const testList = testsByTopic[topic.key] || [];
+                  const primaryTitle = chapterLangMode === 'en'
+                    ? (topic.labelEnglish || topic.labelHindi)
+                    : topic.labelHindi;
+                  const secondaryTitle = chapterLangMode === 'en'
+                    ? topic.labelHindi
+                    : (topic.labelEnglish || topic.labelHindi);
 
-                return (
-                  <div
-                    key={topic.key}
-                    className="glass-panel p-6 rounded-3xl space-y-4 flex flex-col justify-between"
-                  >
-                    <div className="space-y-1">
-                      <div className="flex items-start justify-between gap-2">
-                        <h4 className="font-black text-base text-slate-900 dark:text-white">
-                          {topic.labelHindi}
-                        </h4>
-                        <span className="font-mono font-black text-xs px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
-                          {count} Qs
-                        </span>
+                  return (
+                    <div
+                      key={topic.key}
+                      onClick={() => {
+                        setSelectedFolderKey(topic.key);
+                        setFolderTab('questions');
+                      }}
+                      className="group glass-panel p-6 rounded-3xl space-y-4 flex flex-col justify-between border border-slate-200 dark:border-white/10 hover:border-amber-400/50 hover:shadow-lg dark:hover:shadow-amber-500/5 transition-all cursor-pointer relative overflow-hidden"
+                    >
+                      {/* Top Bar of Folder */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 group-hover:bg-amber-500/20 flex items-center justify-center text-amber-500 transition-colors shrink-0">
+                          <Folder className="w-6 h-6 fill-amber-500/30" />
+                        </div>
+
+                        {/* Badges */}
+                        <div className="flex flex-col items-end gap-1.5">
+                          <span className="font-mono font-bold text-xs px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 flex items-center gap-1">
+                            <FileText className="w-3 h-3" />
+                            <span>{count} Qs</span>
+                          </span>
+
+                          <span className={`font-mono font-bold text-[11px] px-2.5 py-0.5 rounded-full border flex items-center gap-1 ${
+                            testList.length > 0
+                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                              : 'bg-slate-100 dark:bg-white/5 text-slate-500 border-slate-200 dark:border-white/10'
+                          }`}>
+                            <Trophy className="w-3 h-3" />
+                            <span>{testList.length} Tests</span>
+                          </span>
+                        </div>
                       </div>
-                      <p className="text-xs text-slate-500">{topic.labelEnglish}</p>
+
+                      {/* Folder Content / Names */}
+                      <div className="space-y-1">
+                        <h4 className="font-black text-base text-slate-900 dark:text-white group-hover:text-amber-500 transition-colors line-clamp-2">
+                          {primaryTitle}
+                        </h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
+                          {secondaryTitle}
+                        </p>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex flex-wrap items-center gap-2 pt-3 border-t border-slate-200 dark:border-white/5"
+                      >
+                        {/* Open Folder */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedFolderKey(topic.key);
+                            setFolderTab('questions');
+                          }}
+                          className="flex-1 min-w-[90px] py-2 rounded-xl text-[11px] font-bold bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 transition-colors flex items-center justify-center gap-1"
+                        >
+                          <FolderOpen className="w-3.5 h-3.5 text-amber-500" />
+                          <span>Open</span>
+                        </button>
+
+                        {/* Create Test */}
+                        <button
+                          type="button"
+                          onClick={() => onOpenCustomTest(topic.key)}
+                          className="flex-1 min-w-[100px] py-2 rounded-xl text-[11px] font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 transition-colors text-center shadow-xs"
+                          title={`Create Mock Test for ${topic.labelEnglish || topic.labelHindi}`}
+                        >
+                          Create Test
+                        </button>
+
+                        {/* Edit Chapter */}
+                        <button
+                          type="button"
+                          onClick={(e) => handleOpenEditTopic(topic, e)}
+                          className="p-2 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+                          title="Edit Chapter Hindi & English Name"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+
+                        {/* Import Qs */}
+                        <button
+                          type="button"
+                          onClick={() => onOpenBulkImport(topic.key)}
+                          className="py-2 px-2.5 rounded-xl text-[11px] font-bold bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 transition-colors"
+                          title="Import Questions into this Chapter"
+                        >
+                          + Import
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              /* ======================================================== */
+              /* VIEW B: OPENED CHAPTER FOLDER DETAILS                   */
+              /* ======================================================== */
+              activeTopicObj && (
+                <div className="space-y-6">
+                  {/* Folder Hero Banner */}
+                  <div className="glass-panel p-6 sm:p-8 rounded-3xl border-amber-500/30 bg-gradient-to-br from-amber-500/5 via-transparent to-indigo-500/5 space-y-6">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                      <div className="flex items-start gap-4">
+                        <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-500 shrink-0">
+                          <FolderOpen className="w-7 h-7 fill-amber-500/30" />
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+                              {chapterLangMode === 'en'
+                                ? activeTopicObj.labelEnglish || activeTopicObj.labelHindi
+                                : activeTopicObj.labelHindi}
+                            </h2>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditTopic(activeTopicObj)}
+                              className="p-1.5 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+                              title="Edit Chapter Name"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                            {chapterLangMode === 'en'
+                              ? activeTopicObj.labelHindi
+                              : activeTopicObj.labelEnglish || activeTopicObj.labelHindi}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-2 pt-1">
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-slate-300">
+                              key: {activeTopicObj.key}
+                            </span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                              {questionsInCurrentFolder.length} Questions in Folder
+                            </span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                              {testsInCurrentFolder.length} Mock Tests Created
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Header Actions */}
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        <button
+                          type="button"
+                          onClick={() => onOpenCustomTest(activeTopicObj.key)}
+                          className="px-4 py-2.5 rounded-2xl text-xs font-black bg-amber-400 hover:bg-amber-300 text-slate-950 transition-colors shadow-md shadow-amber-400/20 flex items-center gap-1.5"
+                        >
+                          <Plus className="w-4 h-4" />
+                          <span>Create Mock Test</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => onOpenBulkImport(activeTopicObj.key)}
+                          className="px-4 py-2.5 rounded-2xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-colors flex items-center gap-1.5"
+                        >
+                          <Upload className="w-4 h-4" />
+                          <span>Import Questions</span>
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-2 pt-3 border-t border-slate-200 dark:border-white/5">
+                    {/* Sub-Tabs Selector */}
+                    <div className="flex flex-wrap items-center gap-2 pt-4 border-t border-slate-200 dark:border-white/10">
                       <button
                         type="button"
-                        onClick={() => onOpenCustomTest(topic.key)}
-                        className="flex-1 py-2 rounded-xl text-[11px] font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 transition-colors text-center"
+                        onClick={() => setFolderTab('questions')}
+                        className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 ${
+                          folderTab === 'questions'
+                            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                            : 'bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
+                        }`}
                       >
-                        Create Test
+                        <FileText className="w-4 h-4" />
+                        <span>Chapter Questions ({questionsInCurrentFolder.length})</span>
                       </button>
 
                       <button
                         type="button"
-                        onClick={() => onOpenBulkImport(topic.key)}
-                        className="flex-1 py-2 rounded-xl text-[11px] font-bold bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 transition-colors text-center"
+                        onClick={() => setFolderTab('tests')}
+                        className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 ${
+                          folderTab === 'tests'
+                            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                            : 'bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
+                        }`}
                       >
-                        + Import Qs
+                        <Trophy className="w-4 h-4" />
+                        <span>Mock Tests for this Chapter ({testsInCurrentFolder.length})</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setFolderTab('quick_sprint')}
+                        className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 ${
+                          folderTab === 'quick_sprint'
+                            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                            : 'bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
+                        }`}
+                      >
+                        <Zap className="w-4 h-4" />
+                        <span>1-Click Quick Sprint</span>
                       </button>
                     </div>
                   </div>
-                );
-              })}
-            </div>
+
+                  {/* SUB-TAB 1: QUESTIONS IN FOLDER */}
+                  {folderTab === 'questions' && (
+                    <div className="space-y-4">
+                      {/* Search Bar inside Folder */}
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="relative flex-1 max-w-md">
+                          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                          <input
+                            type="text"
+                            placeholder="Filter questions in this chapter..."
+                            value={folderSearch}
+                            onChange={(e) => setFolderSearch(e.target.value)}
+                            className="w-full pl-9 pr-3 py-2 rounded-2xl text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 font-bold focus:outline-hidden"
+                          />
+                        </div>
+
+                        <span className="text-xs font-bold text-slate-500">
+                          Showing {filteredFolderQuestions.length} of {questionsInCurrentFolder.length} questions
+                        </span>
+                      </div>
+
+                      {filteredFolderQuestions.length === 0 ? (
+                        <div className="glass-panel p-12 rounded-3xl text-center space-y-4">
+                          <FileText className="w-12 h-12 text-slate-400 mx-auto" />
+                          <h4 className="font-bold text-base text-slate-700 dark:text-slate-300">
+                            {questionsInCurrentFolder.length === 0
+                              ? 'This chapter folder has no questions yet'
+                              : 'No questions match your filter'}
+                          </h4>
+                          <p className="text-xs text-slate-500">
+                            Import questions into this chapter using the Bulk Import tool.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => onOpenBulkImport(activeTopicObj.key)}
+                            className="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-500 transition-colors"
+                          >
+                            + Import Questions to {activeTopicObj.labelEnglish || activeTopicObj.labelHindi}
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {filteredFolderQuestions.map((q, idx) => {
+                            const isBookmarked = bookmarkedIds.includes(q.id);
+                            const isSolutionOpen = Boolean(expandedSolutions[q.id]);
+                            const isEditing = editingQuestionId === q.id;
+
+                            return (
+                              <div
+                                key={q.id}
+                                className="glass-panel p-6 rounded-3xl space-y-4 border transition-all"
+                              >
+                                {/* Question Header */}
+                                <div className="flex items-center justify-between gap-3">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="w-7 h-7 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-mono font-bold text-xs flex items-center justify-center">
+                                      #{idx + 1}
+                                    </span>
+                                    <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20">
+                                      {cleanTitleToEnglish(q.topicNameHindi || q.topic)}
+                                    </span>
+                                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-slate-300">
+                                      {q.exam}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex items-center gap-2">
+                                    {/* Bookmark */}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleBookmark(q.id)}
+                                      className={`p-2 rounded-xl transition-colors ${
+                                        isBookmarked
+                                          ? 'text-amber-500 bg-amber-500/10'
+                                          : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-white/10'
+                                      }`}
+                                      title="Bookmark question"
+                                    >
+                                      <Bookmark className={`w-4 h-4 ${isBookmarked ? 'fill-amber-500' : ''}`} />
+                                    </button>
+
+                                    {/* Edit */}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleStartEditQuestion(q)}
+                                      className="p-2 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+                                      title="Edit question"
+                                    >
+                                      <Edit2 className="w-4 h-4" />
+                                    </button>
+
+                                    {/* Delete */}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteSingleQuestion(q.id)}
+                                      className="p-2 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+                                      title="Delete question"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* Content or Edit Form */}
+                                {!isEditing ? (
+                                  <div className="space-y-3">
+                                    <div className="text-sm font-semibold text-slate-900 dark:text-white leading-relaxed">
+                                      <MathText text={q.questionText} />
+                                    </div>
+
+                                    {/* Options */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 pt-2 text-xs">
+                                      {q.options.map((opt) => {
+                                        const isCorrect = q.correctOption?.includes(opt.key);
+                                        return (
+                                          <div
+                                            key={opt.key}
+                                            className={`p-2.5 rounded-xl border font-medium ${
+                                              isCorrect
+                                                ? 'bg-emerald-500/15 border-emerald-500/60 text-emerald-800 dark:text-emerald-200 font-bold'
+                                                : 'bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/5 text-slate-700 dark:text-slate-300'
+                                            }`}
+                                          >
+                                            <span className="uppercase font-bold">({opt.key})</span>{' '}
+                                            <MathText text={opt.text} />
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+
+                                    {/* Solution toggle */}
+                                    <div className="pt-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => toggleExpandSolution(q.id)}
+                                        className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1.5"
+                                      >
+                                        <span>{isSolutionOpen ? 'Hide Solution' : 'View Detailed Solution & Explanation'}</span>
+                                        {isSolutionOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                      </button>
+
+                                      {isSolutionOpen && (
+                                        <div className="mt-3 p-4 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-xs text-slate-700 dark:text-slate-200 leading-relaxed space-y-1 animate-in fade-in">
+                                          <div className="font-bold text-amber-600 dark:text-amber-400">
+                                            BPSC Official Explanation:
+                                          </div>
+                                          <MathText text={q.explanation || 'No explanation provided.'} />
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  /* Inline Editor */
+                                  <div className="p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/30 space-y-4">
+                                    <div className="space-y-1">
+                                      <label className="text-xs font-bold text-slate-500">Edit Question Text:</label>
+                                      <textarea
+                                        rows={3}
+                                        value={editingFormState?.questionText || ''}
+                                        onChange={(e) =>
+                                          setEditingFormState((prev) =>
+                                            prev ? { ...prev, questionText: e.target.value } : null
+                                          )
+                                        }
+                                        className="w-full p-3 rounded-xl text-xs bg-white dark:bg-slate-900 border font-bold"
+                                      />
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={handleSaveEditedQuestion}
+                                        className="px-4 py-2 rounded-xl text-xs font-black bg-indigo-600 text-white"
+                                      >
+                                        Save Changes
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setEditingQuestionId(null);
+                                          setEditingFormState(null);
+                                        }}
+                                        className="px-3 py-2 rounded-xl text-xs font-bold text-slate-500"
+                                      >
+                                        Cancel
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* SUB-TAB 2: TESTS FOR THIS CHAPTER */}
+                  {folderTab === 'tests' && (
+                    <div className="space-y-5">
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <h4 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
+                            <Trophy className="w-5 h-5 text-amber-500" />
+                            <span>Mock Tests Registered for this Chapter ({testsInCurrentFolder.length})</span>
+                          </h4>
+                          <p className="text-xs text-slate-500">
+                            Tests that include questions from {activeTopicObj.labelEnglish || activeTopicObj.labelHindi}. Click "Start Test" to begin immediately.
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => onOpenCustomTest(activeTopicObj.key)}
+                          className="px-4 py-2 rounded-2xl text-xs font-black bg-amber-400 hover:bg-amber-300 text-slate-950 transition-colors shadow-xs flex items-center gap-1.5"
+                        >
+                          <Plus className="w-4 h-4" />
+                          <span>Create New Test</span>
+                        </button>
+                      </div>
+
+                      {testsInCurrentFolder.length === 0 ? (
+                        <div className="glass-panel p-12 rounded-3xl text-center space-y-4">
+                          <Trophy className="w-12 h-12 text-slate-400 mx-auto" />
+                          <h4 className="font-bold text-base text-slate-700 dark:text-slate-300">
+                            No Dedicated Mock Tests Found for this Chapter
+                          </h4>
+                          <p className="text-xs text-slate-500 max-w-md mx-auto">
+                            You haven't generated a mock test specifically for {activeTopicObj.labelEnglish || activeTopicObj.labelHindi} yet. Click below to generate one automatically!
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => onOpenCustomTest(activeTopicObj.key)}
+                            className="px-5 py-2.5 rounded-2xl text-xs font-black bg-amber-400 hover:bg-amber-300 text-slate-950 transition-colors shadow-md shadow-amber-400/20"
+                          >
+                            Generate {activeTopicObj.labelEnglish || activeTopicObj.labelHindi} Mock Test Now
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {testsInCurrentFolder.map((test) => {
+                            const qCount = test.totalQuestions || (Array.isArray(test.questions) ? test.questions.length : 0);
+                            const tMins = test.totalTimeMinutes || 20;
+
+                            return (
+                              <div
+                                key={test.id}
+                                className="glass-panel p-6 rounded-3xl space-y-4 flex flex-col justify-between border hover:border-amber-400/50 transition-all"
+                              >
+                                <div className="space-y-2">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                      {test.targetExam || 'BPSC TRE 4.0'}
+                                    </span>
+                                    <span className="text-xs font-mono font-bold text-slate-500 flex items-center gap-1">
+                                      <Clock className="w-3.5 h-3.5" />
+                                      <span>{tMins} Mins</span>
+                                    </span>
+                                  </div>
+
+                                  <h4 className="font-black text-base text-slate-900 dark:text-white line-clamp-2">
+                                    {test.title}
+                                  </h4>
+                                  <p className="text-xs text-slate-500 line-clamp-1">
+                                    {test.subtitle || 'Chapter Specific Mock Test'}
+                                  </p>
+
+                                  <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
+                                    <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/5 font-mono font-bold text-slate-700 dark:text-slate-300">
+                                      {qCount} Questions
+                                    </span>
+                                    <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/5 font-mono font-bold text-slate-700 dark:text-slate-300">
+                                      {qCount} Marks
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="pt-3 border-t border-slate-200 dark:border-white/5 flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (onStartTest) {
+                                        onStartTest(test.id);
+                                      } else {
+                                        onOpenCustomTest(activeTopicObj.key);
+                                      }
+                                    }}
+                                    className="flex-1 py-2.5 rounded-xl text-xs font-black bg-amber-400 hover:bg-amber-300 text-slate-950 transition-colors flex items-center justify-center gap-1.5 shadow-md shadow-amber-400/20"
+                                  >
+                                    <Play className="w-4 h-4 fill-slate-950" />
+                                    <span>Start Test Now</span>
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* SUB-TAB 3: QUICK 1-CLICK SPRINT */}
+                  {folderTab === 'quick_sprint' && (
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
+                          <Zap className="w-5 h-5 text-amber-500" />
+                          <span>1-Click Chapter Sprint Generator</span>
+                        </h4>
+                        <p className="text-xs text-slate-500">
+                          Launch a test immediately from {activeTopicObj.labelEnglish || activeTopicObj.labelHindi} without configuring parameters.
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* Sprint Option 1 */}
+                        <div className="glass-panel p-6 rounded-3xl space-y-4 border flex flex-col justify-between hover:border-amber-400/50 transition-all">
+                          <div className="space-y-2">
+                            <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                              Rapid Practice
+                            </span>
+                            <h5 className="font-black text-lg text-slate-900 dark:text-white">
+                              10 Qs Quick Sprint
+                            </h5>
+                            <p className="text-xs text-slate-500">
+                              10 questions from this chapter in 10 minutes. Perfect for fast revision.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleLaunchQuickSprint(10, 10)}
+                            className="w-full py-2.5 rounded-xl text-xs font-black bg-amber-400 hover:bg-amber-300 text-slate-950 transition-colors flex items-center justify-center gap-1.5"
+                          >
+                            <Play className="w-3.5 h-3.5 fill-slate-950" />
+                            <span>Launch 10 Qs Sprint</span>
+                          </button>
+                        </div>
+
+                        {/* Sprint Option 2 */}
+                        <div className="glass-panel p-6 rounded-3xl space-y-4 border flex flex-col justify-between hover:border-amber-400/50 transition-all">
+                          <div className="space-y-2">
+                            <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                              Standard Drill
+                            </span>
+                            <h5 className="font-black text-lg text-slate-900 dark:text-white">
+                              25 Qs Standard Test
+                            </h5>
+                            <p className="text-xs text-slate-500">
+                              25 questions in 25 minutes. Ideal benchmark for speed & accuracy.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleLaunchQuickSprint(25, 25)}
+                            className="w-full py-2.5 rounded-xl text-xs font-black bg-indigo-600 hover:bg-indigo-500 text-white transition-colors flex items-center justify-center gap-1.5"
+                          >
+                            <Play className="w-3.5 h-3.5 fill-white" />
+                            <span>Launch 25 Qs Test</span>
+                          </button>
+                        </div>
+
+                        {/* Sprint Option 3 */}
+                        <div className="glass-panel p-6 rounded-3xl space-y-4 border flex flex-col justify-between hover:border-amber-400/50 transition-all">
+                          <div className="space-y-2">
+                            <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400">
+                              Chapter Mastery
+                            </span>
+                            <h5 className="font-black text-lg text-slate-900 dark:text-white">
+                              40 Qs Deep Exam
+                            </h5>
+                            <p className="text-xs text-slate-500">
+                              40 questions in 40 minutes covering all difficulty tiers in this topic.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleLaunchQuickSprint(40, 40)}
+                            className="w-full py-2.5 rounded-xl text-xs font-black bg-purple-600 hover:bg-purple-500 text-white transition-colors flex items-center justify-center gap-1.5"
+                          >
+                            <Play className="w-3.5 h-3.5 fill-white" />
+                            <span>Launch 40 Qs Exam</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            )}
+
+            {/* EDIT CHAPTER MODAL */}
+            {editingTopic && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in">
+                <div className="glass-panel p-6 sm:p-8 rounded-3xl max-w-md w-full space-y-5 border border-amber-400/40 shadow-2xl">
+                  <div className="flex items-center justify-between gap-3">
+                    <h4 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
+                      <Edit3 className="w-5 h-5 text-amber-500" />
+                      <span>Edit Chapter Details</span>
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => setEditingTopic(null)}
+                      className="p-1 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-white"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <p className="text-xs text-slate-500">
+                    Update the Hindi and English display names for this chapter across the entire mock portal.
+                  </p>
+
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                        Chapter Hindi Name (हिंदी नाम):
+                      </label>
+                      <input
+                        type="text"
+                        value={editHindiName}
+                        onChange={(e) => setEditHindiName(e.target.value)}
+                        placeholder="e.g. संख्या पद्धति"
+                        className="w-full p-3 rounded-2xl text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 font-bold focus:outline-hidden"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                        Chapter English Name (English Name):
+                      </label>
+                      <input
+                        type="text"
+                        value={editEnglishName}
+                        onChange={(e) => setEditEnglishName(e.target.value)}
+                        placeholder="e.g. Number System"
+                        className="w-full p-3 rounded-2xl text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 font-bold focus:outline-hidden"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditingTopic(null)}
+                      className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveEditTopic}
+                      className="px-5 py-2.5 rounded-xl text-xs font-black bg-amber-400 hover:bg-amber-300 text-slate-950 transition-colors shadow-md shadow-amber-400/20"
+                    >
+                      Save Changes
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
