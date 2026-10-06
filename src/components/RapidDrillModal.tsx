@@ -29,8 +29,11 @@ export function RapidDrillModal({ isOpen, onClose, onStartTest }: RapidDrillModa
   const topicNameHindi = currentTopicObj?.labelHindi || 'विविध गणित';
 
   const handleStartRapidDrill = () => {
+    const topicObj = registeredTopics.find((t) => t.key === selectedTopicKey);
+    const topicEn = topicObj?.labelEnglish || 'Mathematics';
+
     const config: CustomTestConfig = {
-      title: `Rapid Sprint (5-Min) - ${topicNameHindi.split('(')[0].trim()}`,
+      title: `BPSC TRE 4.0: 5-Min Rapid Drill - ${topicEn} (${drillCount} Qs)`,
       creationMode: 'topic_distribution',
       selectedTopics: [selectedTopicKey],
       topicDistribution: { [selectedTopicKey]: drillCount },

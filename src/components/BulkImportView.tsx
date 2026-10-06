@@ -293,15 +293,16 @@ export function BulkImportView({
     onSuccess(count);
 
     if (destinationChoice === 'bank_and_test' && onStartTestImmediately) {
-      const testTitle = `BPSC TRE 4.0: ${currentTopicObj?.labelHindi || 'इम्पोर्टेड'} प्रैक्टिस टेस्ट (${parsedQuestions.length} Qs)`;
+      const topicLabelEn = currentTopicObj?.labelEnglish || 'Mathematics';
+      const testTitle = `BPSC TRE 4.0: ${topicLabelEn} Practice Test (${parsedQuestions.length} Qs)`;
       const newTestSet: MockTestSet = {
         id: `import_test_${Date.now()}`,
         title: testTitle,
-        subtitle: `${getFormattedImportDate()} को आयातित प्रश्न`,
+        subtitle: `Imported Questions Practice Set - ${getFormattedImportDate()}`,
         targetExam: examName || 'BPSC TRE 4.0',
         category: 'custom',
-        categoryTitle: currentTopicObj?.labelHindi || 'Custom',
-        topicBadges: [currentTopicObj?.labelHindi || 'Maths'],
+        categoryTitle: `${topicLabelEn} Practice`,
+        topicBadges: [topicLabelEn],
         totalQuestions: parsedQuestions.length,
         totalTimeMinutes: Math.max(5, parsedQuestions.length),
         questions: parsedQuestions,

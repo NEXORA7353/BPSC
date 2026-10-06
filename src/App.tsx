@@ -25,6 +25,7 @@ import {
   getAllQuestionBank
 } from './utils/questionBankStorage';
 import { syncFromFirestore, setupRealtimeSync } from './services/firebaseSyncService';
+import { usePortalLanguage } from './utils/language';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: Array<string>;
@@ -46,6 +47,7 @@ type AppView = 'intro' | 'testing' | 'results' | 'bank' | 'create-test' | 'bulk-
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [theme, setTheme] = useState<ThemeMode>(() => getStoredTheme());
+  const [language, setLanguage] = usePortalLanguage();
   const [availableSets, setAvailableSets] = useState<MockTestSet[]>(() => getAllAvailableTests() || []);
   const [totalQuestionsCount, setTotalQuestionsCount] = useState<number>(() => getAllQuestionBank().length);
   const [currentSetId, setCurrentSetId] = useState<string>(() => availableSets[0]?.id || '');
@@ -371,9 +373,9 @@ export default function App() {
           <div className="w-8 h-8 border-3 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
           <div className="text-center space-y-1">
             <h2 className="text-sm font-bold tracking-widest uppercase text-slate-200">
-              BPSC TRE 4.0 गणित पोर्टल
+              BPSC TRE 4.0 Mathematics Portal
             </h2>
-            <p className="text-xs text-slate-400">पोर्टल लोड हो रहा है, कृपया प्रतीक्षा करें...</p>
+            <p className="text-xs text-slate-400">Loading portal resources, please wait...</p>
           </div>
         </div>
       </div>
@@ -397,6 +399,8 @@ export default function App() {
         onOpenRapidDrills={() => setIsRapidDrillModalOpen(true)}
         theme={theme}
         onToggleTheme={toggleTheme}
+        language={language}
+        onToggleLanguage={() => setLanguage(language === 'en' ? 'hi' : 'en')}
         onInstallApp={handleInstallApp}
         userName={candidateName}
       />
@@ -423,6 +427,8 @@ export default function App() {
         isTesting={activeView === 'testing'}
         theme={theme}
         onToggleTheme={toggleTheme}
+        language={language}
+        onToggleLanguage={() => setLanguage(language === 'en' ? 'hi' : 'en')}
         activeView={activeView}
         totalQuestionsCount={totalQuestionsCount}
         userName={candidateName}

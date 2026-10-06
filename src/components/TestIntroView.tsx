@@ -188,13 +188,13 @@ export function TestIntroView({
             <div className="space-y-2 text-center sm:text-left">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 text-amber-500 text-xs font-bold uppercase tracking-wider">
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>पोर्टल पूरी तरह खाली एवं फ्रेश है</span>
+                <span>Portal is Clean & Ready</span>
               </div>
               <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
-                नया टेस्ट या प्रश्न जोड़कर शुरुआत करें
+                Get Started by Creating or Importing Tests
               </h2>
               <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-xl">
-                डेटाबेस खाली कर दिया गया है। अब आप Bulk Paste से PDF या प्रश्न आयात कर सकते हैं, अथवा Custom Test Creator से तुरंत नया मॉक टेस्ट बना सकते हैं।
+                Database is ready. You can import questions from text/PDF or generate brand new mock tests with the Custom Test Creator.
               </p>
             </div>
 

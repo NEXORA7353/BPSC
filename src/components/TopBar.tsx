@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import { MockTestSet, ThemeMode } from '../types';
 import { ThemeToggle } from './ThemeToggle';
+import { LanguageToggle } from './LanguageToggle';
+import { PortalLanguage } from '../utils/language';
 import { BackButton } from './BackButton';
 
 interface TopBarProps {
@@ -40,6 +42,8 @@ interface TopBarProps {
   isTesting: boolean;
   theme: ThemeMode;
   onToggleTheme: () => void;
+  language?: PortalLanguage;
+  onToggleLanguage?: () => void;
   activeView: 'intro' | 'testing' | 'results' | 'bank' | 'create-test' | 'bulk-import' | 'history' | 'progress';
   totalQuestionsCount?: number;
   userName?: string;
@@ -66,6 +70,8 @@ export function TopBar({
   isTesting,
   theme,
   onToggleTheme,
+  language = 'en',
+  onToggleLanguage = () => {},
   activeView,
   totalQuestionsCount = 0,
   userName = 'PrIyA PaTeL'
@@ -196,6 +202,8 @@ export function TopBar({
             <Database className="w-3.5 h-3.5" />
             <span className="hidden md:inline">Cloud DB ({qLabel})</span>
           </button>
+
+          <LanguageToggle language={language} onToggleLanguage={onToggleLanguage} />
 
           <ThemeToggle theme={theme} onToggleTheme={onToggleTheme} />
 

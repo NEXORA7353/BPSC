@@ -33,7 +33,8 @@ import {
   deleteMultipleQuestions,
   getBookmarkedIds,
   getUsedQuestionsInfo,
-  saveCustomTest
+  saveCustomTest,
+  cleanTitleToEnglish
 } from '../utils/questionBankStorage';
 import { parseBulkQuestionText } from '../utils/questionParser';
 import { generateStandaloneHtml } from '../utils/exportHtml';
@@ -101,7 +102,7 @@ export function CreateTestView({
   };
 
   // Form Parameters
-  const [testTitle, setTestTitle] = useState('BPSC TRE 4.0: गणित स्पेशल मॉक टेस्ट');
+  const [testTitle, setTestTitle] = useState('BPSC TRE 4.0: Mathematics Mock Test');
   const [titleStyle, setTitleStyle] = useState<TitleStyle>('mock');
   const [isTitleCustomLocked, setIsTitleCustomLocked] = useState(false);
 
@@ -233,7 +234,7 @@ export function CreateTestView({
       newDist[k] = perTopic + (i < rem ? 1 : 0);
     });
     setTopicDistribution((prev) => ({ ...prev, ...newDist }));
-    setTestTitle(`BPSC TRE 4.0: ${customTitleSuffix} (${count} प्रश्न)`);
+    setTestTitle(`BPSC TRE 4.0: ${customTitleSuffix} (${count} Qs)`);
     setIsTitleCustomLocked(true);
   };
 
@@ -287,7 +288,7 @@ export function CreateTestView({
       : undefined;
 
     const config: CustomTestConfig = {
-      title: testTitle.trim() || `BPSC TRE 4.0 Mock Test (${totalQuestionsCount} Qs)`,
+      title: cleanTitleToEnglish(testTitle.trim() || `BPSC TRE 4.0 Mock Test (${totalQuestionsCount} Qs)`),
       creationMode: creationMode === 'quick_sprint' ? 'topic_distribution' : creationMode,
       selectedTopics: activeTopics && activeTopics.length > 0 ? activeTopics : selectedTopicKeys,
       topicDistribution: (creationMode === 'topic_distribution' || creationMode === 'quick_sprint') ? topicDistribution : undefined,
@@ -625,34 +626,34 @@ export function CreateTestView({
                     <button
                       type="button"
                       onClick={() => {
-                        setTestTitle('BPSC TRE 4.0: गणित 20 प्रश्न पावर टेस्ट');
+                        setTestTitle('BPSC TRE 4.0: 20 Qs Mathematics Power Test');
                         setIsTitleCustomLocked(true);
                       }}
                       className="text-amber-600 dark:text-amber-400 hover:underline font-semibold"
                     >
-                      पावर टेस्ट
+                      Power Test
                     </button>
                     <span>·</span>
                     <button
                       type="button"
                       onClick={() => {
-                        setTestTitle('BPSC TRE 4.0: अंकगणित महा-मॉक टेस्ट');
+                        setTestTitle('BPSC TRE 4.0: Arithmetic Grand Mock Test');
                         setIsTitleCustomLocked(true);
                       }}
                       className="text-amber-600 dark:text-amber-400 hover:underline font-semibold"
                     >
-                      महा-मॉक टेस्ट
+                      Grand Mock Test
                     </button>
                     <span>·</span>
                     <button
                       type="button"
                       onClick={() => {
-                        setTestTitle('BPSC TRE 4.0: 10 Qs स्पीड स्प्रिंट');
+                        setTestTitle('BPSC TRE 4.0: 10 Qs Speed Sprint');
                         setIsTitleCustomLocked(true);
                       }}
                       className="text-amber-600 dark:text-amber-400 hover:underline font-semibold"
                     >
-                      स्पीड स्प्रिंट
+                      Speed Sprint
                     </button>
                   </div>
                 </div>

@@ -21,6 +21,8 @@ import {
   Target
 } from 'lucide-react';
 import { ThemeMode } from '../types';
+import { LanguageToggle } from './LanguageToggle';
+import { PortalLanguage } from '../utils/language';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -36,6 +38,8 @@ interface SidebarProps {
   onOpenRapidDrills: () => void;
   theme: ThemeMode;
   onToggleTheme: () => void;
+  language?: PortalLanguage;
+  onToggleLanguage?: () => void;
   onInstallApp?: () => void;
   userName?: string;
 }
@@ -54,6 +58,8 @@ export function Sidebar({
   onOpenRapidDrills,
   theme,
   onToggleTheme,
+  language = 'en',
+  onToggleLanguage = () => {},
   onInstallApp,
   userName = 'PrIyA PaTeL'
 }: SidebarProps) {
@@ -355,6 +361,13 @@ export function Sidebar({
               <span>Install Mobile Web App</span>
             </button>
           )}
+
+          {/* Language Switcher */}
+          <LanguageToggle
+            language={language}
+            onToggleLanguage={onToggleLanguage}
+            variant="expanded"
+          />
 
           <div className="flex items-center justify-between pt-1 text-xs font-bold">
             <span className="text-slate-400">Appearance Mode:</span>

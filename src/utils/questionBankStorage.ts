@@ -155,11 +155,68 @@ export function sanitizeQuestion(q: any): Question {
   };
 }
 
+export function cleanTitleToEnglish(rawTitle: string): string {
+  if (!rawTitle || typeof rawTitle !== 'string') return 'BPSC TRE 4.0: Mathematics Mock Test';
+
+  let title = rawTitle;
+
+  // Replace common Hindi mathematical terms with English
+  title = title
+    .replace(/क्षेत्रमिति/g, 'Mensuration')
+    .replace(/निर्देशांक ज्यामिति/g, 'Coordinate Geometry')
+    .replace(/ज्यामिति/g, 'Geometry')
+    .replace(/त्रिकोणमिति/g, 'Trigonometry')
+    .replace(/संख्या पद्धति/g, 'Number System')
+    .replace(/ल\.स\. और म\.स\.|ल\.स\. व म\.स\.|ल\.स\.|म\.स\./g, 'LCM & HCF')
+    .replace(/प्रतिशत/g, 'Percentage')
+    .replace(/लाभ और हानि|लाभ व हानि/g, 'Profit & Loss')
+    .replace(/अनुपात और समानुपात|अनुपात व समानुपात/g, 'Ratio & Proportion')
+    .replace(/औसत/g, 'Average')
+    .replace(/साधारण ब्याज/g, 'Simple Interest')
+    .replace(/चक्रवृद्धि ब्याज/g, 'Compound Interest')
+    .replace(/समय और कार्य|समय व कार्य/g, 'Time & Work')
+    .replace(/नल और टंकी|नल व टंकी/g, 'Pipes & Cisterns')
+    .replace(/चाल, समय और दूरी|समय, चाल और दूरी/g, 'Speed, Time & Distance')
+    .replace(/नाव और धारा|नाव व धारा/g, 'Boats & Streams')
+    .replace(/साझेदारी/g, 'Partnership')
+    .replace(/छूट|बट्टा/g, 'Discount')
+    .replace(/द्विघात समीकरण|समीकरण/g, 'Equations')
+    .replace(/समानांतर श्रेणी/g, 'Progression')
+    .replace(/सांख्यिकी/g, 'Statistics')
+    .replace(/प्रायिकता/g, 'Probability')
+    .replace(/चित्र सहित|चित्र आधारित/g, 'Diagram-Based')
+    .replace(/गणित/g, 'Mathematics')
+    .replace(/मॉक टेस्ट/g, 'Mock Test')
+    .replace(/पावर टेस्ट/g, 'Power Test')
+    .replace(/स्पीड स्प्रिंट/g, 'Speed Sprint')
+    .replace(/स्पेशल/g, 'Special')
+    .replace(/प्रामाणिक प्रश्न/g, 'Real Questions')
+    .replace(/प्रश्न/g, 'Questions')
+    .replace(/एवं|व|और/g, '&');
+
+  // Remove any remaining Devanagari characters
+  title = title.replace(/[\u0900-\u097F]/g, '');
+
+  // Clean empty parentheses, duplicated separators, leading/trailing hyphens/colons
+  title = title
+    .replace(/\(\s*\)/g, '')
+    .replace(/:\s*:/g, ':')
+    .replace(/-\s*-/g, '-')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+    .replace(/^[:\-\s]+|[:\-\s]+$/g, '');
+
+  if (!title || title.length < 3) {
+    return 'BPSC TRE 4.0: Mathematics Mock Test';
+  }
+  return title;
+}
+
 export function sanitizeTestSet(t: any): MockTestSet {
   if (!t || typeof t !== 'object') {
     return {
       id: `invalid_set_${Math.random()}`,
-      title: 'Untitled Test',
+      title: 'BPSC TRE 4.0: Mathematics Mock Test',
       subtitle: '',
       targetExam: 'BPSC TRE 4.0',
       category: 'tri_topic',
@@ -176,7 +233,7 @@ export function sanitizeTestSet(t: any): MockTestSet {
   return {
     ...t,
     id: String(t.id || `set_${Math.random()}`),
-    title: String(t.title || 'Untitled Test'),
+    title: cleanTitleToEnglish(String(t.title || 'BPSC TRE 4.0: Mathematics Mock Test')),
     subtitle: String(t.subtitle || ''),
     category: t.category || 'tri_topic',
     categoryTitle: t.categoryTitle || 'General',
@@ -686,16 +743,23 @@ export function createCustomMockTest(config: CustomTestConfig): MockTestSet {
   }
 
   const testId = `custom_test_${Date.now()}`;
-  const distinctTopics = Array.from(new Set(selected.map((q) => q.topicNameHindi || q.topic)));
+  const topicsMap = new Map(getAllRegisteredTopics().map((t) => [t.key, t.labelEnglish]));
+  const distinctTopicLabels = Array.from(
+    new Set(
+      selected.map((q) => (q.topic && topicsMap.get(q.topic)) ? topicsMap.get(q.topic)! : (q.topic || 'Mathematics'))
+    )
+  );
+
+  const cleanTitle = cleanTitleToEnglish(config.title || `BPSC TRE 4.0 Custom Practice Test (${selected.length} Qs)`);
 
   const newTest: MockTestSet = {
     id: testId,
-    title: config.title || `Custom Practice Test (${selected.length} Questions)`,
-    subtitle: config.subtitle || `Topics: ${distinctTopics.join(', ')}`,
+    title: cleanTitle,
+    subtitle: config.subtitle || `Chapters: ${distinctTopicLabels.join(', ')}`,
     targetExam: config.targetExam || 'BPSC TRE 4.0 Mathematics (Custom Generated)',
     category: 'custom',
     categoryTitle: 'Custom Generated Tests',
-    topicBadges: distinctTopics.slice(0, 4),
+    topicBadges: distinctTopicLabels.slice(0, 4),
     totalQuestions: selected.length,
     totalTimeMinutes: config.timeMinutes > 0 ? config.timeMinutes : selected.length,
     questions: selected,
@@ -713,9 +777,11 @@ export function createReattemptMissedQuestionsTest(parentTest: MockTestSet, miss
   const questions = (Array.isArray(parentTest.questions) ? parentTest.questions : []).filter((q) => missedSet.has(q.id));
   const testId = `reattempt_${Date.now()}`;
 
+  const cleanTitle = cleanTitleToEnglish(`Weak Spots Re-attempt: ${parentTest.title}`);
+
   const newTest: MockTestSet = {
     id: testId,
-    title: `Weak Spots Re-attempt: ${parentTest.title}`,
+    title: cleanTitle,
     subtitle: `Targeted practice for ${questions.length} incorrect & skipped questions`,
     targetExam: parentTest.targetExam,
     category: 'custom',

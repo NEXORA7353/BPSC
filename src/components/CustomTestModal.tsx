@@ -35,7 +35,8 @@ import {
   registerNewTopic,
   deleteMultipleQuestions,
   getBookmarkedIds,
-  getUsedQuestionsInfo
+  getUsedQuestionsInfo,
+  cleanTitleToEnglish
 } from '../utils/questionBankStorage';
 import { parseBulkQuestionText } from '../utils/questionParser';
 
@@ -423,7 +424,7 @@ export function CustomTestModal({
       newDist[k] = perTopic + (i < rem ? 1 : 0);
     });
     setTopicDistribution((prev) => ({ ...prev, ...newDist }));
-    setTestTitle(`BPSC TRE 4.0: ${customTitleSuffix} (${count} प्रश्न)`);
+    setTestTitle(`BPSC TRE 4.0: ${customTitleSuffix} (${count} Qs)`);
     setIsTitleCustomLocked(true);
   };
 
@@ -436,7 +437,7 @@ export function CustomTestModal({
       : undefined;
 
     const config: CustomTestConfig = {
-      title: testTitle.trim() || `BPSC TRE 4.0 Custom Test (${totalQuestionsCount} Qs)`,
+      title: cleanTitleToEnglish(testTitle.trim() || `BPSC TRE 4.0 Custom Test (${totalQuestionsCount} Qs)`),
       creationMode,
       selectedTopics: activeTopics && activeTopics.length > 0 ? activeTopics : selectedTopicKeys,
       topicDistribution: creationMode === 'topic_distribution' ? topicDistribution : undefined,
