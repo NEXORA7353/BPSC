@@ -370,7 +370,7 @@ export function ResultAnalytics({
                     </span>
                   </div>
                   <p className="text-xs text-slate-400">
-                    वैज्ञानिक Z-स्कोर, शिफ्ट जटिलता एवं 10,000 अभ्यर्थियों के मानक बेंचमार्क पर आधारित सामान्यीकृत रैंक
+                    Normalized rank based on scientific Z-score, shift difficulty factor, and standard benchmark of 10,000 aspirants.
                   </p>
                 </div>
               </div>
@@ -378,7 +378,7 @@ export function ResultAnalytics({
               <div className="flex items-center gap-2 text-xs">
                 <span className="px-3 py-1 rounded-xl bg-white/5 border border-white/10 text-slate-300 font-medium flex items-center gap-1.5">
                   <Users className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>बेंचमार्क पूल: 10,000 Aspirants</span>
+                  <span>Benchmark Pool: 10,000 Aspirants</span>
                 </span>
               </div>
             </div>
@@ -388,7 +388,7 @@ export function ResultAnalytics({
               {/* Normalized Score */}
               <div className="p-4 rounded-2xl bg-white/5 border border-indigo-500/20 space-y-1 relative overflow-hidden">
                 <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center justify-between">
-                  <span>Normalized Score (सामान्यीकृत अंक)</span>
+                  <span>Normalized Score</span>
                   <Award className="w-3.5 h-3.5 text-amber-400" />
                 </div>
                 <div className="text-2xl sm:text-3xl font-black font-mono text-amber-400 mt-1">
@@ -407,42 +407,42 @@ export function ResultAnalytics({
               {/* Percentile Rank */}
               <div className="p-4 rounded-2xl bg-white/5 border border-indigo-500/20 space-y-1 relative overflow-hidden">
                 <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center justify-between">
-                  <span>Percentile Rank (प्रतिशतक स्थान)</span>
+                  <span>Percentile Rank</span>
                   <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
                 </div>
                 <div className="text-2xl sm:text-3xl font-black font-mono text-emerald-400 mt-1">
                   {normAnalysis.percentile}%
                 </div>
                 <div className="text-[11px] text-slate-400 pt-1">
-                  बिहार के शीर्ष <strong className="text-emerald-400">Top {Math.max(0.1, 100 - normAnalysis.percentile).toFixed(1)}%</strong> अभ्यर्थियों में शामिल
+                  Placed in <strong className="text-emerald-400">Top {Math.max(0.1, 100 - normAnalysis.percentile).toFixed(1)}%</strong> candidates across Bihar
                 </div>
               </div>
 
               {/* Predicted All-Bihar Rank */}
               <div className="p-4 rounded-2xl bg-white/5 border border-indigo-500/20 space-y-1 relative overflow-hidden">
                 <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center justify-between">
-                  <span>All-Bihar Rank (अनुमानित रैंक)</span>
+                  <span>All-Bihar Rank</span>
                   <Users className="w-3.5 h-3.5 text-indigo-400" />
                 </div>
                 <div className="text-2xl sm:text-3xl font-black font-mono text-indigo-300 mt-1">
                   #{normAnalysis.predictedAllBiharRank.toLocaleString('en-IN')}
                 </div>
                 <div className="text-[11px] text-slate-400 pt-1">
-                  अनुमानित 10,000 परीक्षार्थियों में मेरिट स्थिति
+                  Estimated merit position among 10,000 aspirants
                 </div>
               </div>
 
               {/* Shift Difficulty Factor */}
               <div className="p-4 rounded-2xl bg-white/5 border border-indigo-500/20 space-y-1 relative overflow-hidden">
                 <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center justify-between">
-                  <span>Shift Factor (शिफ्ट जटिलता)</span>
+                  <span>Shift Factor</span>
                   <Zap className="w-3.5 h-3.5 text-sky-400" />
                 </div>
                 <div className="text-2xl sm:text-3xl font-black font-mono text-sky-400 mt-1">
                   {normAnalysis.shiftDifficultyFactor}x
                 </div>
                 <div className="text-[11px] text-sky-300/90 font-medium truncate pt-1">
-                  {normAnalysis.shiftDifficultyLabelHindi}
+                  {normAnalysis.shiftDifficultyLabelEnglish || normAnalysis.shiftDifficultyLabelHindi}
                 </div>
               </div>
             </div>
@@ -452,10 +452,10 @@ export function ResultAnalytics({
               <div className="flex items-center justify-between text-xs">
                 <span className="font-bold text-slate-300 flex items-center gap-1.5">
                   <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                  <span>BPSC Official Category Cutoff Status (श्रेणीवार अर्हता स्थिति):</span>
+                  <span>BPSC Official Category Cutoff Status:</span>
                 </span>
                 <span className="text-[11px] text-slate-400">
-                  न्यूनतम अर्हता अंक (BPSC TRE Rule)
+                  Minimum Qualifying Marks (BPSC TRE Rule)
                 </span>
               </div>
 
@@ -491,7 +491,7 @@ export function ResultAnalytics({
                     ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
                     : 'bg-rose-500/15 border-rose-500/40 text-rose-300'
                 }`}>
-                  <div className="text-[10px] uppercase font-bold text-slate-300 dark:text-slate-300">BC (पिछड़ा) 36.5%</div>
+                  <div className="text-[10px] uppercase font-bold text-slate-300 dark:text-slate-300">BC (Backward) 36.5%</div>
                   <div className="text-xs font-black font-mono mt-0.5 text-white">
                     {normAnalysis.categoryCutoffs.bc.requiredMarks} Marks
                   </div>
@@ -516,7 +516,7 @@ export function ResultAnalytics({
                     ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
                     : 'bg-rose-500/15 border-rose-500/40 text-rose-300'
                 }`}>
-                  <div className="text-[10px] uppercase font-bold text-slate-300 dark:text-slate-300">EBC (अत्यंत पिछड़ा) 34%</div>
+                  <div className="text-[10px] uppercase font-bold text-slate-300 dark:text-slate-300">EBC (Most Backward) 34%</div>
                   <div className="text-xs font-black font-mono mt-0.5 text-white">
                     {normAnalysis.categoryCutoffs.ebc.requiredMarks} Marks
                   </div>
@@ -541,7 +541,7 @@ export function ResultAnalytics({
                     ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
                     : 'bg-rose-500/15 border-rose-500/40 text-rose-300'
                 }`}>
-                  <div className="text-[10px] uppercase font-bold text-slate-300 dark:text-slate-300">SC/ST/महिला 32%</div>
+                  <div className="text-[10px] uppercase font-bold text-slate-300 dark:text-slate-300">SC/ST/Female 32%</div>
                   <div className="text-xs font-black font-mono mt-0.5 text-white">
                     {normAnalysis.categoryCutoffs.scStWomen.requiredMarks} Marks
                   </div>
@@ -596,7 +596,7 @@ export function ResultAnalytics({
             }`}>
               <div className="flex items-center gap-2">
                 <Award className="w-4 h-4 text-amber-400 shrink-0" />
-                <span>निर्णय (Verdict): {normAnalysis.verdictHindi}</span>
+                <span>Verdict: {normAnalysis.verdictEnglish || normAnalysis.verdictHindi}</span>
               </div>
               <span className="hidden sm:inline font-semibold text-[11px] text-slate-300/80">
                 {normAnalysis.verdictEnglish}
@@ -795,10 +795,10 @@ export function ResultAnalytics({
                         <div className="font-bold text-amber-700 dark:text-amber-300 flex flex-wrap items-center justify-between gap-2">
                           <div className="flex items-center gap-1.5">
                             <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                            <span>विस्तृत चरणबद्ध हल (Hindi Explanation):</span>
+                            <span>Detailed Step-by-Step Solution:</span>
                           </div>
                           <span className="text-xs font-mono font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100/80 dark:bg-emerald-950/70 px-2.5 py-0.5 rounded-lg border border-emerald-300 dark:border-emerald-700">
-                            सही उत्तर: विकल्प ({getQuestionCorrectDisplay(q)})
+                            Correct Option: ({getQuestionCorrectDisplay(q)})
                           </span>
                         </div>
                         <div className="text-slate-800 dark:text-slate-200 whitespace-pre-line leading-relaxed font-sans">

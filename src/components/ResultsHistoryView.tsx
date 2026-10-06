@@ -111,7 +111,7 @@ export function ResultsHistoryView({
       {/* Top Header Card */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
         <div className="space-y-2">
-          <BackButton onClick={onBackToTests} label="Back to Mock Tests / वापस" variant="subtle" />
+          <BackButton onClick={onBackToTests} label="Back to Mock Tests" variant="subtle" />
 
           <h1 className="text-xl sm:text-3xl font-black tracking-tight flex items-center gap-3">
             <span>Results & Performance Analytics</span>

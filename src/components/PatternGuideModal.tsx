@@ -15,7 +15,7 @@ export function PatternGuideModal({ isOpen, onClose }: PatternGuideModalProps) {
           <div className="flex items-center gap-2">
             <HelpCircle className="w-5 h-5 text-blue-900" />
             <h2 className="text-lg font-bold text-slate-900">
-              BPSC TRE 4.0 गणित परीक्षा पैटर्न एवं दिशा-निर्देश
+              BPSC TRE 4.0 Mathematics Exam Pattern & Guidelines
             </h2>
           </div>
           <button
@@ -30,7 +30,7 @@ export function PatternGuideModal({ isOpen, onClose }: PatternGuideModalProps) {
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <h3 className="font-bold text-blue-950 text-sm mb-2 flex items-center gap-2">
               <CheckCircle className="w-4 h-4 text-blue-700" />
-              परीक्षा संरचना (TRE 4.0)
+              Examination Structure (TRE 4.0)
             </h3>
             <ul className="list-disc list-inside space-y-1 text-blue-900 text-xs sm:text-sm">
               <li><strong>लक्ष्य:</strong> गणित (Mathematics), वर्ग 6–8 एवं 9–10 शिक्षक भर्ती।</li>
@@ -85,7 +85,7 @@ export function PatternGuideModal({ isOpen, onClose }: PatternGuideModalProps) {
             onClick={onClose}
             className="px-5 py-2 text-xs font-semibold text-white bg-blue-900 hover:bg-blue-800 rounded-md transition-colors"
           >
-            समझ गया, आगे बढ़ें
+            Understood, Proceed
           </button>
         </div>
       </div>

@@ -203,26 +203,26 @@ export function QuestionBankView({
     setEditingQuestionId(null);
     setEditingFormState(null);
     refreshData();
-    setDbNotification('प्रश्न सफलतापूर्वक अपडेट हुआ!');
+    setDbNotification('Question updated successfully!');
     setTimeout(() => setDbNotification(null), 3000);
   };
 
   const handleDeleteSingleQuestion = (id: string) => {
-    if (window.confirm('क्या आप वाकई इस प्रश्न को हटाना चाहते हैं?')) {
+    if (window.confirm('Are you sure you want to delete this question?')) {
       deleteCustomQuestion(id);
       refreshData();
-      setDbNotification('प्रश्न हटाया गया!');
+      setDbNotification('Question deleted!');
       setTimeout(() => setDbNotification(null), 3000);
     }
   };
 
   const handleBatchDelete = () => {
     if (selectedIds.length === 0) return;
-    if (window.confirm(`क्या आप चयनित ${selectedIds.length} प्रश्नों को हटाना चाहते हैं?`)) {
+    if (window.confirm(`Are you sure you want to delete ${selectedIds.length} selected questions?`)) {
       const count = deleteMultipleQuestions(selectedIds);
       setSelectedIds([]);
       refreshData();
-      setDbNotification(`${count} प्रश्न हटाए गए!`);
+      setDbNotification(`${count} questions deleted!`);
       setTimeout(() => setDbNotification(null), 3000);
     }
   };
@@ -234,7 +234,7 @@ export function QuestionBankView({
     setIsAddingTopic(false);
     setNewTopicHindi('');
     setNewTopicEnglish('');
-    setDbNotification(`नया अध्याय "${newTopicHindi}" पंजीकृत हुआ!`);
+    setDbNotification(`New chapter "${newTopicEnglish || newTopicHindi}" registered!`);
     setTimeout(() => setDbNotification(null), 3000);
   };
 
@@ -247,7 +247,7 @@ export function QuestionBankView({
     link.download = `BPSC_QuestionBank_Backup_${Date.now()}.json`;
     link.click();
     URL.revokeObjectURL(url);
-    setDbNotification('डेटाबेस JSON बैकअप डाउनलोड हुआ!');
+    setDbNotification('Database JSON backup downloaded!');
     setTimeout(() => setDbNotification(null), 3000);
   };
 
@@ -260,9 +260,9 @@ export function QuestionBankView({
       const res = importFullDatabaseJson(content);
       if (res.success) {
         refreshData();
-        setDbNotification(`डेटाबेस रिस्टोर सफल: ${res.message}`);
+        setDbNotification(`Database restore successful: ${res.message}`);
       } else {
-        alert('डेटाबेस रिस्टोर विफल: ' + res.message);
+        alert('Database restore failed: ' + res.message);
       }
       setTimeout(() => setDbNotification(null), 4000);
     };
@@ -272,12 +272,12 @@ export function QuestionBankView({
 
   const handleClearDatabase = () => {
     const conf = window.prompt(
-      'चेतावनी: यह संपूर्ण डेटाबेस साफ़ कर देगा! जारी रखने के लिए "CLEAR" टाइप करें:'
+      'WARNING: This will clear the entire database! Type "CLEAR" to proceed:'
     );
     if (conf === 'CLEAR') {
       clearEntireDatabase();
       refreshData();
-      setDbNotification('डेटाबेस पूरी तरह साफ़ कर दिया गया है!');
+      setDbNotification('Database cleared completely!');
       setTimeout(() => setDbNotification(null), 4000);
     }
   };
@@ -287,9 +287,9 @@ export function QuestionBankView({
     try {
       await syncFromFirestore();
       refreshData();
-      setDbNotification('Google Firestore क्लाउड डेटाबेस सिंक सफल!');
+      setDbNotification('Google Firestore cloud database sync successful!');
     } catch (err: any) {
-      alert('क्लाउड सिंक विफल: ' + (err?.message || 'अज्ञात त्रुटि'));
+      alert('Cloud sync failed: ' + (err?.message || 'Unknown error'));
     } finally {
       setIsCloudSyncing(false);
       setTimeout(() => setDbNotification(null), 3000);
@@ -300,7 +300,7 @@ export function QuestionBankView({
     const healed = allQuestions.map((q) => autoHealQuestion(q));
     saveCustomQuestions(healed);
     refreshData();
-    setDbNotification('सभी प्रश्नों की गुणवत्ता स्वतः ठीक कर दी गई!');
+    setDbNotification('All questions quality auto-healed!');
     setTimeout(() => setDbNotification(null), 3000);
   };
 
@@ -657,16 +657,16 @@ export function QuestionBankView({
                               onClick={() => toggleExpandSolution(q.id)}
                               className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1.5"
                             >
-                              <span>{isSolutionOpen ? 'व्याख्या छुपाएं' : 'विस्तृत हल व व्याख्या देखें (Hindi Solution)'}</span>
+                              <span>{isSolutionOpen ? 'Hide Solution' : 'View Detailed Solution & Explanation'}</span>
                               {isSolutionOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                             </button>
 
                             {isSolutionOpen && (
                               <div className="mt-3 p-4 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-xs text-slate-700 dark:text-slate-200 leading-relaxed space-y-1 animate-in fade-in">
                                 <div className="font-bold text-amber-600 dark:text-amber-400">
-                                  BPSC आधिकारिक व्याख्या:
+                                  BPSC Official Explanation:
                                 </div>
-                                <MathText text={q.explanation || 'व्याख्या उपलब्ध नहीं है।'} />
+                                <MathText text={q.explanation || 'No explanation provided.'} />
                               </div>
                             )}
                           </div>
@@ -710,7 +710,7 @@ export function QuestionBankView({
                           </div>
 
                           <div className="space-y-1">
-                            <label className="text-xs font-bold text-slate-500">Explanation (व्याख्या):</label>
+                            <label className="text-xs font-bold text-slate-500">Explanation / Solution:</label>
                             <textarea
                               rows={3}
                               value={editingFormState?.explanation || ''}
@@ -892,7 +892,7 @@ export function QuestionBankView({
             {isAddingTopic && (
               <div className="glass-panel p-6 rounded-3xl space-y-4 border-indigo-500/40">
                 <h4 className="text-sm font-black text-indigo-700 dark:text-indigo-300">
-                  Register New Chapter (नया अध्याय जोड़ें):
+                  Register New Chapter:
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <input

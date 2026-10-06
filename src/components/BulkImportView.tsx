@@ -186,7 +186,7 @@ export function BulkImportView({
   // Run AI Parser and advance to Step 2
   const handleRunParser = () => {
     if (!rawText.trim()) {
-      alert('कृपया पार्स करने के लिए प्रश्न टेक्स्ट दर्ज करें या "Load Sample" पर क्लिक करें!');
+      alert('Please enter question text to parse or click "Load Sample"!');
       return;
     }
     const res = parseBulkQuestionText(
@@ -196,7 +196,7 @@ export function BulkImportView({
     );
     const parsed = res.questions;
     if (parsed.length === 0) {
-      alert('कोई वैध प्रश्न नहीं मिल पाया। कृपया प्रारूप की जांच करें या "Load Authentic Sample" पर क्लिक करें।');
+      alert('No valid questions found. Please check format or click "Load Authentic Sample".');
       return;
     }
     setParsedQuestions(parsed);
@@ -259,10 +259,10 @@ export function BulkImportView({
           setParsedQuestions(list);
           setCurrentStep(2);
         } else {
-          alert('JSON फाइल में कोई प्रश्न नहीं मिले!');
+          alert('No questions found in JSON file!');
         }
       } catch (err) {
-        alert('अमान्य JSON प्रारूप!');
+        alert('Invalid JSON file format!');
       }
     };
     reader.readAsText(file);
@@ -284,7 +284,7 @@ export function BulkImportView({
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      setIsSuccessToast(`${parsedQuestions.length} प्रश्न JSON बैकअप के रूप में डाउनलोड हुए!`);
+      setIsSuccessToast(`${parsedQuestions.length} questions downloaded as JSON backup!`);
       return;
     }
 
@@ -313,7 +313,7 @@ export function BulkImportView({
       return;
     }
 
-    setIsSuccessToast(`सफलता! ${count} प्रश्न मुख्य क्वेश्चन बैंक में जोड़े गए!`);
+    setIsSuccessToast(`Success! ${count} questions added to Master Question Bank!`);
     setTimeout(() => {
       if (onNavigateToBank) {
         onNavigateToBank();
@@ -438,7 +438,7 @@ export function BulkImportView({
             {/* Header */}
             <div className="space-y-2">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-xs font-bold text-indigo-600 dark:text-indigo-400">
-                <span>चरण 1 / 3: अध्याय व स्रोत दर्ज करें</span>
+                <span>Step 1 of 3: Enter Chapter & Question Source</span>
               </div>
               <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
                 Enter or Paste Mathematics Questions
@@ -451,7 +451,7 @@ export function BulkImportView({
             {/* Target Chapter & Exam Configuration Card */}
             <div className="glass-panel p-6 rounded-3xl space-y-4">
               <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
-                <span>📚 Target Mathematics Chapter (अध्याय चयन):</span>
+                <span>📚 Target Mathematics Chapter:</span>
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -467,7 +467,7 @@ export function BulkImportView({
                     >
                       {registeredTopics.map((t) => (
                         <option key={t.key} value={t.key}>
-                          {t.labelHindi} ({t.labelEnglish})
+                          {t.labelEnglish} ({t.labelHindi})
                         </option>
                       ))}
                     </select>
@@ -499,12 +499,12 @@ export function BulkImportView({
               {isCreatingNewTopic && (
                 <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 space-y-3 animate-in fade-in">
                   <div className="text-xs font-black text-indigo-700 dark:text-indigo-300">
-                    Register New Mathematics Chapter (नया अध्याय जोड़ें)
+                    Register New Mathematics Chapter
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <input
                       type="text"
-                      placeholder="अध्याय नाम (Hindi, e.g. सांख्यिकी)"
+                      placeholder="Chapter Hindi Name (e.g. सांख्यिकी)"
                       value={newTopicHindi}
                       onChange={(e) => setNewTopicHindi(e.target.value)}
                       className="p-2.5 rounded-xl text-xs bg-white dark:bg-slate-900 border border-indigo-300 dark:border-indigo-800 focus:outline-hidden"
@@ -671,7 +671,7 @@ export function BulkImportView({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="space-y-1">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-xs font-bold text-indigo-600 dark:text-indigo-400">
-                  <span>चरण 2 / 3: पार्सिंग व गुणवत्ता समीक्षा</span>
+                  <span>Step 2 of 3: Question Parsing & Quality Review</span>
                 </div>
                 <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
                   Review Extracted Questions ({parsedQuestions.length} Total)
@@ -845,7 +845,7 @@ export function BulkImportView({
                         {q.explanation && (
                           <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 text-xs text-slate-600 dark:text-slate-300 space-y-1">
                             <div className="font-bold text-amber-600 dark:text-amber-400">
-                              व्याख्या (Solution):
+                              Explanation / Solution:
                             </div>
                             <MathText text={q.explanation} />
                           </div>
@@ -891,7 +891,7 @@ export function BulkImportView({
                         </div>
 
                         <div className="space-y-1">
-                          <label className="text-xs font-bold text-slate-500">Explanation (व्याख्या):</label>
+                          <label className="text-xs font-bold text-slate-500">Explanation / Solution:</label>
                           <textarea
                             rows={3}
                             value={editingQuestion?.explanation || ''}
@@ -968,7 +968,7 @@ export function BulkImportView({
             {/* Header */}
             <div className="space-y-2">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                <span>चरण 3 / 3: गंतव्य व सुरक्षित करें</span>
+                <span>Step 3 of 3: Select Destination & Save</span>
               </div>
               <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
                 Choose Where to Save These Questions

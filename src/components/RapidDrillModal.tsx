@@ -83,7 +83,7 @@ export function RapidDrillModal({ isOpen, onClose, onStartTest }: RapidDrillModa
         <div className="p-6 space-y-5">
           <div className="space-y-2">
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-              Select Chapter for Rapid Revision (अध्याय चुनें) *
+              Select Chapter for Rapid Revision *
             </label>
             <select
               value={selectedTopicKey}
@@ -92,7 +92,7 @@ export function RapidDrillModal({ isOpen, onClose, onStartTest }: RapidDrillModa
             >
               {registeredTopics.map((t) => (
                 <option key={t.key} value={t.key}>
-                  {t.labelHindi} ({t.labelEnglish})
+                  {t.labelEnglish} ({t.labelHindi})
                 </option>
               ))}
             </select>
@@ -100,7 +100,7 @@ export function RapidDrillModal({ isOpen, onClose, onStartTest }: RapidDrillModa
 
           <div className="space-y-2">
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-              Select Drill Length (प्रश्न संख्या)
+              Select Drill Length
             </label>
             <div className="grid grid-cols-3 gap-2 text-xs font-bold">
               {[5, 10, 15].map((cnt) => (
@@ -129,7 +129,7 @@ export function RapidDrillModal({ isOpen, onClose, onStartTest }: RapidDrillModa
               <span>Rapid Sprint Rules:</span>
             </div>
             <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
-              आपको <strong>5 मिनट का समय</strong> मिलेगा। प्रत्येक प्रश्न का उत्तर तेजी से दें ताकि आप परीक्षा में अपनी स्पीड और एक्यूरेसी बढ़ा सकें।
+              You will have <strong>5 minutes</strong>. Solve each problem as fast as possible to build calculation reflexes and exam speed.
             </p>
           </div>
         </div>

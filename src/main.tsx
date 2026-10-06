@@ -100,10 +100,10 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
               </svg>
             </div>
             <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '8px', color: '#FFFFFF', textAlign: 'center' }}>
-              पोर्टल रिकवरी एवं सहायता (Portal Recovery)
+              Portal Recovery & Diagnostics
             </h2>
             <p style={{ fontSize: '13px', color: '#94A3B8', lineHeight: '1.6', marginBottom: '18px', textAlign: 'center' }}>
-              पेज लोड करते समय एक रुकावट आई। सुरक्षा प्रणाली ने पोर्टल को सुरक्षित रखा है।
+              An interruption occurred while loading. Safety systems have protected your saved exams and progress.
             </p>
 
             {this.state.error && (
@@ -115,14 +115,14 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
                 marginBottom: '20px'
               }}>
                 <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#F87171', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  त्रुटि विवरण (Error Details):
+                  Error Details:
                 </div>
                 <div style={{ fontSize: '12px', fontFamily: 'monospace', color: '#FECACA', marginTop: '4px', wordBreak: 'break-word' }}>
                   {this.state.error.message || String(this.state.error)}
                 </div>
                 {this.state.error.stack && (
                   <details style={{ marginTop: '8px', fontSize: '11px', color: '#94A3B8' }}>
-                    <summary style={{ cursor: 'pointer', outline: 'none' }}>तकनीकी Stack Trace देखें</summary>
+                    <summary style={{ cursor: 'pointer', outline: 'none' }}>View Technical Stack Trace</summary>
                     <pre style={{
                       marginTop: '6px',
                       padding: '8px',
@@ -155,7 +155,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
                   cursor: 'pointer'
                 }}
               >
-                पुनः लोड करें (Reload Portal)
+                Reload Portal
               </button>
               <button
                 onClick={this.handleAutoRepair}
@@ -171,7 +171,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
                   cursor: 'pointer'
                 }}
               >
-                स्वचालित मरम्मत एवं रीस्टार्ट (Auto-Repair Storage)
+                Auto-Repair Storage & Restart
               </button>
               <button
                 onClick={this.handleReset}
@@ -187,7 +187,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
                   cursor: 'pointer'
                 }}
               >
-                डेटा रीसेट एवं फ्रेश स्टार्ट (Reset Cache)
+                Reset Storage & Clean Start
               </button>
             </div>
           </div>

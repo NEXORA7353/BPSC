@@ -53,22 +53,22 @@ type TitleStyle = 'mock' | 'sprint' | 'grand' | 'drill';
 const TOPIC_PRESETS = [
   {
     id: 'arithmetic',
-    name: 'अंकगणित (Core Arithmetic)',
+    name: 'Core Arithmetic',
     keys: ['number_system', 'lcm_hcf', 'percentage', 'profit_loss', 'ratio_proportion', 'average']
   },
   {
     id: 'commercial',
-    name: 'व्यावसायिक गणित (Commercial)',
+    name: 'Commercial Mathematics',
     keys: ['simple_interest', 'compound_interest', 'discount', 'partnership']
   },
   {
     id: 'work_motion',
-    name: 'कार्य व गति (Motion & Work)',
+    name: 'Motion, Work & Distance',
     keys: ['time_work', 'pipe_cistern', 'time_distance', 'boats_stream']
   },
   {
     id: 'adv_math',
-    name: 'बीजगणित व ज्यामिति (Advanced)',
+    name: 'Algebra & Geometry',
     keys: ['equations', 'progression', 'trigonometry', 'mensuration', 'geometry', 'coordinate_geometry']
   }
 ];
@@ -214,7 +214,7 @@ export function CreateTestView({
     setIsAddingNewTopic(false);
     setNewTopicHindi('');
     setNewTopicEnglish('');
-    setStatusNotification(`अध्याय "${newTopicHindi}" सफलतापूर्वक पंजीकृत हुआ!`);
+    setStatusNotification(`Chapter "${newTopicEnglish || newTopicHindi}" registered successfully!`);
     setTimeout(() => setStatusNotification(null), 3000);
   };
 
@@ -308,7 +308,7 @@ export function CreateTestView({
   // Move from Step 2 to Step 3
   const handleProceedToBlueprint = () => {
     if (totalQuestionsCount === 0) {
-      alert('कृपया कम से कम 1 प्रश्न चुनें अथवा अध्याय कोटा निर्धारित करें!');
+      alert('Please select at least 1 question or allocate a chapter quota!');
       return;
     }
     const blueprint = generateBlueprint();
@@ -327,7 +327,7 @@ export function CreateTestView({
   const handleSaveToLibraryOnly = () => {
     const testSet = generatedPreviewSet || generateBlueprint();
     saveCustomTest(testSet);
-    setStatusNotification(`टेस्ट "${testSet.title}" सफलतापूर्वक मॉक टेस्ट लाइब्रेरी में सहेजा गया!`);
+    setStatusNotification(`Test "${testSet.title}" successfully saved to My Tests library!`);
     setTimeout(() => {
       onBack();
     }, 1200);
@@ -346,7 +346,7 @@ export function CreateTestView({
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    setStatusNotification('ऑफलाइन HTML फाइल सफलतापूर्वक डाउनलोड हुई!');
+    setStatusNotification('Offline HTML downloaded successfully!');
     setTimeout(() => setStatusNotification(null), 3000);
   };
 
@@ -462,7 +462,7 @@ export function CreateTestView({
             {/* Step 1 Header */}
             <div className="space-y-2">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-xs font-bold text-amber-600 dark:text-amber-400">
-                <span>चरण 1 / 3: परीक्षा प्रारूप व मोड चुनें</span>
+                <span>Step 1 of 3: Choose Test Format & Creation Mode</span>
               </div>
               <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
                 How would you like to build your practice test?
@@ -488,12 +488,12 @@ export function CreateTestView({
                     <Layers className="w-6 h-6" />
                   </div>
                   <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300">
-                    अनुशंसित (Recommended)
+                    Recommended
                   </span>
                 </div>
                 <div>
                   <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                    अध्याय वार कोटा (Topic Distribution)
+                    Topic Distribution
                   </h3>
                   <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
                     Select mathematics chapters and assign how many questions you want from each. The smart engine ensures maximum fresh questions.
@@ -524,7 +524,7 @@ export function CreateTestView({
                 </div>
                 <div>
                   <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                    त्वरित 1-क्लिक टेस्ट (Quick Exam Sprints)
+                    Quick Exam Sprints
                   </h3>
                   <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
                     Instantly create pre-balanced tests: 10 Qs Rapid Sprint, 20 Qs Power Test, or 40 Qs Grand Syllabus Mock.
@@ -550,12 +550,12 @@ export function CreateTestView({
                     <CheckSquare className="w-6 h-6" />
                   </div>
                   <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-blue-500/20 text-blue-700 dark:text-blue-300">
-                    चयनित प्रश्न
+                    Handpick Mode
                   </span>
                 </div>
                 <div>
                   <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                    हाथ से प्रश्न चुनें (Handpick Questions)
+                    Handpick Questions
                   </h3>
                   <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
                     Browse question bank with search, chapter filters, and bookmarked questions to cherry-pick exact problems.
@@ -581,12 +581,12 @@ export function CreateTestView({
                     <Sparkles className="w-6 h-6" />
                   </div>
                   <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">
-                    डायरेक्ट एंट्री
+                    Direct Entry
                   </span>
                 </div>
                 <div>
                   <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                    डायरेक्ट प्रश्न टेक्स्ट (Direct Paste Text)
+                    Direct Paste Text
                   </h3>
                   <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
                     Paste raw question text directly to generate an on-the-spot test without adding to the permanent bank.
@@ -602,14 +602,14 @@ export function CreateTestView({
             {/* General Parameters Card */}
             <div className="glass-panel p-6 sm:p-8 rounded-3xl space-y-6">
               <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
-                <span>⚙️ Exam Parameters & Timing (परीक्षा सेटिंग्स)</span>
+                <span>⚙️ Exam Parameters & Timing</span>
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Test Title Input */}
                 <div className="space-y-2">
                   <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    Test Title (शीर्षक):
+                    Test Title:
                   </label>
                   <input
                     type="text"
@@ -661,7 +661,7 @@ export function CreateTestView({
                 {/* Duration Mode */}
                 <div className="space-y-2">
                   <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    Exam Duration (समय अवधि):
+                    Exam Duration:
                   </label>
                   <div className="grid grid-cols-2 gap-3">
                     <button
@@ -720,7 +720,7 @@ export function CreateTestView({
                   <div className="space-y-0.5">
                     <div className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-2">
                       <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                      <span>Prefer Fresh / Unused Questions (नए प्रश्न)</span>
+                      <span>Prefer Fresh / Unused Questions</span>
                     </div>
                     <div className="text-[11px] text-slate-500 dark:text-slate-400">
                       Auto-skips questions already attempted in previous tests
@@ -786,7 +786,7 @@ export function CreateTestView({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="space-y-1">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-xs font-bold text-amber-600 dark:text-amber-400">
-                  <span>चरण 2 / 3: अध्याय व प्रश्न कोटा चुनें</span>
+                  <span>Step 2 of 3: Chapters & Question Quotas</span>
                 </div>
                 <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
                   Select Question Bank Chapters
@@ -941,14 +941,14 @@ export function CreateTestView({
                         <div className="space-y-1">
                           <div className="flex items-start justify-between gap-2">
                             <h4 className="font-black text-sm text-slate-900 dark:text-white">
-                              {topic.labelHindi}
+                              {topic.labelEnglish || topic.labelHindi}
                             </h4>
                             <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-slate-300">
                               {stats.total} in bank
                             </span>
                           </div>
                           <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                            {topic.labelEnglish}
+                            {topic.labelHindi}
                           </p>
                           <div className="flex items-center gap-2 text-[10px] font-medium text-slate-500 pt-1">
                             <span className="text-emerald-600 dark:text-emerald-400 font-bold">
@@ -1035,7 +1035,7 @@ export function CreateTestView({
                     <option value="all">All Chapters</option>
                     {registeredTopics.map((t) => (
                       <option key={t.key} value={t.key}>
-                        {t.labelHindi}
+                        {t.labelEnglish || t.labelHindi}
                       </option>
                     ))}
                   </select>
@@ -1175,7 +1175,7 @@ export function CreateTestView({
                     rows={12}
                     value={directPasteText}
                     onChange={(e) => setDirectPasteText(e.target.value)}
-                    placeholder="प्रश्न 1. यदि (1/5)^(3x) = 0.008 हो, तो (0.25)^x का मान है-&#10;(a) 1.0&#10;(b) 4.0&#10;(c) 0.25&#10;(d) उपर्युक्त में से एक से अधिक&#10;(e) अनुत्तरित प्रश्न&#10;उत्तर: (c)&#10;व्याख्या: ..."
+                    placeholder="Question 1. If (1/5)^(3x) = 0.008, then find the value of (0.25)^x:&#10;(a) 1.0&#10;(b) 4.0&#10;(c) 0.25&#10;(d) More than one of the above&#10;(e) Unattempted / None of the above&#10;Answer: (c)&#10;Explanation: ..."
                     className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-4 font-mono text-xs text-slate-900 dark:text-white focus:outline-hidden"
                   />
                 </div>
@@ -1217,7 +1217,7 @@ export function CreateTestView({
             {/* Step 3 Header */}
             <div className="space-y-2">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                <span>चरण 3 / 3: अंतिम समीक्षा व परीक्षा शुरुआत</span>
+                <span>Step 3 of 3: Final Blueprint Review & Exam Launch</span>
               </div>
               <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
                 Mock Test Ready for Execution!
@@ -1301,7 +1301,7 @@ export function CreateTestView({
                           key={k}
                           className="px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 text-xs font-bold flex items-center gap-2"
                         >
-                          <span>{topicObj?.labelHindi || k}</span>
+                          <span>{topicObj?.labelEnglish || topicObj?.labelHindi || k}</span>
                           <span className="font-mono bg-amber-500/20 px-1.5 py-0.5 rounded text-[10px]">
                             {count} Qs
                           </span>
@@ -1317,7 +1317,7 @@ export function CreateTestView({
               <div className="glass-panel p-6 rounded-3xl space-y-4">
                 <h4 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-amber-500" />
-                  <span>Sample Questions Preview (प्रश्नों का पूर्वदर्शन):</span>
+                  <span>Sample Questions Preview:</span>
                 </h4>
 
                 <div className="space-y-3">

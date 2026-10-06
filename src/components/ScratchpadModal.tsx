@@ -128,7 +128,7 @@ export function ScratchpadModal({ isOpen, onClose }: ScratchpadModalProps) {
           <div className="flex items-center gap-2">
             <Edit3 className="w-5 h-5 text-amber-400" />
             <h3 className="font-black text-white text-base tracking-tight">
-              Rough Math Scratchpad / रफ वर्क शीट
+              Rough Math Scratchpad
             </h3>
           </div>
 

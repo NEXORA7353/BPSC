@@ -83,7 +83,7 @@ export function SmartQualityReviewModal({
       .filter((it) => it.id !== id)
       .map((it) => it.question);
     onUpdateQuestions(updated);
-    showToast('प्रश्न सूची से हटा दिया गया (Deleted).');
+    showToast('Question removed from list.');
     if (editingId === id) {
       setEditingId(null);
       setEditForm(null);
@@ -98,7 +98,7 @@ export function SmartQualityReviewModal({
       return it.question;
     });
     onUpdateQuestions(updated);
-    showToast('स्वतः ठीक किया गया (Auto-healed).');
+    showToast('Auto-healed successfully.');
   };
 
   const handleStartEdit = (item: AuditedQuestionItem) => {
@@ -140,7 +140,7 @@ export function SmartQualityReviewModal({
     onUpdateQuestions(updated);
     setEditingId(null);
     setEditForm(null);
-    showToast('प्रश्न सफलतापूर्वक सहेजा गया (Updated).');
+    showToast('Question updated successfully.');
   };
 
   // Bulk Handlers
@@ -152,7 +152,7 @@ export function SmartQualityReviewModal({
       .filter((it) => !duplicateIds.has(it.id))
       .map((it) => it.question);
     onUpdateQuestions(updated);
-    showToast(`${duplicateIds.size} डुप्लीकेट प्रश्न हटा दिए गए!`);
+    showToast(`${duplicateIds.size} duplicate questions removed!`);
   };
 
   const handleAutoHealAllBlanks = () => {
@@ -166,7 +166,7 @@ export function SmartQualityReviewModal({
       return it.question;
     });
     onUpdateQuestions(updated);
-    showToast('सभी खाली व्याख्याएं एवं विकल्प स्वतः ठीक कर दिए गए!');
+    showToast('All blank explanations and options auto-healed!');
   };
 
   if (!isOpen) return null;
@@ -191,7 +191,7 @@ export function SmartQualityReviewModal({
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                खाली विकल्प, अधूरी व्याख्या एवं डुप्लीकेट प्रश्नों की तुरंत समीक्षा करें व सुधारें।
+                Quickly review and fix empty options, missing explanations, and duplicate questions.
               </p>
             </div>
           </div>
@@ -211,14 +211,14 @@ export function SmartQualityReviewModal({
         <div className="px-4 sm:px-6 py-3 border-b border-slate-100 dark:border-slate-800/80 bg-white dark:bg-slate-900 flex flex-wrap items-center justify-between gap-3 text-xs">
           <div className="flex flex-wrap items-center gap-2">
             <span className="px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold flex items-center gap-1.5">
-              <span>कुल प्रश्न:</span>
+              <span>Total Questions:</span>
               <strong className="font-mono">{auditReport.totalQuestions}</strong>
             </span>
 
             {auditReport.duplicateCount > 0 && (
               <span className="px-3 py-1 rounded-xl bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30 font-bold flex items-center gap-1.5">
                 <Copy className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-                <span>डुप्लीकेट:</span>
+                <span>Duplicates:</span>
                 <strong className="font-mono">{auditReport.duplicateCount}</strong>
               </span>
             )}
@@ -226,7 +226,7 @@ export function SmartQualityReviewModal({
             {auditReport.blankOptionCount > 0 && (
               <span className="px-3 py-1 rounded-xl bg-red-500/15 text-red-700 dark:text-red-300 border border-red-500/30 font-bold flex items-center gap-1.5">
                 <AlertTriangle className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
-                <span>खाली विकल्प:</span>
+                <span>Empty Options:</span>
                 <strong className="font-mono">{auditReport.blankOptionCount}</strong>
               </span>
             )}
@@ -234,7 +234,7 @@ export function SmartQualityReviewModal({
             {auditReport.blankExplanationCount > 0 && (
               <span className="px-3 py-1 rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 font-bold flex items-center gap-1.5">
                 <Lightbulb className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                <span>खाली व्याख्या:</span>
+                <span>Empty Explanations:</span>
                 <strong className="font-mono">{auditReport.blankExplanationCount}</strong>
               </span>
             )}
@@ -249,7 +249,7 @@ export function SmartQualityReviewModal({
                 className="px-3 py-1.5 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 hover:bg-purple-500/20 border border-purple-500/30 font-bold transition-all flex items-center gap-1.5"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>सभी डुप्लीकेट हटाएं ({auditReport.duplicateCount})</span>
+                <span>Remove All Duplicates ({auditReport.duplicateCount})</span>
               </button>
             )}
 
@@ -260,7 +260,7 @@ export function SmartQualityReviewModal({
                 className="px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/30 font-bold transition-all flex items-center gap-1.5"
               >
                 <Wand2 className="w-3.5 h-3.5" />
-                <span>सभी खाली व्याख्या स्वतः भरें</span>
+                <span>Auto-Heal All Empty Explanations</span>
               </button>
             )}
           </div>
@@ -276,7 +276,7 @@ export function SmartQualityReviewModal({
                   : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800'
                 }`}
             >
-              सभी समस्याएं ({auditReport.problemCount})
+              All Issues ({auditReport.problemCount})
             </button>
 
             <button
@@ -286,7 +286,7 @@ export function SmartQualityReviewModal({
                   : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800'
                 }`}
             >
-              डुप्लीकेट्स ({auditReport.duplicateCount})
+              Duplicates ({auditReport.duplicateCount})
             </button>
 
             <button
@@ -296,7 +296,7 @@ export function SmartQualityReviewModal({
                   : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800'
                 }`}
             >
-              खाली सामग्री ({auditReport.blankOptionCount + auditReport.blankExplanationCount})
+              Empty Fields ({auditReport.blankOptionCount + auditReport.blankExplanationCount})
             </button>
 
             <button
@@ -306,7 +306,7 @@ export function SmartQualityReviewModal({
                   : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800'
                 }`}
             >
-              सभी प्रश्न ({auditReport.totalQuestions})
+              All Questions ({auditReport.totalQuestions})
             </button>
           </div>
 
@@ -314,7 +314,7 @@ export function SmartQualityReviewModal({
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="समस्या या प्रश्न खोजें..."
+              placeholder="Search issue or question..."
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
               className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-amber-500"
@@ -340,10 +340,10 @@ export function SmartQualityReviewModal({
                 <CheckCircle2 className="w-7 h-7" />
               </div>
               <h5 className="font-bold text-sm text-slate-800 dark:text-slate-200">
-                इस फ़िल्टर में कोई त्रुटि नहीं मिली!
+                No issues found for this filter!
               </h5>
               <p className="text-xs text-slate-500 max-w-sm">
-                सभी प्रश्न पूर्ण एवं सही हैं अथवा फ़िल्टर की गई शर्तें पूरी हो चुकी हैं।
+                All questions are validated and complete according to the filter criteria.
               </p>
             </div>
           ) : (
@@ -400,7 +400,7 @@ export function SmartQualityReviewModal({
                         className="px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-amber-500 hover:text-slate-950 font-bold text-xs transition-colors flex items-center gap-1"
                       >
                         <Edit3 className="w-3 h-3" />
-                        <span>{isEditing ? 'रद्द करें' : 'सुधारें (Edit)'}</span>
+                        <span>{isEditing ? 'Cancel' : 'Edit'}</span>
                       </button>
 
                       <button
@@ -410,7 +410,7 @@ export function SmartQualityReviewModal({
                         title="Auto fill explanation & options"
                       >
                         <Wand2 className="w-3 h-3" />
-                        <span>स्वतः ठीक करें</span>
+                        <span>Auto-Heal</span>
                       </button>
 
                       <button
@@ -420,7 +420,7 @@ export function SmartQualityReviewModal({
                         title="Delete question from import"
                       >
                         <Trash2 className="w-3 h-3" />
-                        <span>हटाएं (Delete)</span>
+                        <span>Delete</span>
                       </button>
                     </div>
                   </div>
@@ -432,8 +432,8 @@ export function SmartQualityReviewModal({
                         <Copy className="w-3.5 h-3.5" />
                         <span>
                           {item.duplicateInfo.source === 'current_batch'
-                            ? `इस सूची के प्रश्न #${(item.duplicateInfo.matchedIndex || 0) + 1} से समानता:`
-                            : 'प्रश्न बैंक (Question Bank) में पहले से मौजूद प्रश्न से समानता:'}
+                            ? `Similarity match with question #${(item.duplicateInfo.matchedIndex || 0) + 1} in this batch:`
+                            : 'Similarity match with existing question in Question Bank:'}
                         </span>
                       </div>
                       <div className="italic text-slate-600 dark:text-slate-400 pl-5">
@@ -451,7 +451,7 @@ export function SmartQualityReviewModal({
 
                       <div>
                         <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
-                          प्रश्न विवरण (Question Text):
+                          Question Text:
                         </label>
                         <textarea
                           rows={3}
@@ -475,7 +475,7 @@ export function SmartQualityReviewModal({
                                 </span>
                                 {isBlank && (
                                   <span className="text-red-500 text-[10px] inline-flex items-center gap-1">
-                                    <AlertTriangle className="w-3 h-3 text-red-500" /> Required (खाली है)
+                                    <AlertTriangle className="w-3 h-3 text-red-500" /> Required (Empty)
                                   </span>
                                 )}
                               </div>
@@ -502,10 +502,10 @@ export function SmartQualityReviewModal({
                         <div className="sm:col-span-2">
                           <div className="flex items-center justify-between">
                             <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
-                              सही उत्तर (Key):
+                              Correct Answer (Key):
                             </label>
                             <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
-                              (2 या अधिक उत्तर चुन सकते हैं)
+                              (Can select 1 or more options)
                             </span>
                           </div>
                           <div className="flex items-center gap-1.5 mt-1">
@@ -530,13 +530,13 @@ export function SmartQualityReviewModal({
                             })}
                           </div>
                           <div className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 mt-1">
-                            चयनित: {getQuestionCorrectDisplay(editForm)} ({getQuestionCorrectKeys(editForm).length} उत्तर मान्य)
+                            Selected: {getQuestionCorrectDisplay(editForm)} ({getQuestionCorrectKeys(editForm).length} valid keys)
                           </div>
                         </div>
 
                         <div className="sm:col-span-2">
                           <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
-                            व्याख्या / हल (Explanation):
+                            Explanation / Solution:
                           </label>
                           <textarea
                             rows={2}
@@ -544,7 +544,7 @@ export function SmartQualityReviewModal({
                             onChange={(e) =>
                               setEditForm({ ...editForm, explanation: e.target.value })
                             }
-                            placeholder="विस्तृत गणितीय हल यहाँ लिखें..."
+                            placeholder="Write detailed mathematical solution here..."
                             className="w-full mt-1 p-2 text-xs rounded-xl bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 focus:outline-none"
                           />
                         </div>
@@ -556,14 +556,14 @@ export function SmartQualityReviewModal({
                           onClick={() => setEditingId(null)}
                           className="px-4 py-1.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800"
                         >
-                          रद्द करें
+                          Cancel
                         </button>
                         <button
                           type="button"
                           onClick={handleSaveEdit}
                           className="px-4 py-1.5 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs hover:bg-amber-400 shadow-sm"
                         >
-                          सहेजें (Save Changes)
+                          Save Changes
                         </button>
                       </div>
                     </div>
@@ -598,7 +598,7 @@ export function SmartQualityReviewModal({
                               <span className="truncate flex items-center gap-1">
                                 {isEmpty ? (
                                   <span className="inline-flex items-center gap-1 text-red-500">
-                                    <AlertTriangle className="w-3 h-3" /> [खाली विकल्प - Empty]
+                                    <AlertTriangle className="w-3 h-3" /> [Empty Option]
                                   </span>
                                 ) : (
                                   String(opt?.text || '')
@@ -617,11 +617,11 @@ export function SmartQualityReviewModal({
                           }`}
                       >
                         <span className="font-bold text-amber-600 dark:text-amber-400 mr-1.5">
-                          व्याख्या:
+                          Explanation:
                         </span>
                         {!item.question.explanation || item.question.explanation.trim() === '' ? (
                           <span className="inline-flex items-center gap-1 text-red-500">
-                            <AlertTriangle className="w-3.5 h-3.5" /> कोई व्याख्या नहीं है (Explanation is Empty)
+                            <AlertTriangle className="w-3.5 h-3.5" /> No explanation provided (Empty)
                           </span>
                         ) : (
                           <MathText text={item.question.explanation} />
@@ -641,11 +641,11 @@ export function SmartQualityReviewModal({
             {auditReport.problemCount === 0 ? (
               <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4" />
-                सभी प्रश्न 100% सही और तैयार हैं!
+                All questions are 100% verified and ready!
               </span>
             ) : (
               <span>
-                {auditReport.problemCount} प्रश्न ध्यान देने योग्य हैं। ऊपर दिए गए 'स्वतः ठीक करें' या 'सुधारें' विकल्प का उपयोग करें।
+                {auditReport.problemCount} questions need attention. Use 'Auto-Heal' or 'Edit' above to resolve.
               </span>
             )}
           </div>
@@ -655,7 +655,7 @@ export function SmartQualityReviewModal({
             onClick={onClose}
             className="px-6 py-2 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 font-bold text-xs hover:bg-slate-800 dark:hover:bg-slate-200 transition-all shadow-md"
           >
-            समीक्षा पूरी हुई (Done & Close)
+            Done & Close
           </button>
         </div>
 
