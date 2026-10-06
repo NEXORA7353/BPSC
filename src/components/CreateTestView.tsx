@@ -361,7 +361,7 @@ export function CreateTestView({
     fetch('/api/email/notify-new-test', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ testId: testSet.id })
+      body: JSON.stringify({ testId: testSet.id, testData: testSet })
     }).catch((err) => console.warn('Publish email notify error:', err));
 
     onStartTest(testSet);
@@ -382,7 +382,7 @@ export function CreateTestView({
         await fetch('/api/email/notify-new-test', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ testId: testSet.id })
+          body: JSON.stringify({ testId: testSet.id, testData: testSet })
         });
       } catch (e) {
         console.warn('Publish email notify error:', e);

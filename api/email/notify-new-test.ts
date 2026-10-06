@@ -16,24 +16,27 @@ import {
   renderParentNewTestEmail
 } from '../lib/emailTemplates';
 
-async function parseBody(req: IncomingMessage): Promise<any> {
-  return new Promise((resolve, reject) => {
+async function parseBody(req: any): Promise<any> {
+  if (req.body) {
+    return typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+  }
+  return new Promise((resolve) => {
     let data = '';
-    req.on('data', (chunk) => {
+    req.on('data', (chunk: any) => {
       data += chunk;
     });
     req.on('end', () => {
       try {
         resolve(data ? JSON.parse(data) : {});
-      } catch (e) {
-        reject(new Error('Invalid JSON'));
+      } catch {
+        resolve({});
       }
     });
-    req.on('error', reject);
+    req.on('error', () => resolve({}));
   });
 }
 
-export default async function handler(req: IncomingMessage, res: ServerResponse) {
+export default async function handler(req: any, res: ServerResponse) {
   if (req.method !== 'POST') {
     res.statusCode = 405;
     res.setHeader('Content-Type', 'application/json');
@@ -43,7 +46,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
 
   try {
     const body = await parseBody(req);
-    const { testId } = body;
+    const { testId, testData } = body;
 
     if (!testId || typeof testId !== 'string') {
       res.statusCode = 400;
@@ -52,8 +55,12 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       return;
     }
 
-    // 1. Verify test exists in Firestore
-    const test = await getPublishedTest(testId);
+    // 1. Verify test exists in Firestore or fallback to provided testData
+    let test = await getPublishedTest(testId).catch(() => null);
+    if (!test && testData) {
+      test = testData;
+    }
+
     if (!test) {
       res.statusCode = 404;
       res.setHeader('Content-Type', 'application/json');

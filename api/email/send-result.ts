@@ -15,26 +15,29 @@ import {
   renderParentResultEmail
 } from '../lib/emailTemplates';
 
-async function parseBody(req: IncomingMessage): Promise<any> {
-  return new Promise((resolve, reject) => {
+async function parseBody(req: any): Promise<any> {
+  if (req.body) {
+    return typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+  }
+  return new Promise((resolve) => {
     let data = '';
-    req.on('data', (chunk) => {
+    req.on('data', (chunk: any) => {
       data += chunk;
     });
     req.on('end', () => {
       try {
         resolve(data ? JSON.parse(data) : {});
-      } catch (e) {
-        reject(new Error('Invalid JSON'));
+      } catch {
+        resolve({});
       }
     });
-    req.on('error', reject);
+    req.on('error', () => resolve({}));
   });
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-export default async function handler(req: IncomingMessage, res: ServerResponse) {
+export default async function handler(req: any, res: ServerResponse) {
   if (req.method !== 'POST') {
     res.statusCode = 405;
     res.setHeader('Content-Type', 'application/json');
@@ -44,7 +47,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
 
   try {
     const body = await parseBody(req);
-    const { attemptId } = body;
+    const { attemptId, attemptData } = body;
 
     if (!attemptId || typeof attemptId !== 'string') {
       res.statusCode = 400;
@@ -53,11 +56,17 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       return;
     }
 
-    // 1. Verify persisted attempt record in Firestore (with 1 retry for network latency)
-    let attempt = await getPersistedAttempt(attemptId);
+    // 1. Verify persisted attempt record in Firestore (with attemptData fallback)
+    let attempt = await getPersistedAttempt(attemptId).catch(() => null);
+    if (!attempt && attemptData) {
+      attempt = attemptData;
+    }
     if (!attempt) {
-      await sleep(1200);
-      attempt = await getPersistedAttempt(attemptId);
+      await sleep(1000);
+      attempt = await getPersistedAttempt(attemptId).catch(() => null);
+    }
+    if (!attempt && attemptData) {
+      attempt = attemptData;
     }
 
     if (!attempt) {

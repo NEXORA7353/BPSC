@@ -4,7 +4,8 @@ import {
   DEFAULT_STUDENT_EMAIL,
   DEFAULT_PARENT_EMAIL,
   DEFAULT_STUDENT_NAME,
-  getIstYearWeek
+  getIstYearWeek,
+  TopicPerformanceStat
 } from '../lib/constants';
 import { sendBrevoEmail } from '../lib/brevo';
 import {
@@ -16,7 +17,6 @@ import {
   renderStudentWeeklyReportEmail,
   renderParentWeeklyReportEmail
 } from '../lib/emailTemplates';
-import type { TopicPerformanceStat } from '../../src/types';
 
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
   // 1. Verify Vercel Cron authentication

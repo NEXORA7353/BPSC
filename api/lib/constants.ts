@@ -3,6 +3,19 @@ export const DEFAULT_PARENT_EMAIL = process.env.DEFAULT_PARENT_EMAIL || 'arjittr
 export const DEFAULT_STUDENT_NAME = process.env.DEFAULT_STUDENT_NAME || 'Priya Patel';
 export const DEFAULT_SENDER_EMAIL = 'noreply@bpsc.dpdns.org';
 export const DEFAULT_SENDER_NAME = 'BPSC TRE 4.0 Mock Portal';
+export const TARGET_DATABASE_ID = process.env.FIRESTORE_DATABASE_ID || 'ai-studio-bpsctre40mathema-bac5a725-5f5b-4cc5-98e4-dff6bbfc928b';
+export const DEFAULT_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'gen-lang-client-0764722018';
+
+export interface TopicPerformanceStat {
+  topicKey: string;
+  topicLabel: string;
+  topicLabelHindi?: string;
+  total: number;
+  correct: number;
+  incorrect: number;
+  skipped: number;
+  accuracy: number;
+}
 
 export function getAppBaseUrl(): string {
   if (process.env.APP_URL) {
@@ -18,7 +31,6 @@ export function getAppBaseUrl(): string {
  * Returns Indian Standard Time (IST) Date string representation and windows
  */
 export function getIstDateString(date: Date = new Date()): string {
-  // Format YYYY-MM-DD in Asia/Kolkata timezone
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Kolkata',
     year: 'numeric',
@@ -29,12 +41,9 @@ export function getIstDateString(date: Date = new Date()): string {
 
 export function getIstIsoDayRange(date: Date = new Date()): { startIso: string; endIso: string; dateStr: string } {
   const dateStr = getIstDateString(date); // "YYYY-MM-DD"
-  // IST is UTC+5:30 -> midnight IST is 18:30 UTC of previous day
-  // To avoid boundary quirks, calculate exact UTC epoch milliseconds for 00:00:00.000 IST and 23:59:59.999 IST
   const [year, month, day] = dateStr.split('-').map(Number);
   
-  // Construct UTC midnight corresponding to IST:
-  // IST = UTC + 5.5 hours, so UTC = IST - 5.5 hours
+  // Construct UTC timestamps for 00:00:00.000 IST and 23:59:59.999 IST
   const startUtc = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0) - 5.5 * 60 * 60 * 1000);
   const endUtc = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999) - 5.5 * 60 * 60 * 1000);
 

@@ -1,4 +1,5 @@
 {
+  "framework": "vite",
   "crons": [
     {
       "path": "/api/cron/test-reminders",
@@ -11,6 +12,16 @@
     {
       "path": "/api/cron/weekly-report",
       "schedule": "30 14 * * 0"
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }

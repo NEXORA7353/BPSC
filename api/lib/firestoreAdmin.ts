@@ -1,11 +1,9 @@
 import { getApps, initializeApp, cert, App } from 'firebase-admin/app';
-import { getFirestore, Firestore, FieldValue } from 'firebase-admin/firestore';
-import firebaseConfig from '../../firebase-applet-config.json';
+import { getFirestore, Firestore } from 'firebase-admin/firestore';
+import { TARGET_DATABASE_ID, DEFAULT_PROJECT_ID } from './constants';
 
 let adminApp: App | null = null;
 let adminDb: Firestore | null = null;
-
-const TARGET_DATABASE_ID = (firebaseConfig as any).firestoreDatabaseId || '(default)';
 
 /**
  * Initializes and returns the server-side Firebase Admin Firestore client.
@@ -23,7 +21,6 @@ export function getAdminFirestore(): Firestore {
 
   let serviceAccount: any;
   try {
-    // Support either raw JSON string or base64 encoded JSON
     if (rawKey.trim().startsWith('{')) {
       serviceAccount = JSON.parse(rawKey);
     } else {
@@ -34,10 +31,14 @@ export function getAdminFirestore(): Firestore {
     throw new Error(`Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY: ${err?.message || err}`);
   }
 
+  if (serviceAccount.private_key) {
+    serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+  }
+
   if (getApps().length === 0) {
     adminApp = initializeApp({
       credential: cert(serviceAccount),
-      projectId: serviceAccount.project_id || (firebaseConfig as any).projectId
+      projectId: serviceAccount.project_id || DEFAULT_PROJECT_ID
     });
   } else {
     adminApp = getApps()[0];
@@ -68,7 +69,6 @@ export async function reserveNotificationAtomically(
     return await db.runTransaction(async (transaction) => {
       const snapshot = await transaction.get(docRef);
       if (snapshot.exists) {
-        // Notification was already sent or is currently being processed
         return false;
       }
 
@@ -82,7 +82,6 @@ export async function reserveNotificationAtomically(
       return true;
     });
   } catch (err: any) {
-    // If a concurrent transaction already created it, Firestore throws ALREADY_EXISTS
     if (err?.code === 6 || err?.message?.includes('ALREADY_EXISTS') || err?.message?.includes('already exists')) {
       return false;
     }

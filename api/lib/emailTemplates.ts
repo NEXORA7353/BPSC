@@ -1,5 +1,4 @@
-import { getAppBaseUrl } from './constants';
-import type { TopicPerformanceStat } from '../../src/types';
+import { getAppBaseUrl, TopicPerformanceStat } from './constants';
 
 const PORTAL_NAME = 'BPSC TRE 4.0 Mathematics Portal';
 const PRIMARY_COLOR = '#d97706'; // Amber-600
