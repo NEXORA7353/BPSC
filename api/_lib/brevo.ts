@@ -1,4 +1,4 @@
-import { DEFAULT_SENDER_EMAIL, DEFAULT_SENDER_NAME } from './constants';
+import { DEFAULT_SENDER_EMAIL, DEFAULT_SENDER_NAME } from './constants.js';
 
 export interface EmailRecipient {
   email: string;

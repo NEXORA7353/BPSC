@@ -1,23 +1,23 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { isAuthorizedCronRequest, rejectUnauthorizedCron } from '../lib/cronAuth';
+import { isAuthorizedCronRequest, rejectUnauthorizedCron } from '../_lib/cronAuth.js';
 import {
   DEFAULT_STUDENT_EMAIL,
   DEFAULT_PARENT_EMAIL,
   DEFAULT_STUDENT_NAME,
   getIstYearWeek,
   TopicPerformanceStat
-} from '../lib/constants';
-import { sendBrevoEmail } from '../lib/brevo';
+} from '../_lib/constants.js';
+import { sendBrevoEmail } from '../_lib/brevo.js';
 import {
   getStudentAttemptsInRange,
   reserveNotificationAtomically,
   finalizeNotification
-} from '../lib/firestoreAdmin';
+} from '../_lib/firestoreAdmin.js';
 import {
   renderStudentWeeklyReportEmail,
   renderParentWeeklyReportEmail
-} from '../lib/emailTemplates';
-import { sendJson } from '../lib/response';
+} from '../_lib/emailTemplates.js';
+import { sendJson } from '../_lib/response.js';
 
 export default async function handler(req: VercelRequest | any, res: VercelResponse | any) {
   // 1. Verify Vercel Cron authentication

@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'http';
-import { sendJson } from './response';
+import { sendJson } from './response.js';
 
 /**
  * Validates that an incoming HTTP request to a /api/cron/* endpoint

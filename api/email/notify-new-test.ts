@@ -3,18 +3,18 @@ import {
   DEFAULT_STUDENT_EMAIL,
   DEFAULT_PARENT_EMAIL,
   DEFAULT_STUDENT_NAME
-} from '../lib/constants';
-import { sendBrevoEmail } from '../lib/brevo';
+} from '../_lib/constants.js';
+import { sendBrevoEmail } from '../_lib/brevo.js';
 import {
   getPublishedTest,
   reserveNotificationAtomically,
   finalizeNotification
-} from '../lib/firestoreAdmin';
+} from '../_lib/firestoreAdmin.js';
 import {
   renderStudentNewTestEmail,
   renderParentNewTestEmail
-} from '../lib/emailTemplates';
-import { sendJson } from '../lib/response';
+} from '../_lib/emailTemplates.js';
+import { sendJson } from '../_lib/response.js';
 
 function parseRequestBody(req: any): any {
   if (req.body !== undefined && req.body !== null) {
