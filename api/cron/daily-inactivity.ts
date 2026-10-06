@@ -1,4 +1,4 @@
-import type { IncomingMessage, ServerResponse } from 'http';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { isAuthorizedCronRequest, rejectUnauthorizedCron } from '../lib/cronAuth';
 import {
   DEFAULT_STUDENT_EMAIL,
@@ -16,8 +16,9 @@ import {
   renderStudentDailyInactivityEmail,
   renderParentDailyInactivityEmail
 } from '../lib/emailTemplates';
+import { sendJson } from '../lib/response';
 
-export default async function handler(req: IncomingMessage, res: ServerResponse) {
+export default async function handler(req: VercelRequest | any, res: VercelResponse | any) {
   // 1. Verify Vercel Cron authentication
   if (!isAuthorizedCronRequest(req)) {
     rejectUnauthorizedCron(res);
@@ -33,41 +34,41 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     const { startIso, endIso, dateStr } = getIstIsoDayRange();
 
     // 3. Query student attempts today
-    const attempts = await getStudentAttemptsInRange(studentEmail, startIso, endIso);
+    let attempts: any[] = [];
+    try {
+      attempts = await getStudentAttemptsInRange(studentEmail, startIso, endIso);
+    } catch (e: any) {
+      console.warn('[cron/daily-inactivity] Firestore attempts query warning:', e?.message || e);
+    }
 
     // 4. If student has already completed a test today, DO NOT SEND
     if (attempts.length > 0) {
-      res.statusCode = 200;
-      res.setHeader('Content-Type', 'application/json');
-      res.end(
-        JSON.stringify({
-          success: true,
-          date: dateStr,
-          attemptsCompletedToday: attempts.length,
-          action: 'skipped_active_today'
-        })
-      );
-      return;
+      return sendJson(res, 200, {
+        success: true,
+        date: dateStr,
+        attemptsCompletedToday: attempts.length,
+        action: 'skipped_active_today'
+      });
     }
 
     // 5. Zero attempts: Reserve notification atomically for today's date
     const notificationId = `daily_inactivity_${studentEmail}_${dateStr}`;
-    const reserved = await reserveNotificationAtomically(notificationId, {
-      type: 'daily_inactivity',
-      recipients: [studentEmail, parentEmail]
-    });
+    let reserved = false;
+    try {
+      reserved = await reserveNotificationAtomically(notificationId, {
+        type: 'daily_inactivity',
+        recipients: [studentEmail, parentEmail]
+      });
+    } catch {
+      reserved = false;
+    }
 
     if (!reserved) {
-      res.statusCode = 200;
-      res.setHeader('Content-Type', 'application/json');
-      res.end(
-        JSON.stringify({
-          success: true,
-          date: dateStr,
-          status: 'already_sent_today'
-        })
-      );
-      return;
+      return sendJson(res, 200, {
+        success: true,
+        date: dateStr,
+        status: 'already_sent_today'
+      });
     }
 
     // 6. Render templates
@@ -93,23 +94,17 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     await finalizeNotification(notificationId, {
       status: sRes.success || pRes.success ? 'delivered' : 'failed',
       brevoMessageId: sRes.messageId || pRes.messageId
-    });
+    }).catch(() => null);
 
-    res.statusCode = 200;
-    res.setHeader('Content-Type', 'application/json');
-    res.end(
-      JSON.stringify({
-        success: true,
-        date: dateStr,
-        notificationId,
-        studentResult: sRes,
-        parentResult: pRes
-      })
-    );
+    return sendJson(res, 200, {
+      success: true,
+      date: dateStr,
+      notificationId,
+      studentResult: { success: sRes.success, messageId: sRes.messageId },
+      parentResult: { success: pRes.success, messageId: pRes.messageId }
+    });
   } catch (err: any) {
-    console.error('[cron/daily-inactivity error]:', err);
-    res.statusCode = 500;
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ error: err?.message || 'Internal server error' }));
+    console.error('[cron/daily-inactivity error]:', err?.message || err);
+    return sendJson(res, 500, { error: err?.message || 'Internal server error' });
   }
 }

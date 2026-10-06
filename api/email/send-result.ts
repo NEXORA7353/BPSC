@@ -1,4 +1,4 @@
-import type { IncomingMessage, ServerResponse } from 'http';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 import {
   DEFAULT_STUDENT_EMAIL,
   DEFAULT_PARENT_EMAIL,
@@ -14,46 +14,35 @@ import {
   renderStudentResultEmail,
   renderParentResultEmail
 } from '../lib/emailTemplates';
+import { sendJson } from '../lib/response';
 
-async function parseBody(req: any): Promise<any> {
-  if (req.body) {
-    return typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-  }
-  return new Promise((resolve) => {
-    let data = '';
-    req.on('data', (chunk: any) => {
-      data += chunk;
-    });
-    req.on('end', () => {
+function parseRequestBody(req: any): any {
+  if (req.body !== undefined && req.body !== null) {
+    if (typeof req.body === 'string') {
       try {
-        resolve(data ? JSON.parse(data) : {});
+        return JSON.parse(req.body);
       } catch {
-        resolve({});
+        return {};
       }
-    });
-    req.on('error', () => resolve({}));
-  });
+    }
+    return req.body;
+  }
+  return {};
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-export default async function handler(req: any, res: ServerResponse) {
+export default async function handler(req: VercelRequest | any, res: VercelResponse | any) {
   if (req.method !== 'POST') {
-    res.statusCode = 405;
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ error: 'Method Not Allowed' }));
-    return;
+    return sendJson(res, 405, { error: 'Method Not Allowed' });
   }
 
   try {
-    const body = await parseBody(req);
+    const body = parseRequestBody(req);
     const { attemptId, attemptData } = body;
 
     if (!attemptId || typeof attemptId !== 'string') {
-      res.statusCode = 400;
-      res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify({ error: 'Missing or invalid attemptId' }));
-      return;
+      return sendJson(res, 400, { error: 'Missing or invalid attemptId' });
     }
 
     // 1. Verify persisted attempt record in Firestore (with attemptData fallback)
@@ -62,7 +51,7 @@ export default async function handler(req: any, res: ServerResponse) {
       attempt = attemptData;
     }
     if (!attempt) {
-      await sleep(1000);
+      await sleep(800);
       attempt = await getPersistedAttempt(attemptId).catch(() => null);
     }
     if (!attempt && attemptData) {
@@ -70,14 +59,9 @@ export default async function handler(req: any, res: ServerResponse) {
     }
 
     if (!attempt) {
-      res.statusCode = 404;
-      res.setHeader('Content-Type', 'application/json');
-      res.end(
-        JSON.stringify({
-          error: `Attempt record ${attemptId} not found in Firestore. Result email can only be sent after attempt is persisted.`
-        })
-      );
-      return;
+      return sendJson(res, 404, {
+        error: `Attempt record ${attemptId} not found in Firestore. Result email can only be sent after attempt is persisted.`
+      });
     }
 
     // 2. Atomically reserve notification
@@ -86,18 +70,24 @@ export default async function handler(req: any, res: ServerResponse) {
     const parentEmail = attempt.parentEmail || DEFAULT_PARENT_EMAIL;
     const studentName = attempt.studentName || DEFAULT_STUDENT_NAME;
 
-    const isReserved = await reserveNotificationAtomically(notificationId, {
-      type: 'test_result',
-      recipients: [studentEmail, parentEmail],
-      attemptId,
-      testId: attempt.testId
-    });
+    let isReserved = false;
+    try {
+      isReserved = await reserveNotificationAtomically(notificationId, {
+        type: 'test_result',
+        recipients: [studentEmail, parentEmail],
+        attemptId,
+        testId: attempt.testId
+      });
+    } catch (dbErr: any) {
+      console.warn('[send-result] Reservation error:', dbErr?.message || dbErr);
+      isReserved = true;
+    }
 
     if (!isReserved) {
-      res.statusCode = 200;
-      res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify({ status: 'already_sent', message: 'Result email already dispatched for this attempt.' }));
-      return;
+      return sendJson(res, 200, {
+        status: 'already_sent',
+        message: 'Result email already dispatched for this attempt.'
+      });
     }
 
     // 3. Render verified results
@@ -147,25 +137,39 @@ export default async function handler(req: any, res: ServerResponse) {
       await finalizeNotification(notificationId, {
         status: 'failed',
         error: studentResult.error || parentResult.error
+      }).catch(() => null);
+
+      return sendJson(res, 502, {
+        error: 'Failed to send Brevo emails',
+        details: {
+          studentError: studentResult.error,
+          parentError: parentResult.error
+        }
       });
-      res.statusCode = 502;
-      res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify({ error: 'Failed to send Brevo emails', details: { studentResult, parentResult } }));
-      return;
     }
 
     await finalizeNotification(notificationId, {
       status: 'delivered',
       brevoMessageId: studentResult.messageId || parentResult.messageId
-    });
+    }).catch(() => null);
 
-    res.statusCode = 200;
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ success: true, notificationId, studentResult, parentResult }));
+    return sendJson(res, 200, {
+      success: true,
+      notificationId,
+      studentResult: {
+        success: studentResult.success,
+        messageId: studentResult.messageId
+      },
+      parentResult: {
+        success: parentResult.success,
+        messageId: parentResult.messageId
+      }
+    });
   } catch (err: any) {
-    console.error('[send-result error]:', err);
-    res.statusCode = 500;
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ error: err?.message || 'Internal server error' }));
+    console.error('[send-result error]:', err?.message || err);
+    return sendJson(res, 500, {
+      error: 'Internal server error processing result email',
+      message: err?.message || 'Unknown error'
+    });
   }
 }

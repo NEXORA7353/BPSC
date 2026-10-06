@@ -1,4 +1,4 @@
-import type { IncomingMessage, ServerResponse } from 'http';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { isAuthorizedCronRequest, rejectUnauthorizedCron } from '../lib/cronAuth';
 import {
   DEFAULT_STUDENT_EMAIL,
@@ -17,8 +17,9 @@ import {
   renderStudentWeeklyReportEmail,
   renderParentWeeklyReportEmail
 } from '../lib/emailTemplates';
+import { sendJson } from '../lib/response';
 
-export default async function handler(req: IncomingMessage, res: ServerResponse) {
+export default async function handler(req: VercelRequest | any, res: VercelResponse | any) {
   // 1. Verify Vercel Cron authentication
   if (!isAuthorizedCronRequest(req)) {
     rejectUnauthorizedCron(res);
@@ -37,43 +38,43 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     const notificationId = `weekly_${studentEmail}_${weekKey}`;
 
     // 2. Query attempts in past 7 days
-    const attempts = await getStudentAttemptsInRange(
-      studentEmail,
-      sevenDaysAgo.toISOString(),
-      now.toISOString()
-    );
+    let attempts: any[] = [];
+    try {
+      attempts = await getStudentAttemptsInRange(
+        studentEmail,
+        sevenDaysAgo.toISOString(),
+        now.toISOString()
+      );
+    } catch (e: any) {
+      console.warn('[cron/weekly-report] Attempts query warning:', e?.message || e);
+    }
 
     // If zero attempts in past 7 days, don't generate empty weekly analysis
     if (attempts.length === 0) {
-      res.statusCode = 200;
-      res.setHeader('Content-Type', 'application/json');
-      res.end(
-        JSON.stringify({
-          success: true,
-          week: weekKey,
-          message: 'No attempts in past 7 days. Weekly report skipped.'
-        })
-      );
-      return;
+      return sendJson(res, 200, {
+        success: true,
+        week: weekKey,
+        message: 'No attempts in past 7 days. Weekly report skipped.'
+      });
     }
 
     // 3. Atomically reserve notification
-    const reserved = await reserveNotificationAtomically(notificationId, {
-      type: 'weekly_report',
-      recipients: [studentEmail, parentEmail]
-    });
+    let reserved = false;
+    try {
+      reserved = await reserveNotificationAtomically(notificationId, {
+        type: 'weekly_report',
+        recipients: [studentEmail, parentEmail]
+      });
+    } catch {
+      reserved = false;
+    }
 
     if (!reserved) {
-      res.statusCode = 200;
-      res.setHeader('Content-Type', 'application/json');
-      res.end(
-        JSON.stringify({
-          success: true,
-          week: weekKey,
-          status: 'already_sent_this_week'
-        })
-      );
-      return;
+      return sendJson(res, 200, {
+        success: true,
+        week: weekKey,
+        status: 'already_sent_this_week'
+      });
     }
 
     // 4. Aggregate metrics across all attempts in past 7 days
@@ -163,23 +164,17 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     await finalizeNotification(notificationId, {
       status: sRes.success || pRes.success ? 'delivered' : 'failed',
       brevoMessageId: sRes.messageId || pRes.messageId
-    });
+    }).catch(() => null);
 
-    res.statusCode = 200;
-    res.setHeader('Content-Type', 'application/json');
-    res.end(
-      JSON.stringify({
-        success: true,
-        week: weekKey,
-        notificationId,
-        studentResult: sRes,
-        parentResult: pRes
-      })
-    );
+    return sendJson(res, 200, {
+      success: true,
+      week: weekKey,
+      notificationId,
+      studentResult: { success: sRes.success, messageId: sRes.messageId },
+      parentResult: { success: pRes.success, messageId: pRes.messageId }
+    });
   } catch (err: any) {
-    console.error('[cron/weekly-report error]:', err);
-    res.statusCode = 500;
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ error: err?.message || 'Internal server error' }));
+    console.error('[cron/weekly-report error]:', err?.message || err);
+    return sendJson(res, 500, { error: err?.message || 'Internal server error' });
   }
 }

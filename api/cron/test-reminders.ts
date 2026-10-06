@@ -1,4 +1,4 @@
-import type { IncomingMessage, ServerResponse } from 'http';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { isAuthorizedCronRequest, rejectUnauthorizedCron } from '../lib/cronAuth';
 import {
   DEFAULT_STUDENT_EMAIL,
@@ -12,8 +12,9 @@ import {
   finalizeNotification
 } from '../lib/firestoreAdmin';
 import { renderTestReminderEmail } from '../lib/emailTemplates';
+import { sendJson } from '../lib/response';
 
-export default async function handler(req: IncomingMessage, res: ServerResponse) {
+export default async function handler(req: VercelRequest | any, res: VercelResponse | any) {
   // 1. Verify Vercel Cron authentication
   if (!isAuthorizedCronRequest(req)) {
     rejectUnauthorizedCron(res);
@@ -26,7 +27,12 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
 
     // Query tests scheduled between now and next 3.5 hours
     const maxLookahead = new Date(nowMs + 3.5 * 60 * 60 * 1000).toISOString();
-    const tests = await getScheduledPublishedTests(now.toISOString(), maxLookahead);
+    let tests: any[] = [];
+    try {
+      tests = await getScheduledPublishedTests(now.toISOString(), maxLookahead);
+    } catch (e: any) {
+      console.warn('[cron/test-reminders] Firestore query warning:', e?.message || e);
+    }
 
     const results = {
       evaluatedCount: tests.length,
@@ -46,11 +52,16 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       // --- Window 1: 2 to 3 hours before (110 mins to 190 mins) ---
       if (diffMinutes >= 110 && diffMinutes <= 190) {
         const notifId = `reminder_2h_${test.id}`;
-        const reserved = await reserveNotificationAtomically(notifId, {
-          type: 'reminder_2h',
-          recipients: [studentEmail, parentEmail],
-          testId: test.id
-        });
+        let reserved = false;
+        try {
+          reserved = await reserveNotificationAtomically(notifId, {
+            type: 'reminder_2h',
+            recipients: [studentEmail, parentEmail],
+            testId: test.id
+          });
+        } catch {
+          reserved = false;
+        }
 
         if (reserved) {
           const mail = renderTestReminderEmail(test, '2h', studentName);
@@ -72,7 +83,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
           await finalizeNotification(notifId, {
             status: sRes.success || pRes.success ? 'delivered' : 'failed',
             brevoMessageId: sRes.messageId || pRes.messageId
-          });
+          }).catch(() => null);
           results.reminders2hSent += 1;
         }
       }
@@ -80,11 +91,16 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       // --- Window 2: Shortly before (0 to 35 mins before) ---
       if (diffMinutes >= 0 && diffMinutes <= 35) {
         const notifId = `reminder_soon_${test.id}`;
-        const reserved = await reserveNotificationAtomically(notifId, {
-          type: 'reminder_soon',
-          recipients: [studentEmail],
-          testId: test.id
-        });
+        let reserved = false;
+        try {
+          reserved = await reserveNotificationAtomically(notifId, {
+            type: 'reminder_soon',
+            recipients: [studentEmail],
+            testId: test.id
+          });
+        } catch {
+          reserved = false;
+        }
 
         if (reserved) {
           const mail = renderTestReminderEmail(test, 'soon', studentName);
@@ -98,19 +114,19 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
           await finalizeNotification(notifId, {
             status: sRes.success ? 'delivered' : 'failed',
             brevoMessageId: sRes.messageId
-          });
+          }).catch(() => null);
           results.remindersSoonSent += 1;
         }
       }
     }
 
-    res.statusCode = 200;
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ success: true, timestamp: now.toISOString(), results }));
+    return sendJson(res, 200, {
+      success: true,
+      timestamp: now.toISOString(),
+      results
+    });
   } catch (err: any) {
-    console.error('[cron/test-reminders error]:', err);
-    res.statusCode = 500;
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ error: err?.message || 'Internal server error' }));
+    console.error('[cron/test-reminders error]:', err?.message || err);
+    return sendJson(res, 500, { error: err?.message || 'Internal server error' });
   }
 }

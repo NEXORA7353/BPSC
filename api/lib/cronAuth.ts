@@ -1,17 +1,19 @@
 import type { IncomingMessage, ServerResponse } from 'http';
+import { sendJson } from './response';
 
 /**
  * Validates that an incoming HTTP request to a /api/cron/* endpoint
  * is legitimately authorized by Vercel Cron using the CRON_SECRET token.
  */
-export function isAuthorizedCronRequest(req: IncomingMessage): boolean {
+export function isAuthorizedCronRequest(req: IncomingMessage | any): boolean {
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret) {
     console.warn('[Cron Auth] Warning: CRON_SECRET is not configured in environment variables.');
     return false;
   }
 
-  const authHeader = req.headers['authorization'] || req.headers['Authorization'];
+  const headers = req.headers || {};
+  const authHeader = headers['authorization'] || headers['Authorization'];
   if (!authHeader || typeof authHeader !== 'string') {
     return false;
   }
@@ -20,8 +22,6 @@ export function isAuthorizedCronRequest(req: IncomingMessage): boolean {
   return authHeader.trim() === expectedHeader;
 }
 
-export function rejectUnauthorizedCron(res: ServerResponse): void {
-  res.statusCode = 401;
-  res.setHeader('Content-Type', 'application/json');
-  res.end(JSON.stringify({ error: 'Unauthorized: Invalid or missing CRON_SECRET' }));
+export function rejectUnauthorizedCron(res: ServerResponse | any): void {
+  sendJson(res, 401, { error: 'Unauthorized: Invalid or missing CRON_SECRET' });
 }

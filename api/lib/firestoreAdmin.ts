@@ -5,6 +5,10 @@ import { TARGET_DATABASE_ID, DEFAULT_PROJECT_ID } from './constants';
 let adminApp: App | null = null;
 let adminDb: Firestore | null = null;
 
+export function isFirebaseAdminConfigured(): boolean {
+  return !!process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+}
+
 /**
  * Initializes and returns the server-side Firebase Admin Firestore client.
  * Strictly uses process.env.FIREBASE_SERVICE_ACCOUNT_KEY on server-side.
@@ -21,11 +25,22 @@ export function getAdminFirestore(): Firestore {
 
   let serviceAccount: any;
   try {
-    if (rawKey.trim().startsWith('{')) {
-      serviceAccount = JSON.parse(rawKey);
+    let trimmed = rawKey.trim();
+    if (
+      (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+      (trimmed.startsWith("'") && trimmed.endsWith("'"))
+    ) {
+      trimmed = trimmed.slice(1, -1).trim();
+    }
+    if (trimmed.startsWith('{')) {
+      serviceAccount = JSON.parse(trimmed);
     } else {
-      const decoded = Buffer.from(rawKey, 'base64').toString('utf8');
-      serviceAccount = JSON.parse(decoded);
+      try {
+        const decoded = Buffer.from(trimmed, 'base64').toString('utf8');
+        serviceAccount = JSON.parse(decoded);
+      } catch {
+        serviceAccount = JSON.parse(trimmed);
+      }
     }
   } catch (err: any) {
     throw new Error(`Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY: ${err?.message || err}`);

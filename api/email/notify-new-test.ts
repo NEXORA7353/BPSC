@@ -1,4 +1,4 @@
-import type { IncomingMessage, ServerResponse } from 'http';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 import {
   DEFAULT_STUDENT_EMAIL,
   DEFAULT_PARENT_EMAIL,
@@ -8,51 +8,39 @@ import { sendBrevoEmail } from '../lib/brevo';
 import {
   getPublishedTest,
   reserveNotificationAtomically,
-  finalizeNotification,
-  releaseNotificationReservation
+  finalizeNotification
 } from '../lib/firestoreAdmin';
 import {
   renderStudentNewTestEmail,
   renderParentNewTestEmail
 } from '../lib/emailTemplates';
+import { sendJson } from '../lib/response';
 
-async function parseBody(req: any): Promise<any> {
-  if (req.body) {
-    return typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-  }
-  return new Promise((resolve) => {
-    let data = '';
-    req.on('data', (chunk: any) => {
-      data += chunk;
-    });
-    req.on('end', () => {
+function parseRequestBody(req: any): any {
+  if (req.body !== undefined && req.body !== null) {
+    if (typeof req.body === 'string') {
       try {
-        resolve(data ? JSON.parse(data) : {});
+        return JSON.parse(req.body);
       } catch {
-        resolve({});
+        return {};
       }
-    });
-    req.on('error', () => resolve({}));
-  });
+    }
+    return req.body;
+  }
+  return {};
 }
 
-export default async function handler(req: any, res: ServerResponse) {
+export default async function handler(req: VercelRequest | any, res: VercelResponse | any) {
   if (req.method !== 'POST') {
-    res.statusCode = 405;
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ error: 'Method Not Allowed' }));
-    return;
+    return sendJson(res, 405, { error: 'Method Not Allowed' });
   }
 
   try {
-    const body = await parseBody(req);
+    const body = parseRequestBody(req);
     const { testId, testData } = body;
 
     if (!testId || typeof testId !== 'string') {
-      res.statusCode = 400;
-      res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify({ error: 'Missing or invalid testId' }));
-      return;
+      return sendJson(res, 400, { error: 'Missing or invalid testId' });
     }
 
     // 1. Verify test exists in Firestore or fallback to provided testData
@@ -62,18 +50,12 @@ export default async function handler(req: any, res: ServerResponse) {
     }
 
     if (!test) {
-      res.statusCode = 404;
-      res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify({ error: `Test ${testId} not found in Firestore` }));
-      return;
+      return sendJson(res, 404, { error: `Test ${testId} not found in Firestore` });
     }
 
     // 2. MUST be explicitly published
     if (!test.isPublished) {
-      res.statusCode = 400;
-      res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify({ error: 'Test is not published. Draft tests do not send emails.' }));
-      return;
+      return sendJson(res, 400, { error: 'Test is not published. Draft tests do not send emails.' });
     }
 
     // 3. Atomically reserve notification
@@ -82,17 +64,24 @@ export default async function handler(req: any, res: ServerResponse) {
     const parentEmail = test.parentEmail || DEFAULT_PARENT_EMAIL;
     const studentName = test.studentName || DEFAULT_STUDENT_NAME;
 
-    const isReserved = await reserveNotificationAtomically(notificationId, {
-      type: 'new_test',
-      recipients: [studentEmail, parentEmail],
-      testId
-    });
+    let isReserved = false;
+    try {
+      isReserved = await reserveNotificationAtomically(notificationId, {
+        type: 'new_test',
+        recipients: [studentEmail, parentEmail],
+        testId
+      });
+    } catch (dbErr: any) {
+      console.warn('[notify-new-test] Reservation error:', dbErr?.message || dbErr);
+      // If serverless Firestore is unavailable, allow proceeding without duplicate prevention
+      isReserved = true;
+    }
 
     if (!isReserved) {
-      res.statusCode = 200;
-      res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify({ status: 'already_sent', message: 'Publish email already sent for this test.' }));
-      return;
+      return sendJson(res, 200, {
+        status: 'already_sent',
+        message: 'Publish email already sent for this test.'
+      });
     }
 
     // 4. Render student and parent templates
@@ -135,25 +124,39 @@ export default async function handler(req: any, res: ServerResponse) {
       await finalizeNotification(notificationId, {
         status: 'failed',
         error: studentResult.error || parentResult.error
+      }).catch(() => null);
+
+      return sendJson(res, 502, {
+        error: 'Failed to send Brevo emails',
+        details: {
+          studentError: studentResult.error,
+          parentError: parentResult.error
+        }
       });
-      res.statusCode = 502;
-      res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify({ error: 'Failed to send Brevo emails', details: { studentResult, parentResult } }));
-      return;
     }
 
     await finalizeNotification(notificationId, {
       status: 'delivered',
       brevoMessageId: studentResult.messageId || parentResult.messageId
-    });
+    }).catch(() => null);
 
-    res.statusCode = 200;
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ success: true, notificationId, studentResult, parentResult }));
+    return sendJson(res, 200, {
+      success: true,
+      notificationId,
+      studentResult: {
+        success: studentResult.success,
+        messageId: studentResult.messageId
+      },
+      parentResult: {
+        success: parentResult.success,
+        messageId: parentResult.messageId
+      }
+    });
   } catch (err: any) {
-    console.error('[notify-new-test error]:', err);
-    res.statusCode = 500;
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ error: err?.message || 'Internal server error' }));
+    console.error('[notify-new-test error]:', err?.message || err);
+    return sendJson(res, 500, {
+      error: 'Internal server error processing notification',
+      message: err?.message || 'Unknown error'
+    });
   }
 }

@@ -54,6 +54,11 @@ service cloud.firestore {
         && data.questionId is string && data.questionId.size() <= 128;
     }
 
+    function isValidDeletedTest(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.testId is string && data.testId.size() <= 128;
+    }
+
     // Question Bank collection
     match /questions/{questionId} {
       allow read: if true;
@@ -86,6 +91,13 @@ service cloud.firestore {
     match /deleted_question_ids/{recordId} {
       allow read: if true;
       allow create, update: if isValidId(recordId) && isValidTombstone(incoming());
+      allow delete: if isValidId(recordId);
+    }
+
+    // Deleted Test Tombstones (to sync deletion across clients)
+    match /deleted_test_ids/{recordId} {
+      allow read: if true;
+      allow create, update: if isValidId(recordId) && isValidDeletedTest(incoming());
       allow delete: if isValidId(recordId);
     }
 

@@ -38,6 +38,7 @@ import {
 } from '../utils/questionBankStorage';
 import { parseBulkQuestionText } from '../utils/questionParser';
 import { generateStandaloneHtml } from '../utils/exportHtml';
+import { saveTestSetToCloud } from '../services/firebaseSyncService';
 import { MathText } from './MathText';
 import { BackButton } from './BackButton';
 
@@ -348,16 +349,24 @@ export function CreateTestView({
   };
 
   // Launch or Save actions
-  const handleStartExamNow = () => {
+  const handleStartExamNow = async () => {
     const testSet = generatedPreviewSet || generateBlueprint();
     testSet.isPublished = true;
     testSet.publishedAtIso = testSet.publishedAtIso || new Date().toISOString();
     if (scheduledDateTime) {
       testSet.scheduledStartAt = new Date(scheduledDateTime).toISOString();
     }
+    // 1. Save locally
     saveCustomTest(testSet);
 
-    // Notify student and parent only upon explicit publication
+    // 2. Persist to Firestore
+    try {
+      await saveTestSetToCloud(testSet);
+    } catch (err) {
+      console.warn('Direct cloud test save warning:', err);
+    }
+
+    // 3. Notify student and parent in background only upon explicit publication
     fetch('/api/email/notify-new-test', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -376,8 +385,18 @@ export function CreateTestView({
       if (scheduledDateTime) {
         testSet.scheduledStartAt = new Date(scheduledDateTime).toISOString();
       }
+
+      // 1. Save locally
       saveCustomTest(testSet);
 
+      // 2. Persist to Firestore FIRST
+      try {
+        await saveTestSetToCloud(testSet);
+      } catch (err) {
+        console.warn('Direct cloud test save warning:', err);
+      }
+
+      // 3. Dispatch notifications without failing test creation if email errors
       try {
         await fetch('/api/email/notify-new-test', {
           method: 'POST',
@@ -388,7 +407,7 @@ export function CreateTestView({
         console.warn('Publish email notify error:', e);
       }
 
-      setStatusNotification(`Test "${testSet.title}" published & notifications dispatched!`);
+      setStatusNotification(`Test "${testSet.title}" published & saved successfully!`);
       setTimeout(() => {
         onBack();
       }, 1400);
