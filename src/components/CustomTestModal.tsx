@@ -27,7 +27,8 @@ import {
   SlidersHorizontal,
   CheckCheck,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Printer
 } from 'lucide-react';
 import { CustomTestConfig, MockTestSet, RegisteredTopic, Question } from '../types';
 import {
@@ -41,12 +42,14 @@ import {
   cleanTitleToEnglish
 } from '../utils/questionBankStorage';
 import { parseBulkQuestionText } from '../utils/questionParser';
+import { printQuestionPaperWithOmr } from '../utils/exportPdfOmr';
 
 interface CustomTestModalProps {
   isOpen: boolean;
   onClose: () => void;
   onStartCustomTest: (testSet: MockTestSet) => void;
   onOpenBulkImport?: (topicKey?: string) => void;
+  initialTopicKey?: string;
 }
 
 type TitleStyle = 'mock' | 'sprint' | 'grand' | 'drill';
@@ -79,7 +82,8 @@ export function CustomTestModal({
   isOpen,
   onClose,
   onStartCustomTest,
-  onOpenBulkImport
+  onOpenBulkImport,
+  initialTopicKey
 }: CustomTestModalProps) {
   const [creationMode, setCreationMode] = useState<'topic_distribution' | 'handpick' | 'direct_paste'>('topic_distribution');
 
@@ -103,6 +107,16 @@ export function CustomTestModal({
     if (isOpen) {
       setRegisteredTopics(getAllRegisteredTopics());
       setAllBankQuestions(getAllQuestionBank());
+      if (initialTopicKey) {
+        setSelectedTopicKeys([initialTopicKey]);
+        setTopicDistribution({ [initialTopicKey]: 20 });
+        setHandpickTopicFilter(initialTopicKey);
+        const topicObj = getAllRegisteredTopics().find((t) => t.key === initialTopicKey);
+        if (topicObj) {
+          const hindiName = topicObj.labelHindi.split('(')[0].trim() || topicObj.labelEnglish || topicObj.key;
+          setTestTitle(`BPSC TRE 4.0: ${hindiName} स्पेशल मॉक टेस्ट`);
+        }
+      }
     }
     const handleUpdate = () => {
       setRegisteredTopics(getAllRegisteredTopics());
@@ -112,7 +126,7 @@ export function CustomTestModal({
     return () => {
       window.removeEventListener('bpsc_cloud_data_updated', handleUpdate);
     };
-  }, [isOpen]);
+  }, [isOpen, initialTopicKey]);
 
   // Topic Breakdown in DB (Total, Fresh, Used)
   const topicStats = useMemo(() => {
@@ -495,6 +509,44 @@ export function CustomTestModal({
         setBulkStatusMsg(null);
         onClose();
       }, 700);
+    }
+  };
+
+  const handlePrintPaperOmrFromModal = () => {
+    const finalTime = timeMode === 'auto' ? Math.max(5, totalQuestionsCount) : customTimeMinutes;
+
+    const activeTopics = creationMode === 'topic_distribution'
+      ? selectedTopicKeys.filter((k) => (topicDistribution[k] || 0) > 0)
+      : undefined;
+
+    const config: CustomTestConfig = {
+      title: testTitle.trim() || `BPSC TRE 4.0 Custom Test (${totalQuestionsCount} Qs)`,
+      creationMode,
+      selectedTopics: activeTopics && activeTopics.length > 0 ? activeTopics : selectedTopicKeys,
+      topicDistribution: creationMode === 'topic_distribution' ? topicDistribution : undefined,
+      specificQuestionIds: creationMode === 'handpick' ? handpickedIds : undefined,
+      directQuestions: creationMode === 'direct_paste' ? directParsedQuestions : undefined,
+      questionCount: totalQuestionsCount,
+      timeMinutes: finalTime,
+      selectionMode,
+      negativeMarking,
+      targetExam: 'BPSC TRE 4.0 Mathematics (Custom Studio)',
+      preferUnused: preferUnused
+    };
+
+    const newTestSet = createCustomMockTest(config);
+    printQuestionPaperWithOmr(newTestSet);
+  };
+
+  const handleHandpickTopicChange = (newTopic: string) => {
+    setHandpickTopicFilter(newTopic);
+    setHandpickCurrentPage(1);
+    if (!isTitleCustomLocked && newTopic !== 'all') {
+      const topicObj = registeredTopics.find((t) => t.key === newTopic);
+      if (topicObj) {
+        const hindiName = topicObj.labelHindi.split('(')[0].trim() || topicObj.labelEnglish;
+        setTestTitle(`BPSC TRE 4.0: ${hindiName} स्पेशल मॉक टेस्ट`);
+      }
     }
   };
 
@@ -1118,7 +1170,7 @@ export function CustomTestModal({
                 {/* Topic filter */}
                 <select
                   value={handpickTopicFilter}
-                  onChange={(e) => setHandpickTopicFilter(e.target.value)}
+                  onChange={(e) => handleHandpickTopicChange(e.target.value)}
                   className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-hidden"
                 >
                   <option value="all">All Topics</option>
@@ -1422,6 +1474,16 @@ export function CustomTestModal({
               className="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800 rounded-xl transition-colors"
             >
               Cancel
+            </button>
+
+            <button
+              disabled={totalQuestionsCount === 0}
+              onClick={handlePrintPaperOmrFromModal}
+              className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-700/60 disabled:opacity-40 disabled:cursor-not-allowed shadow-xs transition-all active:scale-95 cursor-pointer"
+              title="Download or Print Question Paper with 5-Option BPSC OMR Sheet as PDF"
+            >
+              <Printer className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              <span>📄 Paper + OMR (PDF)</span>
             </button>
 
             <button

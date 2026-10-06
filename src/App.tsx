@@ -572,6 +572,7 @@ export default function App() {
           onClose={() => setIsCustomTestModalOpen(false)}
           onStartCustomTest={handleStartCustomCreatedTest}
           onOpenBulkImport={handleOpenBulkImportWithTopic}
+          initialTopicKey={bulkImportTopic}
         />
       )}
 

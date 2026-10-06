@@ -25,7 +25,8 @@ import {
   HelpCircle,
   History,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Printer
 } from 'lucide-react';
 import { CustomTestConfig, MockTestSet, RegisteredTopic, Question } from '../types';
 import {
@@ -41,6 +42,7 @@ import {
 } from '../utils/questionBankStorage';
 import { parseBulkQuestionText } from '../utils/questionParser';
 import { generateStandaloneHtml } from '../utils/exportHtml';
+import { printQuestionPaperWithOmr } from '../utils/exportPdfOmr';
 import { saveTestSetToCloud } from '../services/firebaseSyncService';
 import { MathText } from './MathText';
 import { BackButton } from './BackButton';
@@ -111,8 +113,8 @@ export function CreateTestView({
       const topics = getAllRegisteredTopics();
       const topicObj = topics.find((t) => t.key === preselectedTopic);
       if (topicObj) {
-        const engName = cleanTitleToEnglish(topicObj.labelEnglish || topicObj.labelHindi || topicObj.key);
-        return `BPSC TRE 4.0: ${engName} Mock Test`;
+        const hindiName = topicObj.labelHindi.split('(')[0].trim() || topicObj.labelEnglish || topicObj.key;
+        return `BPSC TRE 4.0: ${hindiName} स्पेशल मॉक टेस्ट`;
       }
     }
     return 'BPSC TRE 4.0: Mathematics Mock Test';
@@ -149,25 +151,38 @@ export function CreateTestView({
     return dist;
   });
 
-  // Automatically sync preselected topic changes
+  // Handpick Selection
+  const [handpickedIds, setHandpickedIds] = useState<string[]>([]);
+  const [handpickSearch, setHandpickSearch] = useState('');
+  const [handpickTopicFilter, setHandpickTopicFilter] = useState<string>(() => preselectedTopic || 'all');
+  const [handpickUsageFilter, setHandpickUsageFilter] = useState<'all' | 'unused' | 'used'>('all');
+  const [handpickOnlyBookmarks, setHandpickOnlyBookmarks] = useState(false);
+
+  // Automatically sync preselected topic changes & keep filters and title in sync
   useEffect(() => {
     if (preselectedTopic) {
       const topicObj = registeredTopics.find((t) => t.key === preselectedTopic);
       if (topicObj) {
-        const engName = cleanTitleToEnglish(topicObj.labelEnglish || topicObj.labelHindi || topicObj.key);
-        setTestTitle(`BPSC TRE 4.0: ${engName} Mock Test`);
+        const hindiName = topicObj.labelHindi.split('(')[0].trim() || topicObj.labelEnglish || topicObj.key;
+        setTestTitle(`BPSC TRE 4.0: ${hindiName} स्पेशल मॉक टेस्ट`);
         setSelectedTopicKeys([preselectedTopic]);
         setTopicDistribution({ [preselectedTopic]: 20 });
+        setHandpickTopicFilter(preselectedTopic);
       }
     }
   }, [preselectedTopic, registeredTopics]);
 
-  // Handpick Selection
-  const [handpickedIds, setHandpickedIds] = useState<string[]>([]);
-  const [handpickSearch, setHandpickSearch] = useState('');
-  const [handpickTopicFilter, setHandpickTopicFilter] = useState('all');
-  const [handpickUsageFilter, setHandpickUsageFilter] = useState<'all' | 'unused' | 'used'>('all');
-  const [handpickOnlyBookmarks, setHandpickOnlyBookmarks] = useState(false);
+  // Smart Handpick filter changer with automatic title updater
+  const handleHandpickTopicChange = (newFilterKey: string) => {
+    setHandpickTopicFilter(newFilterKey);
+    if (!isTitleCustomLocked && newFilterKey !== 'all') {
+      const topicObj = registeredTopics.find((t) => t.key === newFilterKey);
+      if (topicObj) {
+        const hindiName = topicObj.labelHindi.split('(')[0].trim() || topicObj.labelEnglish || topicObj.key;
+        setTestTitle(`BPSC TRE 4.0: ${hindiName} स्पेशल मॉक टेस्ट`);
+      }
+    }
+  };
 
   // Direct Paste
   const [directPasteText, setDirectPasteText] = useState('');
@@ -464,6 +479,14 @@ export function CreateTestView({
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     setStatusNotification('Offline HTML downloaded successfully!');
+    setTimeout(() => setStatusNotification(null), 3000);
+  };
+
+  const handlePrintPaperWithOmr = () => {
+    const testSet = generatedPreviewSet || generateBlueprint();
+    saveCustomTest(testSet);
+    printQuestionPaperWithOmr(testSet);
+    setStatusNotification('Question Paper & 5-Option OMR Sheet ready for print / PDF!');
     setTimeout(() => setStatusNotification(null), 3000);
   };
 
@@ -1162,7 +1185,7 @@ export function CreateTestView({
 
                     <select
                       value={handpickTopicFilter}
-                      onChange={(e) => setHandpickTopicFilter(e.target.value)}
+                      onChange={(e) => handleHandpickTopicChange(e.target.value)}
                       className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl px-3 py-2.5 text-xs font-bold text-slate-900 dark:text-white"
                     >
                       <option value="all">All Chapters</option>
@@ -1656,6 +1679,16 @@ export function CreateTestView({
                   >
                     <FileDown className="w-4 h-4 text-amber-500" />
                     <span>Download Offline HTML</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handlePrintPaperWithOmr}
+                    className="px-4 py-3 rounded-2xl font-bold text-xs text-amber-950 dark:text-amber-200 bg-amber-400/20 hover:bg-amber-400/30 border border-amber-500/40 transition-all flex items-center gap-2 cursor-pointer shadow-xs"
+                    title="Print or Save Question Paper with Official 5-Option BPSC OMR Sheet as PDF"
+                  >
+                    <Printer className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                    <span>📄 प्रश्न पत्र + 5-Option OMR (PDF)</span>
                   </button>
 
                   <button

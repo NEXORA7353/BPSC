@@ -44,7 +44,8 @@ import {
   Target,
   ExternalLink,
   History,
-  X
+  X,
+  Printer
 } from 'lucide-react';
 import { Question, RegisteredTopic, MockTestSet, CustomTestConfig } from '../types';
 import {
@@ -75,6 +76,7 @@ import { auditQuestionBatch, autoHealQuestion } from '../utils/questionQualityAu
 import { MathText } from './MathText';
 import { BackButton } from './BackButton';
 import { ImageKitUploadModal } from './ImageKitUploadModal';
+import { printQuestionPaperWithOmr } from '../utils/exportPdfOmr';
 
 interface QuestionBankViewProps {
   onBackToTests: () => void;
@@ -314,6 +316,46 @@ export function QuestionBankView({
     } else {
       onOpenCustomTest(activeTopicObj.key);
     }
+  };
+
+  const handlePrintChapterPaperWithOmr = (topic: RegisteredTopic) => {
+    const chapterQs = allQuestions.filter((q) => q.topic === topic.key);
+    if (chapterQs.length === 0) {
+      alert(`इस अध्याय (${topic.labelHindi}) में कोई प्रश्न उपलब्ध नहीं है।`);
+      return;
+    }
+    const hindiName = topic.labelHindi.split('(')[0].trim() || topic.labelEnglish;
+    const testSet: MockTestSet = {
+      id: `chapter_${topic.key}_${Date.now()}`,
+      title: `BPSC TRE 4.0: ${hindiName} स्पेशल मॉक टेस्ट`,
+      subtitle: `${topic.labelEnglish || topic.labelHindi} Chapter Practice Paper`,
+      targetExam: 'BPSC TRE 4.0 Mathematics',
+      category: 'custom',
+      categoryTitle: hindiName,
+      topicBadges: [topic.labelHindi],
+      totalQuestions: chapterQs.length,
+      totalTimeMinutes: Math.max(20, Math.round(chapterQs.length * 1.25)),
+      questions: chapterQs
+    };
+    printQuestionPaperWithOmr(testSet);
+  };
+
+  const handlePrintSelectedQuestionsWithOmr = () => {
+    const selectedQs = allQuestions.filter((q) => selectedIds.includes(q.id));
+    if (selectedQs.length === 0) return;
+    const testSet: MockTestSet = {
+      id: `selected_${Date.now()}`,
+      title: `BPSC TRE 4.0: चयनित प्रश्न अभ्यास पत्र (${selectedQs.length} प्रश्न)`,
+      subtitle: `Handpicked Questions Set`,
+      targetExam: 'BPSC TRE 4.0 Mathematics',
+      category: 'custom',
+      categoryTitle: 'चयनित प्रश्न',
+      topicBadges: ['Selected Practice'],
+      totalQuestions: selectedQs.length,
+      totalTimeMinutes: Math.max(15, Math.round(selectedQs.length * 1.25)),
+      questions: selectedQs
+    };
+    printQuestionPaperWithOmr(testSet);
   };
 
   // Filtered Questions in Browse tab
@@ -734,6 +776,15 @@ export function QuestionBankView({
                 <div className="flex items-center justify-between p-3 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 text-xs font-bold text-indigo-700 dark:text-indigo-300">
                   <span>Selected {selectedIds.length} Questions</span>
                   <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handlePrintSelectedQuestionsWithOmr}
+                      className="px-3 py-1.5 rounded-xl bg-amber-500 text-slate-950 font-black hover:bg-amber-400 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+                      title="Print Selected Questions + 5-Option OMR Sheet"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      <span>Print Paper + OMR ({selectedIds.length})</span>
+                    </button>
                     <button
                       type="button"
                       onClick={handleBatchDelete}
@@ -1406,6 +1457,16 @@ export function QuestionBankView({
                       <div className="flex flex-wrap items-center gap-2.5">
                         <button
                           type="button"
+                          onClick={() => handlePrintChapterPaperWithOmr(activeTopicObj)}
+                          className="px-4 py-2.5 rounded-2xl text-xs font-bold bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-amber-400 dark:text-amber-300 transition-colors border border-amber-500/30 flex items-center gap-1.5 cursor-pointer shadow-xs"
+                          title="Print Chapter Question Paper with 5-Option BPSC OMR Sheet (PDF)"
+                        >
+                          <Printer className="w-4 h-4 text-amber-400" />
+                          <span>Paper + 5-Option OMR (PDF)</span>
+                        </button>
+
+                        <button
+                          type="button"
                           onClick={() => onOpenCustomTest(activeTopicObj.key)}
                           className="px-4 py-2.5 rounded-2xl text-xs font-black bg-amber-400 hover:bg-amber-300 text-slate-950 transition-colors shadow-md shadow-amber-400/20 flex items-center gap-1.5"
                         >
@@ -1832,6 +1893,14 @@ export function QuestionBankView({
                                 </div>
 
                                 <div className="pt-3 border-t border-slate-200 dark:border-white/5 flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => printQuestionPaperWithOmr(test)}
+                                    className="p-2.5 rounded-xl bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 text-amber-600 dark:text-amber-400 border border-slate-200 dark:border-white/10 transition-colors cursor-pointer"
+                                    title="Print Question Paper with 5-Option OMR Sheet (PDF)"
+                                  >
+                                    <Printer className="w-4 h-4" />
+                                  </button>
                                   <button
                                     type="button"
                                     onClick={() => {

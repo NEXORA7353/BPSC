@@ -9,13 +9,15 @@ import {
   Shuffle,
   ArrowRight,
   Edit3,
-  BookOpen
+  BookOpen,
+  Printer
 } from 'lucide-react';
 import { MockTestSet } from '../types';
 import { BackButton } from './BackButton';
 import { ScratchpadModal } from './ScratchpadModal';
 import { FormulaSheetModal } from './FormulaSheetModal';
 import { cleanTitleToEnglish, getTestTopicBreakdown } from '../utils/questionBankStorage';
+import { printQuestionPaperWithOmr } from '../utils/exportPdfOmr';
 
 interface TestIntroViewProps {
   currentSet: MockTestSet;
@@ -280,6 +282,15 @@ export function TestIntroView({
               </button>
 
               <button
+                onClick={() => printQuestionPaperWithOmr(currentSet)}
+                className="px-4 py-3 rounded-2xl font-bold text-xs text-amber-950 dark:text-amber-200 bg-amber-400/20 hover:bg-amber-400/30 border border-amber-500/40 transition-all flex items-center gap-2 cursor-pointer shadow-xs"
+                title="Download or Print Question Paper with Official 5-Option BPSC OMR Sheet as PDF"
+              >
+                <Printer className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                <span>Paper + 5-Option OMR (PDF)</span>
+              </button>
+
+              <button
                 onClick={() => onStartTest(currentId)}
                 className="px-8 py-3.5 rounded-2xl font-black text-sm text-slate-950 bg-amber-400 hover:bg-amber-300 shadow-xl shadow-amber-400/25 transition-all active:scale-95 flex items-center gap-2 group"
               >
@@ -488,10 +499,21 @@ export function TestIntroView({
                             e.stopPropagation();
                             onDownloadHtml(test);
                           }}
-                          className="p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:text-slate-900 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 transition-all"
+                          className="p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:text-slate-900 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 transition-all cursor-pointer"
                           title="Download Offline HTML"
                         >
                           <FileDown className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            printQuestionPaperWithOmr(test);
+                          }}
+                          className="p-2 rounded-xl text-amber-700 dark:text-amber-400 hover:text-amber-900 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-all cursor-pointer"
+                          title="Download/Print Question Paper + 5-Option OMR Sheet (PDF)"
+                        >
+                          <Printer className="w-4 h-4" />
                         </button>
 
                         <button
