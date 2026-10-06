@@ -22,7 +22,10 @@ import {
   Image as ImageIcon,
   AlertTriangle,
   BookOpen,
-  Code
+  Code,
+  FileCode,
+  Download,
+  HelpCircle
 } from 'lucide-react';
 import { Question, MockTestSet, RegisteredTopic } from '../types';
 import { parseBulkQuestionText, aiSmartFormatText, getFormattedImportDate } from '../utils/questionParser';
@@ -33,7 +36,8 @@ import {
   registerNewTopic,
   saveCustomTest,
   getQuestionCorrectKeys,
-  getQuestionCorrectDisplay
+  getQuestionCorrectDisplay,
+  sanitizeQuestion
 } from '../utils/questionBankStorage';
 import { auditQuestionBatch } from '../utils/questionQualityAudit';
 import { MathText } from './MathText';
@@ -104,6 +108,106 @@ const SAMPLE_BPSC_TEXT = `प्रश्न 1.
 व्याख्या:
 (64/125)^(-2/3) = ((4/5)^3)^(-2/3) = (4/5)^(-2) = (5/4)^2 = 25/16. अतः विकल्प (b) सही उत्तर है।`;
 
+export const SAMPLE_BPSC_JSON = JSON.stringify(
+  [
+    {
+      "questionText": "यदि (1/5)^(3x) = 0.008 हो, तो (0.25)^x का मान क्या होगा?",
+      "options": [
+        { "key": "a", "text": "1.0" },
+        { "key": "b", "text": "4.0" },
+        { "key": "c", "text": "0.25" },
+        { "key": "d", "text": "उपर्युक्त में से एक से अधिक" },
+        { "key": "e", "text": "अनुत्तरित प्रश्न" }
+      ],
+      "correctOption": "c",
+      "explanation": "(1/5)^(3x) = 0.008 => (0.2)^(3x) = (0.2)^3 => 3x = 3 => x = 1. अतः (0.25)^1 = 0.25. अतः विकल्प (c) सही है।",
+      "exam": "BPSC TRE 3.0 (6 to 8) 2024",
+      "topic": "number_system",
+      "topicNameHindi": "संख्या पद्धति"
+    },
+    {
+      "questionText": "यदि x, y और z धनात्मक वास्तविक संख्याएँ हों, तो ⁵√(3125x¹⁰y⁵z¹⁰) का मान किसके बराबर होगा?",
+      "options": [
+        { "key": "a", "text": "5x²yz²" },
+        { "key": "b", "text": "25x³y²z" },
+        { "key": "c", "text": "125x²yz²" },
+        { "key": "d", "text": "उपर्युक्त में से एक से अधिक" },
+        { "key": "e", "text": "अनुत्तरित प्रश्न" }
+      ],
+      "correctOption": "a",
+      "explanation": "⁵√(3125x¹⁰y⁵z¹⁰) = ⁵√(5⁵ · (x²)⁵ · y⁵ · (z²)⁵) = 5x²yz². अतः विकल्प (a) सही उत्तर है।",
+      "exam": "BPSC TRE 2.0 (6 to 8) 2023",
+      "topic": "number_system",
+      "topicNameHindi": "संख्या पद्धति"
+    },
+    {
+      "questionText": "दो संख्याओं का लघुत्तम समापवर्त्य (LCM) 180 तथा महत्तम समापवर्तक (HCF) 6 है। यदि एक संख्या 30 है, तो दूसरी संख्या क्या होगी?",
+      "options": [
+        { "key": "a", "text": "36" },
+        { "key": "b", "text": "48" },
+        { "key": "c", "text": "60" },
+        { "key": "d", "text": "उपर्युक्त में से एक से अधिक" },
+        { "key": "e", "text": "अनुत्तरित प्रश्न" }
+      ],
+      "correctOption": "a",
+      "explanation": "पहली संख्या × दूसरी संख्या = LCM × HCF => 30 × दूसरी संख्या = 180 × 6 => दूसरी संख्या = 1080 / 30 = 36. अतः विकल्प (a) सही है।",
+      "exam": "BPSC TRE 3.0",
+      "topic": "lcm_hcf",
+      "topicNameHindi": "लघुत्तम और महत्तम समापवर्तक"
+    },
+    {
+      "questionText": "एक वस्तु को ₹240 में बेचने पर एक दुकानदार को 20% की हानि होती है। 20% लाभ प्राप्त करने के लिए इसे किस मूल्य पर बेचना चाहिए?",
+      "options": [
+        { "key": "a", "text": "₹320" },
+        { "key": "b", "text": "₹360" },
+        { "key": "c", "text": "₹300" },
+        { "key": "d", "text": "उपर्युक्त में से एक से अधिक" },
+        { "key": "e", "text": "अनुत्तरित प्रश्न" }
+      ],
+      "correctOption": "b",
+      "explanation": "क्रय मूल्य (CP) = 240 / (1 - 0.20) = 240 / 0.8 = ₹300. 20% लाभ के लिए विक्रय मूल्य (SP) = 300 × 1.20 = ₹360. अतः विकल्प (b) सही उत्तर है।",
+      "exam": "BPSC TRE 4.0 Standard",
+      "topic": "profit_loss",
+      "topicNameHindi": "लाभ और हानि"
+    }
+  ],
+  null,
+  2
+);
+
+export function normalizeJsonQuestion(raw: any, defaultTopic: string, defaultExam: string): Question {
+  const item: any = { ...raw };
+
+  // Handle options in different formats
+  if (Array.isArray(item.options)) {
+    const keys: ('a' | 'b' | 'c' | 'd' | 'e')[] = ['a', 'b', 'c', 'd', 'e'];
+    item.options = item.options.map((opt: any, idx: number) => {
+      if (typeof opt === 'string') {
+        return { key: keys[idx] || 'e', text: opt };
+      }
+      return {
+        key: String(opt?.key || keys[idx] || 'e').toLowerCase() as 'a' | 'b' | 'c' | 'd' | 'e',
+        text: String(opt?.text || opt?.optionText || '')
+      };
+    });
+  } else if (item.options && typeof item.options === 'object') {
+    const keys: ('a' | 'b' | 'c' | 'd' | 'e')[] = ['a', 'b', 'c', 'd', 'e'];
+    item.options = keys.map((k) => ({
+      key: k,
+      text: String(item.options[k] || '')
+    }));
+  }
+
+  if (!item.questionText && item.question) {
+    item.questionText = item.question;
+  }
+  if (!item.exam) item.exam = defaultExam;
+  if (!item.topic) item.topic = defaultTopic;
+  if (!item.id) item.id = `q_json_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+
+  return sanitizeQuestion(item);
+}
+
 export function BulkImportView({
   onBack,
   defaultTopic,
@@ -124,6 +228,10 @@ export function BulkImportView({
 
   const [inputMode, setInputMode] = useState<'text' | 'json' | 'diagram'>('text');
   const [rawText, setRawText] = useState('');
+  const [jsonRawText, setJsonRawText] = useState('');
+  const [jsonParseError, setJsonParseError] = useState<string | null>(null);
+  const [copiedJsonSample, setCopiedJsonSample] = useState(false);
+  const [showJsonGuide, setShowJsonGuide] = useState(false);
   const [examName, setExamName] = useState('BPSC TRE 4.0');
   const [parsedQuestions, setParsedQuestions] = useState<Question[]>([]);
   const [isAiCleaning, setIsAiCleaning] = useState(false);
@@ -246,26 +354,99 @@ export function BulkImportView({
     }
   };
 
-  // JSON File Upload
+  // Universal JSON Question Processor
+  const processJsonQuestions = (json: any) => {
+    const list = Array.isArray(json)
+      ? json
+      : Array.isArray(json?.questions)
+      ? json.questions
+      : Array.isArray(json?.data)
+      ? json.data
+      : [];
+
+    if (list.length === 0) {
+      alert('No questions array found in JSON! Please check format or click "Load Sample JSON".');
+      return;
+    }
+
+    const normalized = list.map((item: any) =>
+      normalizeJsonQuestion(item, selectedTopic, examName || 'BPSC TRE 4.0')
+    );
+
+    setParsedQuestions(normalized);
+    setCurrentStep(2);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // JSON Direct Textarea Parser
+  const handleProcessJsonText = () => {
+    if (!jsonRawText.trim()) {
+      alert('Please paste questions in JSON format or click "Load Sample JSON"!');
+      return;
+    }
+    try {
+      const parsed = JSON.parse(jsonRawText);
+      setJsonParseError(null);
+      processJsonQuestions(parsed);
+    } catch (err: any) {
+      setJsonParseError(err?.message || 'JSON Syntax Error');
+      alert('JSON Syntax Error: ' + (err?.message || 'Please check for missing commas or brackets.'));
+    }
+  };
+
+  // JSON Load Sample
+  const handleLoadSampleJson = () => {
+    setJsonRawText(SAMPLE_BPSC_JSON);
+    setJsonParseError(null);
+    setIsSuccessToast('Authentic 4-Question BPSC JSON sample loaded!');
+    setTimeout(() => setIsSuccessToast(null), 3000);
+  };
+
+  // JSON Copy Sample
+  const handleCopyJsonSample = () => {
+    navigator.clipboard.writeText(SAMPLE_BPSC_JSON);
+    setCopiedJsonSample(true);
+    setIsSuccessToast('Sample JSON copied to clipboard!');
+    setTimeout(() => {
+      setCopiedJsonSample(false);
+      setIsSuccessToast(null);
+    }, 2500);
+  };
+
+  // JSON Download Template File
+  const handleDownloadJsonSampleTemplate = () => {
+    const blob = new Blob([SAMPLE_BPSC_JSON], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'BPSC_Sample_Questions_Template.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setIsSuccessToast('JSON template file downloaded!');
+    setTimeout(() => setIsSuccessToast(null), 3000);
+  };
+
+  // JSON File Upload from Disk
   const handleJsonUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
-        const json = JSON.parse(event.target?.result as string);
-        const list = Array.isArray(json) ? json : json.questions || [];
-        if (list.length > 0) {
-          setParsedQuestions(list);
-          setCurrentStep(2);
-        } else {
-          alert('No questions found in JSON file!');
-        }
-      } catch (err) {
-        alert('Invalid JSON file format!');
+        const text = event.target?.result as string;
+        setJsonRawText(text);
+        const json = JSON.parse(text);
+        setJsonParseError(null);
+        processJsonQuestions(json);
+      } catch (err: any) {
+        setJsonParseError(err?.message || 'Invalid JSON file');
+        alert('Invalid JSON file format: ' + (err?.message || 'Syntax error'));
       }
     };
     reader.readAsText(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   // Final Save Handler (Step 3)
@@ -540,7 +721,7 @@ export function BulkImportView({
 
             {/* Input Mode Selector Bar */}
             <div className="flex flex-wrap items-center justify-between gap-3 p-2 rounded-2xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setInputMode('text')}
@@ -556,18 +737,15 @@ export function BulkImportView({
 
                 <button
                   type="button"
-                  onClick={() => {
-                    setInputMode('json');
-                    fileInputRef.current?.click();
-                  }}
+                  onClick={() => setInputMode('json')}
                   className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
                     inputMode === 'json'
                       ? 'bg-indigo-600 text-white shadow-xs'
                       : 'text-slate-600 dark:text-slate-400 hover:bg-white/10'
                   }`}
                 >
-                  <FileUp className="w-3.5 h-3.5" />
-                  <span>Upload JSON Backup</span>
+                  <FileCode className="w-3.5 h-3.5" />
+                  <span>JSON Direct Import</span>
                 </button>
 
                 <button
@@ -580,86 +758,279 @@ export function BulkImportView({
                 </button>
               </div>
 
-              {/* Sample & AI Clean Action Buttons */}
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setRawText(SAMPLE_BPSC_TEXT)}
-                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 hover:border-indigo-500 transition-colors text-slate-700 dark:text-slate-300"
-                >
-                  Load 4-Q BPSC Sample
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleAiSmartFormat}
-                  disabled={isAiCleaning || !rawText.trim()}
-                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 transition-colors flex items-center gap-1.5 disabled:opacity-40"
-                >
-                  <Wand2 className={`w-3.5 h-3.5 ${isAiCleaning ? 'animate-spin' : ''}`} />
-                  <span>{isAiCleaning ? 'Formatting...' : 'AI Smart Clean'}</span>
-                </button>
-
-                {rawText.trim() && (
+              {/* Sample & Actions depending on inputMode */}
+              {inputMode === 'text' ? (
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setRawText('')}
-                    className="p-2 rounded-xl text-slate-400 hover:text-rose-500 transition-colors"
-                    title="Clear text"
+                    onClick={() => setRawText(SAMPLE_BPSC_TEXT)}
+                    className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 hover:border-indigo-500 transition-colors text-slate-700 dark:text-slate-300"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    Load 4-Q BPSC Text Sample
                   </button>
-                )}
-              </div>
+
+                  <button
+                    type="button"
+                    onClick={handleAiSmartFormat}
+                    disabled={isAiCleaning || !rawText.trim()}
+                    className="px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 transition-colors flex items-center gap-1.5 disabled:opacity-40"
+                  >
+                    <Wand2 className={`w-3.5 h-3.5 ${isAiCleaning ? 'animate-spin' : ''}`} />
+                    <span>{isAiCleaning ? 'Formatting...' : 'AI Smart Clean'}</span>
+                  </button>
+
+                  {rawText.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => setRawText('')}
+                      className="p-2 rounded-xl text-slate-400 hover:text-rose-500 transition-colors"
+                      title="Clear text"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleLoadSampleJson}
+                    className="px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 transition-colors flex items-center gap-1.5 shadow-xs"
+                  >
+                    <Code className="w-3.5 h-3.5" />
+                    <span>Load Sample JSON</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 hover:border-indigo-500 text-indigo-600 dark:text-indigo-400 transition-colors flex items-center gap-1.5"
+                  >
+                    <FileUp className="w-3.5 h-3.5" />
+                    <span>Upload .json File</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleCopyJsonSample}
+                    className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 hover:border-slate-400 text-slate-700 dark:text-slate-300 transition-colors flex items-center gap-1.5"
+                    title="Copy sample JSON structure to clipboard"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>{copiedJsonSample ? 'Copied!' : 'Copy Sample'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleDownloadJsonSampleTemplate}
+                    className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 hover:border-slate-400 text-slate-700 dark:text-slate-300 transition-colors flex items-center gap-1.5"
+                    title="Download template JSON file"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download Template</span>
+                  </button>
+
+                  {jsonRawText.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setJsonRawText('');
+                        setJsonParseError(null);
+                      }}
+                      className="p-2 rounded-xl text-slate-400 hover:text-rose-500 transition-colors"
+                      title="Clear JSON"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
             <input
               type="file"
               ref={fileInputRef}
               onChange={handleJsonUpload}
-              accept=".json"
+              accept=".json,application/json"
               className="hidden"
             />
 
-            {/* Textarea Workspace */}
-            <div className="glass-panel p-6 rounded-3xl space-y-3">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-500">
-                <span>PASTE CONTENT BELOW:</span>
-                <span className="font-mono text-indigo-600 dark:text-indigo-400">
-                  {rawText.split('\n').filter((l) => l.trim().length > 0).length} Lines
-                </span>
+            {inputMode === 'text' ? (
+              /* Textarea Workspace */
+              <div className="glass-panel p-6 rounded-3xl space-y-3">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-500">
+                  <span>PASTE CONTENT BELOW:</span>
+                  <span className="font-mono text-indigo-600 dark:text-indigo-400">
+                    {rawText.split('\n').filter((l) => l.trim().length > 0).length} Lines
+                  </span>
+                </div>
+
+                <textarea
+                  rows={16}
+                  value={rawText}
+                  onChange={(e) => setRawText(e.target.value)}
+                  placeholder="यहाँ BPSC गणित के प्रश्न पेस्ट करें (प्रश्न 1, विकल्प a-e, उत्तर, व्याख्या)..."
+                  className="w-full bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/10 rounded-2xl p-4 font-mono text-xs sm:text-sm text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 leading-relaxed"
+                />
+
+                {/* Action Bar */}
+                <div className="flex items-center justify-between pt-4">
+                  <button
+                    type="button"
+                    onClick={onBack}
+                    className="px-6 py-3 rounded-2xl font-bold text-xs text-slate-600 dark:text-slate-400 hover:bg-white/10 transition-colors"
+                  >
+                    Cancel & Exit
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleRunParser}
+                    disabled={!rawText.trim()}
+                    className="px-8 py-3.5 rounded-2xl font-black text-sm text-white bg-indigo-600 hover:bg-indigo-500 shadow-xl shadow-indigo-600/25 transition-all active:scale-95 flex items-center gap-2 group disabled:opacity-40"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <span>Run AI Parser & Review Questions</span>
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </button>
+                </div>
               </div>
+            ) : (
+              /* Professional JSON Workspace */
+              <div className="space-y-4">
+                {/* JSON Guide & Schema Information */}
+                <div className="glass-panel p-5 rounded-3xl border border-indigo-500/20 bg-indigo-500/5 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 font-black text-xs sm:text-sm text-indigo-700 dark:text-indigo-300">
+                      <FileCode className="w-4 h-4 text-indigo-500" />
+                      <span>Professional JSON Format Guide & Requirements</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowJsonGuide(!showJsonGuide)}
+                      className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+                    >
+                      <HelpCircle className="w-3.5 h-3.5" />
+                      <span>{showJsonGuide ? 'Hide Format Guide' : 'Show Format Guide'}</span>
+                    </button>
+                  </div>
 
-              <textarea
-                rows={16}
-                value={rawText}
-                onChange={(e) => setRawText(e.target.value)}
-                placeholder="यहाँ BPSC गणित के प्रश्न पेस्ट करें (प्रश्न 1, विकल्प a-e, उत्तर, व्याख्या)..."
-                className="w-full bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/10 rounded-2xl p-4 font-mono text-xs sm:text-sm text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 leading-relaxed"
-              />
-            </div>
+                  {showJsonGuide && (
+                    <div className="pt-2 border-t border-indigo-500/10 text-xs text-slate-600 dark:text-slate-300 space-y-2 animate-in fade-in">
+                      <p className="leading-relaxed">
+                        JSON array must contain question objects with fields:
+                        <code className="mx-1 px-1.5 py-0.5 rounded bg-slate-200 dark:bg-white/10 font-mono">questionText</code>,
+                        <code className="mx-1 px-1.5 py-0.5 rounded bg-slate-200 dark:bg-white/10 font-mono">options</code> (array of 5 options with <code className="font-mono">key</code> and <code className="font-mono">text</code>),
+                        <code className="mx-1 px-1.5 py-0.5 rounded bg-slate-200 dark:bg-white/10 font-mono">correctOption</code> ("a"|"b"|"c"|"d"|"e"), and optional
+                        <code className="mx-1 px-1.5 py-0.5 rounded bg-slate-200 dark:bg-white/10 font-mono">explanation</code>.
+                      </p>
+                      <div className="p-3 rounded-xl bg-slate-900 text-slate-200 font-mono text-[11px] overflow-x-auto">
+                        {`[
+  {
+    "questionText": "Question statement in Hindi or English (KaTeX math supported)...",
+    "options": [
+      { "key": "a", "text": "Option A" },
+      { "key": "b", "text": "Option B" },
+      { "key": "c", "text": "Option C" },
+      { "key": "d", "text": "उपर्युक्त में से एक से अधिक" },
+      { "key": "e", "text": "अनुत्तरित प्रश्न" }
+    ],
+    "correctOption": "a",
+    "explanation": "Step-by-step mathematical explanation...",
+    "exam": "BPSC TRE 4.0",
+    "topic": "${selectedTopic}"
+  }
+]`}
+                      </div>
+                    </div>
+                  )}
+                </div>
 
-            {/* Action Bar */}
-            <div className="flex items-center justify-between pt-4">
-              <button
-                type="button"
-                onClick={onBack}
-                className="px-6 py-3 rounded-2xl font-bold text-xs text-slate-600 dark:text-slate-400 hover:bg-white/10 transition-colors"
-              >
-                Cancel & Exit
-              </button>
+                {/* JSON Textarea Editor */}
+                <div className="glass-panel p-6 rounded-3xl space-y-3">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-500">
+                    <span className="flex items-center gap-1.5">
+                      <Code className="w-3.5 h-3.5 text-indigo-500" />
+                      <span>PASTE JSON DATA BELOW (ARRAY OR OBJECT):</span>
+                    </span>
+                    <div className="flex items-center gap-3">
+                      {jsonParseError ? (
+                        <span className="text-rose-500 font-bold flex items-center gap-1">
+                          <AlertTriangle className="w-3.5 h-3.5" />
+                          <span>Syntax Error</span>
+                        </span>
+                      ) : jsonRawText.trim() ? (
+                        <span className="text-emerald-500 font-bold flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Valid JSON Syntax</span>
+                        </span>
+                      ) : null}
+                      <span className="font-mono text-indigo-600 dark:text-indigo-400">
+                        {jsonRawText.split('\n').filter((l) => l.trim().length > 0).length} Lines
+                      </span>
+                    </div>
+                  </div>
 
-              <button
-                type="button"
-                onClick={handleRunParser}
-                disabled={!rawText.trim()}
-                className="px-8 py-3.5 rounded-2xl font-black text-sm text-white bg-indigo-600 hover:bg-indigo-500 shadow-xl shadow-indigo-600/25 transition-all active:scale-95 flex items-center gap-2 group disabled:opacity-40"
-              >
-                <Sparkles className="w-4 h-4" />
-                <span>Run AI Parser & Review Questions</span>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </button>
-            </div>
+                  {jsonParseError && (
+                    <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-mono">
+                      Error: {jsonParseError}
+                    </div>
+                  )}
+
+                  <textarea
+                    rows={16}
+                    value={jsonRawText}
+                    onChange={(e) => {
+                      setJsonRawText(e.target.value);
+                      if (e.target.value.trim()) {
+                        try {
+                          JSON.parse(e.target.value);
+                          setJsonParseError(null);
+                        } catch (err: any) {
+                          setJsonParseError(err?.message || 'Syntax error');
+                        }
+                      } else {
+                        setJsonParseError(null);
+                      }
+                    }}
+                    placeholder={`[\n  {\n    "questionText": "Question statement...",\n    "options": [\n      { "key": "a", "text": "..." },\n      { "key": "b", "text": "..." },\n      { "key": "c", "text": "..." },\n      { "key": "d", "text": "उपर्युक्त में से एक से अधिक" },\n      { "key": "e", "text": "अनुत्तरित प्रश्न" }\n    ],\n    "correctOption": "a",\n    "explanation": "..."\n  }\n]`}
+                    className="w-full bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/10 rounded-2xl p-4 font-mono text-xs sm:text-sm text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 leading-relaxed"
+                  />
+                </div>
+
+                {/* Action Bar for JSON */}
+                <div className="flex items-center justify-between pt-4">
+                  <button
+                    type="button"
+                    onClick={onBack}
+                    className="px-6 py-3 rounded-2xl font-bold text-xs text-slate-600 dark:text-slate-400 hover:bg-white/10 transition-colors"
+                  >
+                    Cancel & Exit
+                  </button>
+
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={handleLoadSampleJson}
+                      className="px-4 py-3 rounded-2xl font-bold text-xs bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:border-amber-400 text-slate-700 dark:text-slate-300 transition-all"
+                    >
+                      Load Sample First
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleProcessJsonText}
+                      disabled={!jsonRawText.trim() || Boolean(jsonParseError)}
+                      className="px-8 py-3.5 rounded-2xl font-black text-sm text-white bg-indigo-600 hover:bg-indigo-500 shadow-xl shadow-indigo-600/25 transition-all active:scale-95 flex items-center gap-2 group disabled:opacity-40"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      <span>Validate & Review JSON Questions</span>
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
