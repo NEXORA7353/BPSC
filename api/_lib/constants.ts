@@ -3,6 +3,7 @@ export const DEFAULT_PARENT_EMAIL = process.env.DEFAULT_PARENT_EMAIL || 'arjittr
 export const DEFAULT_STUDENT_NAME = process.env.DEFAULT_STUDENT_NAME || 'Priya Patel';
 export const DEFAULT_SENDER_EMAIL = 'noreply@bpsc.dpdns.org';
 export const DEFAULT_SENDER_NAME = 'BPSC TRE 4.0 Mock Portal';
+export const DEFAULT_SENDER_FORMATTED = `${DEFAULT_SENDER_NAME} <${DEFAULT_SENDER_EMAIL}>`;
 export const TARGET_DATABASE_ID = process.env.FIRESTORE_DATABASE_ID || 'ai-studio-bpsctre40mathema-bac5a725-5f5b-4cc5-98e4-dff6bbfc928b';
 export const DEFAULT_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'gen-lang-client-0764722018';
 

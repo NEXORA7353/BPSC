@@ -43,6 +43,7 @@ import {
   Clock,
   Target,
   ExternalLink,
+  History,
   X
 } from 'lucide-react';
 import { Question, RegisteredTopic, MockTestSet, CustomTestConfig } from '../types';
@@ -66,7 +67,8 @@ import {
   getAllAvailableTests,
   getTestsForTopic,
   createCustomMockTest,
-  saveCustomTest
+  saveCustomTest,
+  getUsedQuestionsInfo
 } from '../utils/questionBankStorage';
 import { syncFromFirestore, seedAllQuestionsToCloud } from '../services/firebaseSyncService';
 import { auditQuestionBatch, autoHealQuestion } from '../utils/questionQualityAudit';
@@ -123,9 +125,27 @@ export function QuestionBankView({
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
   const [editingFormState, setEditingFormState] = useState<Question | null>(null);
 
-  // Pagination State
+  // Question Usage in Tests Tracker
+  const { usedIds, usedTextSet, questionUsageMap } = useMemo(() => {
+    return getUsedQuestionsInfo();
+  }, [allQuestions, allAvailableTests]);
+
+  const isQuestionUsed = (q: Question) => {
+    if (usedIds.has(q.id)) return true;
+    const norm = q.questionText.trim().toLowerCase().replace(/\s+/g, ' ');
+    return norm.length > 5 && usedTextSet.has(norm);
+  };
+
+  const [usageFilter, setUsageFilter] = useState<'all' | 'fresh' | 'used'>('all');
+
+  // Pagination & Display Limit State
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+
+  // Folder tab pagination & usage filter
+  const [folderUsageFilter, setFolderUsageFilter] = useState<'all' | 'fresh' | 'used'>('all');
+  const [folderPageSize, setFolderPageSize] = useState<number>(25);
+  const [folderCurrentPage, setFolderCurrentPage] = useState<number>(1);
 
   // Bank Quality Audit - Lazy computed ONLY when audit tab is active
   const bankAuditReport = useMemo(() => {
@@ -212,15 +232,36 @@ export function QuestionBankView({
   }, [selectedFolderKey, activeTopicObj, testsByTopic]);
 
   const filteredFolderQuestions = useMemo(() => {
-    if (!folderSearch.trim()) return questionsInCurrentFolder;
-    const q = folderSearch.toLowerCase().trim();
-    return questionsInCurrentFolder.filter(
-      (item) =>
+    return questionsInCurrentFolder.filter((item) => {
+      const used = isQuestionUsed(item);
+      if (folderUsageFilter === 'fresh' && used) return false;
+      if (folderUsageFilter === 'used' && !used) return false;
+      if (!folderSearch.trim()) return true;
+      const q = folderSearch.toLowerCase().trim();
+      return (
         item.questionText.toLowerCase().includes(q) ||
         item.explanation.toLowerCase().includes(q) ||
         item.options.some((opt) => opt.text.toLowerCase().includes(q))
-    );
-  }, [questionsInCurrentFolder, folderSearch]);
+      );
+    });
+  }, [questionsInCurrentFolder, folderSearch, folderUsageFilter, usedIds, usedTextSet]);
+
+  const folderTotalPages = useMemo(() => {
+    if (folderPageSize >= 999999) return 1;
+    return Math.max(1, Math.ceil(filteredFolderQuestions.length / folderPageSize));
+  }, [filteredFolderQuestions.length, folderPageSize]);
+
+  const safeFolderPage = Math.min(folderCurrentPage, folderTotalPages);
+
+  const paginatedFolderQuestions = useMemo(() => {
+    if (folderPageSize >= 999999) return filteredFolderQuestions;
+    const start = (safeFolderPage - 1) * folderPageSize;
+    return filteredFolderQuestions.slice(start, start + folderPageSize);
+  }, [filteredFolderQuestions, safeFolderPage, folderPageSize]);
+
+  useEffect(() => {
+    setFolderCurrentPage(1);
+  }, [selectedFolderKey, folderSearch, folderUsageFilter, folderPageSize]);
 
   const filteredChapters = useMemo(() => {
     if (!chapterSearchQuery.trim()) return registeredTopics;
@@ -280,6 +321,11 @@ export function QuestionBankView({
     return allQuestions.filter((q) => {
       const matchesTopic = selectedTopic === 'all' || q.topic === selectedTopic;
       const matchesBookmark = !onlyBookmarked || bookmarkedIds.includes(q.id);
+      const used = isQuestionUsed(q);
+      const matchesUsage =
+        usageFilter === 'all' ||
+        (usageFilter === 'fresh' && !used) ||
+        (usageFilter === 'used' && used);
       const query = searchTerm.trim().toLowerCase();
       const matchesSearch =
         query === '' ||
@@ -287,19 +333,20 @@ export function QuestionBankView({
         q.explanation.toLowerCase().includes(query) ||
         (q.topicNameHindi && q.topicNameHindi.toLowerCase().includes(query)) ||
         (q.exam && q.exam.toLowerCase().includes(query));
-      return matchesTopic && matchesBookmark && matchesSearch;
+      return matchesTopic && matchesBookmark && matchesUsage && matchesSearch;
     });
-  }, [allQuestions, selectedTopic, onlyBookmarked, bookmarkedIds, searchTerm]);
+  }, [allQuestions, selectedTopic, onlyBookmarked, bookmarkedIds, searchTerm, usageFilter, usedIds, usedTextSet]);
 
   // Reset to page 1 on filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, selectedTopic, onlyBookmarked]);
+  }, [searchTerm, selectedTopic, onlyBookmarked, usageFilter, pageSize]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredQuestions.length / pageSize));
+  const totalPages = Math.max(1, Math.ceil(filteredQuestions.length / (pageSize === 999999 ? filteredQuestions.length || 1 : pageSize)));
   const safeCurrentPage = Math.min(currentPage, totalPages);
 
   const paginatedQuestions = useMemo(() => {
+    if (pageSize === 999999) return filteredQuestions;
     const startIndex = (safeCurrentPage - 1) * pageSize;
     return filteredQuestions.slice(startIndex, startIndex + pageSize);
   }, [filteredQuestions, safeCurrentPage, pageSize]);
@@ -589,8 +636,8 @@ export function QuestionBankView({
           <div className="space-y-6 animate-in fade-in duration-300">
             {/* Search & Filter Bar */}
             <div className="glass-panel p-5 rounded-3xl space-y-4">
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                <div className="flex-1 relative">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-wrap">
+                <div className="flex-1 min-w-[240px] relative">
                   <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
@@ -599,6 +646,40 @@ export function QuestionBankView({
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl pl-10 pr-4 py-3 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-hidden font-medium"
                   />
+                </div>
+
+                {/* Question Usage Filter */}
+                <select
+                  value={usageFilter}
+                  onChange={(e) => setUsageFilter(e.target.value as any)}
+                  className="px-3.5 py-3 rounded-2xl border text-xs sm:text-sm font-bold bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200 focus:outline-hidden shrink-0"
+                >
+                  <option value="all">All Status (सभी प्रश्न)</option>
+                  <option value="fresh">Fresh Only (अप्रयुक्त प्रश्न)</option>
+                  <option value="used">Used in Tests (टेस्ट में प्रयुक्त)</option>
+                </select>
+
+                {/* Display Limit / Per Page Selector */}
+                <div className="flex items-center gap-1.5 shrink-0 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl px-3 py-1.5">
+                  <span className="text-xs font-bold text-slate-500">Display:</span>
+                  <select
+                    value={pageSize === 999999 ? 'all' : pageSize}
+                    onChange={(e) => {
+                      const val = e.target.value === 'all' ? 999999 : Number(e.target.value);
+                      setPageSize(val);
+                      setCurrentPage(1);
+                    }}
+                    className="bg-transparent text-xs sm:text-sm font-black text-amber-600 dark:text-amber-400 focus:outline-hidden cursor-pointer"
+                  >
+                    <option value={10}>10 / page</option>
+                    <option value={15}>15 / page</option>
+                    <option value={20}>20 / page</option>
+                    <option value={25}>25 / page</option>
+                    <option value={30}>30 / page</option>
+                    <option value={50}>50 / page</option>
+                    <option value={100}>100 / page</option>
+                    <option value="all">All ({filteredQuestions.length})</option>
+                  </select>
                 </div>
 
                 <button
@@ -611,7 +692,7 @@ export function QuestionBankView({
                   }`}
                 >
                   <Bookmark className={`w-4 h-4 ${onlyBookmarked ? 'fill-amber-500' : ''}`} />
-                  <span>Bookmarked Only ({bookmarkedIds.length})</span>
+                  <span>Bookmarks ({bookmarkedIds.length})</span>
                 </button>
               </div>
 
@@ -710,6 +791,21 @@ export function QuestionBankView({
                           <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-slate-300">
                             {q.exam}
                           </span>
+                          {/* Used vs Fresh Question Badge */}
+                          {isQuestionUsed(q) ? (
+                            <span
+                              className="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30"
+                              title={(questionUsageMap.get(q.id) || []).length > 0 ? `Used in tests: ${(questionUsageMap.get(q.id) || []).join(', ')}` : 'Previously used in mock test'}
+                            >
+                              <History className="w-3 h-3 text-amber-500 shrink-0" />
+                              <span>Used in Test {(questionUsageMap.get(q.id) || []).length > 0 ? `(${(questionUsageMap.get(q.id) || []).length})` : ''}</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30">
+                              <Sparkles className="w-3 h-3 text-emerald-500 shrink-0" />
+                              <span>Fresh / Unused</span>
+                            </span>
+                          )}
                         </div>
 
                         <div className="flex items-center gap-2">
@@ -969,17 +1065,22 @@ export function QuestionBankView({
                   <div className="flex items-center gap-2 text-xs font-bold">
                     <span className="text-slate-400">Per page:</span>
                     <select
-                      value={pageSize}
+                      value={pageSize === 999999 ? 'all' : pageSize}
                       onChange={(e) => {
-                        setPageSize(Number(e.target.value));
+                        const val = e.target.value === 'all' ? 999999 : Number(e.target.value);
+                        setPageSize(val);
                         setCurrentPage(1);
                       }}
                       className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-2 py-1.5 text-xs font-bold text-slate-900 dark:text-white"
                     >
+                      <option value={10}>10</option>
                       <option value={15}>15</option>
+                      <option value={20}>20</option>
                       <option value={25}>25</option>
+                      <option value={30}>30</option>
                       <option value={50}>50</option>
                       <option value={100}>100</option>
+                      <option value="all">All ({filteredQuestions.length})</option>
                     </select>
                   </div>
                 </div>
@@ -1369,17 +1470,49 @@ export function QuestionBankView({
                   {/* SUB-TAB 1: QUESTIONS IN FOLDER */}
                   {folderTab === 'questions' && (
                     <div className="space-y-4">
-                      {/* Search Bar inside Folder */}
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="relative flex-1 max-w-md">
+                      {/* Search Bar & Filters inside Folder */}
+                      <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10">
+                        <div className="relative flex-1 min-w-[220px]">
                           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                           <input
                             type="text"
                             placeholder="Filter questions in this chapter..."
                             value={folderSearch}
                             onChange={(e) => setFolderSearch(e.target.value)}
-                            className="w-full pl-9 pr-3 py-2 rounded-2xl text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 font-bold focus:outline-hidden"
+                            className="w-full pl-9 pr-3 py-2 rounded-xl text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 font-bold focus:outline-hidden"
                           />
+                        </div>
+
+                        {/* Folder Usage Filter */}
+                        <select
+                          value={folderUsageFilter}
+                          onChange={(e) => setFolderUsageFilter(e.target.value as any)}
+                          className="px-3 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200 focus:outline-hidden"
+                        >
+                          <option value="all">All Status (सभी प्रश्न)</option>
+                          <option value="fresh">Fresh Only (अप्रयुक्त)</option>
+                          <option value="used">Used in Tests (प्रयुक्त)</option>
+                        </select>
+
+                        {/* Folder Per-Page Display Limit */}
+                        <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-2.5 py-1 text-xs">
+                          <span className="font-bold text-slate-400">Display:</span>
+                          <select
+                            value={folderPageSize === 999999 ? 'all' : folderPageSize}
+                            onChange={(e) => {
+                              const val = e.target.value === 'all' ? 999999 : Number(e.target.value);
+                              setFolderPageSize(val);
+                            }}
+                            className="bg-transparent font-black text-amber-600 dark:text-amber-400 focus:outline-hidden cursor-pointer"
+                          >
+                            <option value={10}>10</option>
+                            <option value={15}>15</option>
+                            <option value={20}>20</option>
+                            <option value={25}>25</option>
+                            <option value={30}>30</option>
+                            <option value={50}>50</option>
+                            <option value="all">All ({filteredFolderQuestions.length})</option>
+                          </select>
                         </div>
 
                         <span className="text-xs font-bold text-slate-500">
@@ -1408,10 +1541,13 @@ export function QuestionBankView({
                         </div>
                       ) : (
                         <div className="space-y-4">
-                          {filteredFolderQuestions.map((q, idx) => {
+                          {paginatedFolderQuestions.map((q, idx) => {
                             const isBookmarked = bookmarkedIds.includes(q.id);
                             const isSolutionOpen = Boolean(expandedSolutions[q.id]);
                             const isEditing = editingQuestionId === q.id;
+                            const isUsed = isQuestionUsed(q);
+                            const usageTests = questionUsageMap.get(q.id) || [];
+                            const itemNumber = (safeFolderPage - 1) * (folderPageSize === 999999 ? 0 : folderPageSize) + idx + 1;
 
                             return (
                               <div
@@ -1422,7 +1558,7 @@ export function QuestionBankView({
                                 <div className="flex items-center justify-between gap-3">
                                   <div className="flex flex-wrap items-center gap-2">
                                     <span className="w-7 h-7 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-mono font-bold text-xs flex items-center justify-center">
-                                      #{idx + 1}
+                                      #{itemNumber}
                                     </span>
                                     <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20">
                                       {cleanTitleToEnglish(q.topicNameHindi || q.topic)}
@@ -1430,6 +1566,21 @@ export function QuestionBankView({
                                     <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-slate-300">
                                       {q.exam}
                                     </span>
+                                    {/* Used vs Fresh Question Badge */}
+                                    {isUsed ? (
+                                      <span
+                                        className="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30"
+                                        title={usageTests.length > 0 ? `Used in tests: ${usageTests.join(', ')}` : 'Previously used in mock test'}
+                                      >
+                                        <History className="w-3 h-3 text-amber-500 shrink-0" />
+                                        <span>Used in Test {usageTests.length > 0 ? `(${usageTests.length})` : ''}</span>
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30">
+                                        <Sparkles className="w-3 h-3 text-emerald-500 shrink-0" />
+                                        <span>Fresh / Unused</span>
+                                      </span>
+                                    )}
                                   </div>
 
                                   <div className="flex items-center gap-2">
@@ -1558,6 +1709,43 @@ export function QuestionBankView({
                               </div>
                             );
                           })}
+                        </div>
+                      )}
+
+                      {/* Folder Pagination Bar */}
+                      {folderTotalPages > 1 && folderPageSize < 999999 && (
+                        <div className="glass-panel p-3 rounded-2xl flex items-center justify-between gap-3 text-xs mt-4">
+                          <span className="font-bold text-slate-500">
+                            Showing {(safeFolderPage - 1) * folderPageSize + 1} to{' '}
+                            {Math.min(safeFolderPage * folderPageSize, filteredFolderQuestions.length)} of{' '}
+                            {filteredFolderQuestions.length} questions
+                          </span>
+
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setFolderCurrentPage((p) => Math.max(1, p - 1))}
+                              disabled={safeFolderPage === 1}
+                              className="px-3 py-1.5 rounded-xl font-bold bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1"
+                            >
+                              <ChevronLeft className="w-3.5 h-3.5" />
+                              <span>Prev</span>
+                            </button>
+
+                            <span className="px-3 py-1 rounded-lg bg-amber-400/20 font-mono font-black text-amber-700 dark:text-amber-300">
+                              {safeFolderPage} / {folderTotalPages}
+                            </span>
+
+                            <button
+                              type="button"
+                              onClick={() => setFolderCurrentPage((p) => Math.min(folderTotalPages, p + 1))}
+                              disabled={safeFolderPage === folderTotalPages}
+                              className="px-3 py-1.5 rounded-xl font-bold bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1"
+                            >
+                              <span>Next</span>
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>

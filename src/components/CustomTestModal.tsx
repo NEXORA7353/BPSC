@@ -25,7 +25,9 @@ import {
   Check,
   RotateCcw,
   SlidersHorizontal,
-  CheckCheck
+  CheckCheck,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { CustomTestConfig, MockTestSet, RegisteredTopic, Question } from '../types';
 import {
@@ -144,6 +146,9 @@ export function CustomTestModal({
   const [handpickExamFilter, setHandpickExamFilter] = useState('all');
   const [handpickUsageFilter, setHandpickUsageFilter] = useState<'all' | 'fresh' | 'used'>('all');
   const [handpickOnlyBookmarks, setHandpickOnlyBookmarks] = useState(false);
+  const [handpickManualCount, setHandpickManualCount] = useState<number | ''>(15);
+  const [handpickPageSize, setHandpickPageSize] = useState<number>(25);
+  const [handpickCurrentPage, setHandpickCurrentPage] = useState<number>(1);
 
   // Direct paste state
   const [directPasteText, setDirectPasteText] = useState('');
@@ -336,6 +341,19 @@ export function CustomTestModal({
     usedIds,
     usedTextSet
   ]);
+
+  // Reset handpick pagination on filter changes
+  useEffect(() => {
+    setHandpickCurrentPage(1);
+  }, [handpickTopicFilter, handpickExamFilter, handpickUsageFilter, handpickOnlyBookmarks, handpickSearch, handpickPageSize]);
+
+  const handpickTotalPages = Math.max(1, Math.ceil(filteredHandpickQuestions.length / handpickPageSize));
+  const safeHandpickPage = Math.min(handpickCurrentPage, handpickTotalPages);
+  const paginatedHandpickQuestions = useMemo(() => {
+    if (handpickPageSize >= 999999) return filteredHandpickQuestions;
+    const start = (safeHandpickPage - 1) * handpickPageSize;
+    return filteredHandpickQuestions.slice(start, start + handpickPageSize);
+  }, [filteredHandpickQuestions, safeHandpickPage, handpickPageSize]);
 
   if (!isOpen) return null;
 
@@ -723,36 +741,18 @@ export function CustomTestModal({
 
                 {/* Equal Distribution Short-Cuts */}
                 <div className="pt-2 border-t border-blue-200/60 dark:border-blue-900/40 flex flex-wrap items-center justify-between gap-3 text-xs">
-                  <div className="flex items-center gap-2 font-bold text-slate-700 dark:text-slate-300">
-                    <span>Quick Distribute Total Qs:</span>
-                    <button
-                      type="button"
-                      onClick={() => distributeEqually(15)}
-                      className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-bold hover:border-blue-500 hover:text-blue-600"
-                    >
-                      15 Qs
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => distributeEqually(25)}
-                      className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-bold hover:border-blue-500 hover:text-blue-600"
-                    >
-                      25 Qs
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => distributeEqually(30)}
-                      className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-bold hover:border-blue-500 hover:text-blue-600"
-                    >
-                      30 Qs
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => distributeEqually(50)}
-                      className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-bold hover:border-blue-500 hover:text-blue-600"
-                    >
-                      50 Qs
-                    </button>
+                  <div className="flex flex-wrap items-center gap-1.5 font-bold text-slate-700 dark:text-slate-300">
+                    <span className="mr-1">Quick Distribute Total Qs:</span>
+                    {[5, 10, 15, 20, 25, 30, 50].map((num) => (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => distributeEqually(num)}
+                        className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-bold hover:border-blue-500 hover:text-blue-600 transition-colors"
+                      >
+                        {num} Qs
+                      </button>
+                    ))}
                   </div>
 
                   {/* Prioritize Fresh / Unused Questions Toggle */}
@@ -959,39 +959,70 @@ export function CustomTestModal({
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleSelectCount(10, true)}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 border border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors shadow-2xs"
-                  >
-                    <Sparkles className="w-3 h-3 text-emerald-500" />
-                    <span>+ 10 Fresh Qs</span>
-                  </button>
+                  <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                    Fresh (Unused):
+                  </span>
+                  {[5, 10, 15, 20].map((num) => (
+                    <button
+                      key={`fresh-${num}`}
+                      type="button"
+                      onClick={() => handleSelectCount(num, true)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 border border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors shadow-2xs"
+                    >
+                      <Sparkles className="w-3 h-3 text-emerald-500" />
+                      <span>+{num} Fresh</span>
+                    </button>
+                  ))}
 
-                  <button
-                    type="button"
-                    onClick={() => handleSelectCount(20, true)}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 border border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors shadow-2xs"
-                  >
-                    <Sparkles className="w-3 h-3 text-emerald-500" />
-                    <span>+ 20 Fresh Qs</span>
-                  </button>
+                  <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700">
+                    Any:
+                  </span>
+                  {[5, 10, 15, 20].map((num) => (
+                    <button
+                      key={`all-${num}`}
+                      type="button"
+                      onClick={() => handleSelectCount(num, false)}
+                      className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-blue-500 hover:text-blue-600 transition-colors shadow-2xs"
+                    >
+                      +{num} All
+                    </button>
+                  ))}
 
-                  <button
-                    type="button"
-                    onClick={() => handleSelectCount(10, false)}
-                    className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:border-blue-500 hover:text-blue-600 transition-colors shadow-2xs"
-                  >
-                    + First 10 Qs (All)
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleSelectCount(20, false)}
-                    className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:border-blue-500 hover:text-blue-600 transition-colors shadow-2xs"
-                  >
-                    + First 20 Qs (All)
-                  </button>
+                  {/* Manual Fill Qty Input */}
+                  <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 px-2.5 py-1 rounded-xl shadow-2xs">
+                    <span className="text-xs font-bold text-slate-500">Qty:</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={filteredHandpickQuestions.length || 500}
+                      value={handpickManualCount}
+                      onChange={(e) => setHandpickManualCount(e.target.value === '' ? '' : Math.max(1, parseInt(e.target.value) || 1))}
+                      placeholder="15"
+                      className="w-14 px-1.5 py-0.5 text-xs font-bold text-center bg-slate-100 dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-700 focus:outline-hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const count = typeof handpickManualCount === 'number' ? handpickManualCount : parseInt(String(handpickManualCount)) || 10;
+                        handleSelectCount(count, true);
+                      }}
+                      className="px-2 py-0.5 rounded-lg text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+                      title="Select fresh unused questions with custom count"
+                    >
+                      + Fresh
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const count = typeof handpickManualCount === 'number' ? handpickManualCount : parseInt(String(handpickManualCount)) || 10;
+                        handleSelectCount(count, false);
+                      }}
+                      className="px-2 py-0.5 rounded-lg text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                      title="Select questions with custom count"
+                    >
+                      + Any
+                    </button>
+                  </div>
 
                   <button
                     type="button"
@@ -1023,8 +1054,8 @@ export function CustomTestModal({
                 </div>
               </div>
 
-              {/* Filters Bar including Usage Filter (Fresh vs Used) */}
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 text-xs">
+              {/* Filters Bar including Usage Filter (Fresh vs Used) and Display Count Filter */}
+              <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 text-xs">
                 {/* Search */}
                 <div className="relative sm:col-span-1">
                   <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -1076,6 +1107,24 @@ export function CustomTestModal({
                   <option value="Tre 1.0">BPSC TRE 1.0</option>
                   <option value="custom">Custom Added Questions</option>
                 </select>
+
+                {/* Display Limit / Page Size Filter */}
+                <select
+                  value={handpickPageSize}
+                  onChange={(e) => {
+                    setHandpickPageSize(Number(e.target.value));
+                    setHandpickCurrentPage(1);
+                  }}
+                  className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-hidden"
+                >
+                  <option value={10}>10 / page</option>
+                  <option value={15}>15 / page</option>
+                  <option value={20}>20 / page</option>
+                  <option value={25}>25 / page</option>
+                  <option value={30}>30 / page</option>
+                  <option value={50}>50 / page</option>
+                  <option value={999999}>All Questions</option>
+                </select>
               </div>
 
               {/* Questions Picker List with Clear Used / Fresh Badges */}
@@ -1085,10 +1134,11 @@ export function CustomTestModal({
                     No questions match current filters. Try changing status or topic filters.
                   </div>
                 ) : (
-                  filteredHandpickQuestions.map((q, idx) => {
+                  paginatedHandpickQuestions.map((q, idx) => {
                     const isChecked = handpickedIds.includes(q.id);
                     const isUsed = isQuestionUsed(q);
                     const testsList = questionUsageMap.get(q.id) || [];
+                    const globalIdx = handpickPageSize >= 999999 ? idx + 1 : (safeHandpickPage - 1) * handpickPageSize + idx + 1;
 
                     return (
                       <div
@@ -1110,7 +1160,7 @@ export function CustomTestModal({
                         <div className="flex-1 space-y-1">
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-bold text-slate-500">#{idx + 1}</span>
+                              <span className="font-bold text-slate-500">#{globalIdx}</span>
                               <span className="font-semibold text-blue-600 dark:text-blue-400">
                                 {q.topicNameHindi}
                               </span>
@@ -1161,6 +1211,40 @@ export function CustomTestModal({
                   })
                 )}
               </div>
+
+              {/* Handpick Pagination Controls */}
+              {handpickPageSize < 999999 && handpickTotalPages > 1 && (
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-200 dark:border-slate-800 text-xs">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">
+                    Showing {(safeHandpickPage - 1) * handpickPageSize + 1} -{' '}
+                    {Math.min(safeHandpickPage * handpickPageSize, filteredHandpickQuestions.length)} of{' '}
+                    {filteredHandpickQuestions.length} questions
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={safeHandpickPage <= 1}
+                      onClick={() => setHandpickCurrentPage((prev) => Math.max(1, prev - 1))}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-bold text-slate-700 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                      Prev
+                    </button>
+                    <span className="px-2 font-bold text-slate-700 dark:text-slate-300">
+                      Page {safeHandpickPage} / {handpickTotalPages}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={safeHandpickPage >= handpickTotalPages}
+                      onClick={() => setHandpickCurrentPage((prev) => Math.min(handpickTotalPages, prev + 1))}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-bold text-slate-700 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                    >
+                      Next
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

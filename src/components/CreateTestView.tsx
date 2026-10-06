@@ -22,7 +22,10 @@ import {
   Flame,
   CheckSquare,
   Square,
-  HelpCircle
+  HelpCircle,
+  History,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { CustomTestConfig, MockTestSet, RegisteredTopic, Question } from '../types';
 import {
@@ -285,6 +288,40 @@ export function CreateTestView({
     });
   }, [allBankQuestions, handpickTopicFilter, handpickOnlyBookmarks, handpickUsageFilter, handpickSearch, bookmarkedIds]);
 
+  // Handpick pagination and batch selection state
+  const [manualHandpickCount, setManualHandpickCount] = useState<number>(10);
+  const [handpickPageSize, setHandpickPageSize] = useState<number>(25);
+  const [handpickCurrentPage, setHandpickCurrentPage] = useState<number>(1);
+
+  useEffect(() => {
+    setHandpickCurrentPage(1);
+  }, [handpickTopicFilter, handpickUsageFilter, handpickOnlyBookmarks, handpickSearch, handpickPageSize]);
+
+  const handpickTotalPages = useMemo(() => {
+    if (handpickPageSize >= 999999) return 1;
+    return Math.max(1, Math.ceil(filteredHandpickQuestions.length / handpickPageSize));
+  }, [filteredHandpickQuestions.length, handpickPageSize]);
+
+  const safeHandpickPage = Math.min(handpickCurrentPage, handpickTotalPages);
+
+  const paginatedHandpickQuestions = useMemo(() => {
+    if (handpickPageSize >= 999999) return filteredHandpickQuestions;
+    const start = (safeHandpickPage - 1) * handpickPageSize;
+    return filteredHandpickQuestions.slice(start, start + handpickPageSize);
+  }, [filteredHandpickQuestions, safeHandpickPage, handpickPageSize]);
+
+  const handleBatchSelectHandpick = (count: number, preferFresh: boolean = true) => {
+    if (count <= 0) return;
+    let pool = [...filteredHandpickQuestions];
+    if (preferFresh) {
+      const fresh = pool.filter((q) => !isQuestionUsed(q));
+      const used = pool.filter((q) => isQuestionUsed(q));
+      pool = [...fresh, ...used];
+    }
+    const toPick = pool.slice(0, count).map((q) => q.id);
+    setHandpickedIds((prev) => Array.from(new Set([...prev, ...toPick])));
+  };
+
   // Topic filter for Step 2
   const filteredTopics = useMemo(() => {
     if (!topicSearchQuery.trim()) return registeredTopics;
@@ -366,13 +403,6 @@ export function CreateTestView({
       console.warn('Direct cloud test save warning:', err);
     }
 
-    // 3. Notify student and parent in background only upon explicit publication
-    fetch('/api/email/notify-new-test', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ testId: testSet.id, testData: testSet })
-    }).catch((err) => console.warn('Publish email notify error:', err));
-
     onStartTest(testSet);
   };
 
@@ -389,25 +419,14 @@ export function CreateTestView({
       // 1. Save locally
       saveCustomTest(testSet);
 
-      // 2. Persist to Firestore FIRST
+      // 2. Persist to Firestore
       try {
         await saveTestSetToCloud(testSet);
       } catch (err) {
         console.warn('Direct cloud test save warning:', err);
       }
 
-      // 3. Dispatch notifications without failing test creation if email errors
-      try {
-        await fetch('/api/email/notify-new-test', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ testId: testSet.id, testData: testSet })
-        });
-      } catch (e) {
-        console.warn('Publish email notify error:', e);
-      }
-
-      setStatusNotification(`Test "${testSet.title}" published & saved successfully!`);
+      setStatusNotification(`Test "${testSet.title}" published & saved to portal successfully!`);
       setTimeout(() => {
         onBack();
       }, 1400);
@@ -420,12 +439,12 @@ export function CreateTestView({
 
   const handleSaveToLibraryOnly = () => {
     const testSet = generatedPreviewSet || generateBlueprint();
-    testSet.isPublished = false; // Draft only, no email sent
+    testSet.isPublished = false;
     if (scheduledDateTime) {
       testSet.scheduledStartAt = new Date(scheduledDateTime).toISOString();
     }
     saveCustomTest(testSet);
-    setStatusNotification(`Draft test "${testSet.title}" saved to library. (Not published, no emails sent)`);
+    setStatusNotification(`Draft test "${testSet.title}" saved to library successfully.`);
     setTimeout(() => {
       onBack();
     }, 1200);
@@ -1086,7 +1105,7 @@ export function CreateTestView({
                             </button>
                           </div>
 
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1 flex-wrap">
                             <button
                               type="button"
                               onClick={() => handleSetTopicCount(topic.key, 5)}
@@ -1101,6 +1120,20 @@ export function CreateTestView({
                             >
                               10 Qs
                             </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSetTopicCount(topic.key, 15)}
+                              className="px-2 py-1 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10"
+                            >
+                              15 Qs
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSetTopicCount(topic.key, 20)}
+                              className="px-2 py-1 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10"
+                            >
+                              20 Qs
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -1114,147 +1147,276 @@ export function CreateTestView({
             {creationMode === 'handpick' && (
               <div className="space-y-6">
                 {/* Search & Filters */}
-                <div className="glass-panel p-4 rounded-3xl flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex-1 min-w-[260px] relative">
-                    <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      placeholder="Search questions in Hindi or English..."
-                      value={handpickSearch}
-                      onChange={(e) => setHandpickSearch(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl pl-10 pr-4 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-hidden"
-                    />
+                <div className="glass-panel p-4 rounded-3xl space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex-1 min-w-[240px] relative">
+                      <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        placeholder="Search questions in Hindi or English..."
+                        value={handpickSearch}
+                        onChange={(e) => setHandpickSearch(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl pl-10 pr-4 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-hidden"
+                      />
+                    </div>
+
+                    <select
+                      value={handpickTopicFilter}
+                      onChange={(e) => setHandpickTopicFilter(e.target.value)}
+                      className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl px-3 py-2.5 text-xs font-bold text-slate-900 dark:text-white"
+                    >
+                      <option value="all">All Chapters</option>
+                      {registeredTopics.map((t) => (
+                        <option key={t.key} value={t.key}>
+                          {t.labelEnglish || t.labelHindi}
+                        </option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={handpickUsageFilter}
+                      onChange={(e) => setHandpickUsageFilter(e.target.value as any)}
+                      className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl px-3 py-2.5 text-xs font-bold text-slate-900 dark:text-white"
+                    >
+                      <option value="all">All Questions</option>
+                      <option value="unused">Fresh / Unused Only</option>
+                      <option value="used">Previously Used in Tests</option>
+                    </select>
+
+                    <button
+                      type="button"
+                      onClick={() => setHandpickOnlyBookmarks(!handpickOnlyBookmarks)}
+                      className={`px-3 py-2.5 rounded-2xl border text-xs font-bold flex items-center gap-1.5 transition-colors ${
+                        handpickOnlyBookmarks
+                          ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500'
+                          : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10'
+                      }`}
+                    >
+                      <Bookmark className={`w-3.5 h-3.5 ${handpickOnlyBookmarks ? 'fill-amber-500' : ''}`} />
+                      <span>Bookmarks ({bookmarkedIds.length})</span>
+                    </button>
+
+                    {/* Display Limit / Questions Per Page Filter */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-bold text-slate-500">Display:</span>
+                      <select
+                        value={handpickPageSize === 999999 ? 'all' : handpickPageSize}
+                        onChange={(e) => {
+                          const val = e.target.value === 'all' ? 999999 : Number(e.target.value);
+                          setHandpickPageSize(val);
+                        }}
+                        className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl px-2.5 py-2 text-xs font-bold text-slate-900 dark:text-white"
+                      >
+                        <option value={10}>10 / page</option>
+                        <option value={15}>15 / page</option>
+                        <option value={20}>20 / page</option>
+                        <option value={25}>25 / page</option>
+                        <option value={30}>30 / page</option>
+                        <option value={50}>50 / page</option>
+                        <option value="all">All ({filteredHandpickQuestions.length})</option>
+                      </select>
+                    </div>
                   </div>
 
-                  <select
-                    value={handpickTopicFilter}
-                    onChange={(e) => setHandpickTopicFilter(e.target.value)}
-                    className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl px-3 py-2.5 text-xs font-bold text-slate-900 dark:text-white"
-                  >
-                    <option value="all">All Chapters</option>
-                    {registeredTopics.map((t) => (
-                      <option key={t.key} value={t.key}>
-                        {t.labelEnglish || t.labelHindi}
-                      </option>
-                    ))}
-                  </select>
+                  {/* Batch Selection Strip with 5, 10, 15, 20 & Manual Selection */}
+                  <div className="pt-3 border-t border-slate-200 dark:border-white/5 flex flex-wrap items-center justify-between gap-3 text-xs">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="font-bold text-slate-500 dark:text-slate-400 mr-1 flex items-center gap-1">
+                        <Zap className="w-3.5 h-3.5 text-amber-500" />
+                        <span>Quick Select:</span>
+                      </span>
 
-                  <select
-                    value={handpickUsageFilter}
-                    onChange={(e) => setHandpickUsageFilter(e.target.value as any)}
-                    className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl px-3 py-2.5 text-xs font-bold text-slate-900 dark:text-white"
-                  >
-                    <option value="all">All Questions</option>
-                    <option value="unused">Fresh / Unused Only</option>
-                    <option value="used">Previously Used</option>
-                  </select>
+                      {[5, 10, 15, 20].map((num) => (
+                        <button
+                          key={`quick_fresh_${num}`}
+                          type="button"
+                          onClick={() => handleBatchSelectHandpick(num, true)}
+                          className="px-2.5 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 border border-emerald-500/20 font-bold transition-all shadow-2xs"
+                          title={`Select ${num} fresh questions`}
+                        >
+                          +{num} Fresh
+                        </button>
+                      ))}
 
-                  <button
-                    type="button"
-                    onClick={() => setHandpickOnlyBookmarks(!handpickOnlyBookmarks)}
-                    className={`px-3 py-2.5 rounded-2xl border text-xs font-bold flex items-center gap-1.5 transition-colors ${
-                      handpickOnlyBookmarks
-                        ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500'
-                        : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10'
-                    }`}
-                  >
-                    <Bookmark className={`w-3.5 h-3.5 ${handpickOnlyBookmarks ? 'fill-amber-500' : ''}`} />
-                    <span>Bookmarks ({bookmarkedIds.length})</span>
-                  </button>
+                      {[5, 10, 15, 20].map((num) => (
+                        <button
+                          key={`quick_all_${num}`}
+                          type="button"
+                          onClick={() => handleBatchSelectHandpick(num, false)}
+                          className="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 font-bold transition-all shadow-2xs"
+                          title={`Select next ${num} questions`}
+                        >
+                          +{num} All
+                        </button>
+                      ))}
+                    </div>
 
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const ids = filteredHandpickQuestions.map((q) => q.id);
-                        setHandpickedIds((prev) => Array.from(new Set([...prev, ...ids])));
-                      }}
-                      className="px-3 py-2 rounded-xl text-xs font-bold bg-amber-400 text-slate-950 hover:bg-amber-300 transition-colors"
-                    >
-                      Select All Filtered ({filteredHandpickQuestions.length})
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setHandpickedIds([])}
-                      className="px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition-colors"
-                    >
-                      Clear Selection
-                    </button>
+                    {/* Manual Fill Question Count Input & Button */}
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-2 py-1">
+                        <span className="text-[11px] font-bold text-slate-500">Qty:</span>
+                        <input
+                          type="number"
+                          min="1"
+                          max={filteredHandpickQuestions.length || 100}
+                          value={manualHandpickCount}
+                          onChange={(e) => setManualHandpickCount(Math.max(1, parseInt(e.target.value) || 1))}
+                          className="w-12 text-center font-mono font-bold text-xs bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg py-0.5 focus:outline-hidden"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleBatchSelectHandpick(manualHandpickCount, true)}
+                        className="px-3 py-1.5 rounded-xl text-xs font-black bg-indigo-600 text-white hover:bg-indigo-500 transition-colors shadow-xs"
+                      >
+                        + Select {manualHandpickCount} Qs
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const ids = filteredHandpickQuestions.map((q) => q.id);
+                          setHandpickedIds((prev) => Array.from(new Set([...prev, ...ids])));
+                        }}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-400 text-slate-950 hover:bg-amber-300 transition-colors"
+                      >
+                        Select All ({filteredHandpickQuestions.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setHandpickedIds([])}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition-colors"
+                      >
+                        Clear Selection
+                      </button>
+                    </div>
                   </div>
                 </div>
 
                 {/* Handpick Question Cards */}
                 <div className="space-y-3">
-                  {filteredHandpickQuestions.map((q, idx) => {
-                    const isSelected = handpickedIds.includes(q.id);
-                    const isUsed = isQuestionUsed(q);
+                  {paginatedHandpickQuestions.length === 0 ? (
+                    <div className="glass-panel p-12 text-center text-xs text-slate-500">
+                      No questions match current filter criteria. Try clearing search or changing chapter filter.
+                    </div>
+                  ) : (
+                    paginatedHandpickQuestions.map((q, idx) => {
+                      const isSelected = handpickedIds.includes(q.id);
+                      const isUsed = isQuestionUsed(q);
+                      const usageTests = questionUsageMap.get(q.id) || [];
+                      const itemNumber = (safeHandpickPage - 1) * (handpickPageSize === 999999 ? 0 : handpickPageSize) + idx + 1;
 
-                    return (
-                      <div
-                        key={q.id}
-                        onClick={() => {
-                          setHandpickedIds((prev) =>
-                            prev.includes(q.id) ? prev.filter((id) => id !== q.id) : [...prev, q.id]
-                          );
-                        }}
-                        className={`cursor-pointer p-4 sm:p-5 rounded-3xl border transition-all flex items-start gap-3.5 ${
-                          isSelected
-                            ? 'bg-amber-500/10 border-amber-500/60 shadow-md ring-1 ring-amber-500/30'
-                            : 'glass-panel glass-panel-hover'
-                        }`}
-                      >
-                        <div className="pt-1">
-                          {isSelected ? (
-                            <CheckSquare className="w-5 h-5 text-amber-500" />
-                          ) : (
-                            <Square className="w-5 h-5 text-slate-400" />
-                          )}
-                        </div>
-
-                        <div className="flex-1 space-y-2">
-                          <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold">
-                            <span className="px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 uppercase">
-                              {q.topicNameHindi || q.topic}
-                            </span>
-                            <span className="px-2.5 py-0.5 rounded-full bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-slate-300">
-                              {q.exam}
-                            </span>
-                            {isUsed ? (
-                              <span className="px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
-                                Previously Used
-                              </span>
+                      return (
+                        <div
+                          key={q.id}
+                          onClick={() => {
+                            setHandpickedIds((prev) =>
+                              prev.includes(q.id) ? prev.filter((id) => id !== q.id) : [...prev, q.id]
+                            );
+                          }}
+                          className={`cursor-pointer p-4 sm:p-5 rounded-3xl border transition-all flex items-start gap-3.5 ${
+                            isSelected
+                              ? 'bg-amber-500/10 border-amber-500/60 shadow-md ring-1 ring-amber-500/30'
+                              : 'glass-panel glass-panel-hover'
+                          }`}
+                        >
+                          <div className="pt-1">
+                            {isSelected ? (
+                              <CheckSquare className="w-5 h-5 text-amber-500" />
                             ) : (
-                              <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                                Fresh / Unused
-                              </span>
+                              <Square className="w-5 h-5 text-slate-400" />
                             )}
                           </div>
 
-                          <div className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white leading-relaxed">
-                            <MathText text={q.questionText} />
-                          </div>
+                          <div className="flex-1 space-y-2">
+                            <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold">
+                              <span className="font-mono text-slate-400 font-bold">
+                                #{itemNumber}
+                              </span>
+                              <span className="px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 uppercase">
+                                {q.topicNameHindi || q.topic}
+                              </span>
+                              <span className="px-2.5 py-0.5 rounded-full bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-slate-300">
+                                {q.exam}
+                              </span>
+                              {isUsed ? (
+                                <span
+                                  className="px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30 font-black flex items-center gap-1"
+                                  title={usageTests.length > 0 ? `Previously used in: ${usageTests.join(', ')}` : 'Used in mock test'}
+                                >
+                                  <History className="w-3 h-3 text-amber-500 shrink-0" />
+                                  <span>Used in Test {usageTests.length > 0 ? `(${usageTests.length})` : ''}</span>
+                                </span>
+                              ) : (
+                                <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 font-black flex items-center gap-1">
+                                  <Sparkles className="w-3 h-3 text-emerald-500 shrink-0" />
+                                  <span>Fresh / Unused</span>
+                                </span>
+                              )}
+                            </div>
 
-                          {/* Options Preview */}
-                          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1 text-[11px]">
-                            {q.options.map((opt) => (
-                              <div
-                                key={opt.key}
-                                className={`p-1.5 rounded-lg border text-center font-medium ${
-                                  q.correctOption?.includes(opt.key)
-                                    ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 font-bold'
-                                    : 'bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-400'
-                                }`}
-                              >
-                                <span className="uppercase font-bold">({opt.key})</span>{' '}
-                                <span className="truncate">{opt.text}</span>
-                              </div>
-                            ))}
+                            <div className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white leading-relaxed">
+                              <MathText text={q.questionText} />
+                            </div>
+
+                            {/* Options Preview */}
+                            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1 text-[11px]">
+                              {q.options.map((opt) => (
+                                <div
+                                  key={opt.key}
+                                  className={`p-1.5 rounded-lg border text-center font-medium ${
+                                    q.correctOption?.includes(opt.key)
+                                      ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 font-bold'
+                                      : 'bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-400'
+                                  }`}
+                                >
+                                  <span className="uppercase font-bold">({opt.key})</span>{' '}
+                                  <span className="truncate">{opt.text}</span>
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  )}
                 </div>
+
+                {/* Handpick Pagination Bar */}
+                {handpickTotalPages > 1 && handpickPageSize < 999999 && (
+                  <div className="glass-panel p-3 rounded-2xl flex items-center justify-between gap-3 text-xs">
+                    <span className="font-bold text-slate-500">
+                      Showing {(safeHandpickPage - 1) * handpickPageSize + 1} to{' '}
+                      {Math.min(safeHandpickPage * handpickPageSize, filteredHandpickQuestions.length)} of{' '}
+                      {filteredHandpickQuestions.length} questions
+                    </span>
+
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setHandpickCurrentPage((p) => Math.max(1, p - 1))}
+                        disabled={safeHandpickPage === 1}
+                        className="px-3 py-1.5 rounded-xl font-bold bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1"
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                        <span>Prev</span>
+                      </button>
+
+                      <span className="px-3 py-1 rounded-lg bg-amber-400/20 font-mono font-black text-amber-700 dark:text-amber-300">
+                        {safeHandpickPage} / {handpickTotalPages}
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={() => setHandpickCurrentPage((p) => Math.min(handpickTotalPages, p + 1))}
+                        disabled={safeHandpickPage === handpickTotalPages}
+                        className="px-3 py-1.5 rounded-xl font-bold bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1"
+                      >
+                        <span>Next</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1451,7 +1613,7 @@ export function CreateTestView({
                     <span>Schedule Live Exam Date & Time (Optional)</span>
                   </h4>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                    Set a future start time in Indian Standard Time (IST). Automated email reminders will be sent 2–3 hours before and 15 minutes before start.
+                    Set a future scheduled start time in Indian Standard Time (IST) for live candidate testing.
                   </p>
                 </div>
                 <div className="sm:w-64">
@@ -1482,7 +1644,7 @@ export function CreateTestView({
                     Ready to begin or publish this examination?
                   </h4>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Publishing immediately dispatches email announcements to Priya Patel and parent.
+                    Publishing makes this test immediately live and available in the portal test catalog.
                   </p>
                 </div>
 
@@ -1512,7 +1674,7 @@ export function CreateTestView({
                     className="px-5 py-3 rounded-2xl font-black text-xs text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/20 transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50"
                   >
                     <CheckCircle2 className="w-4 h-4 text-white" />
-                    <span>{isPublishing ? 'Publishing...' : 'Publish & Notify Email'}</span>
+                    <span>{isPublishing ? 'Publishing...' : 'Publish Test to Portal'}</span>
                   </button>
 
                   <button

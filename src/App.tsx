@@ -254,8 +254,6 @@ export default function App() {
       accuracy: result.accuracy,
       date: dateFormatted,
       completedAtIso,
-      studentEmail: 'patel000priya000@gmail.com',
-      parentEmail: 'arjittreadingcompany@gmail.com',
       studentName: 'Priya Patel',
       totalQuestions: result.totalQuestions,
       correctCount: result.correctCount,
@@ -274,15 +272,6 @@ export default function App() {
       dateFormatted,
       completedAtIso,
       topicBreakdown
-    });
-
-    // Non-blocking server-side email dispatch after attempt is saved
-    fetch('/api/email/send-result', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ attemptId, attemptData: attemptRecord })
-    }).catch((err) => {
-      console.warn('[Email Notification] Non-blocking result email dispatch note:', err);
     });
   };
 

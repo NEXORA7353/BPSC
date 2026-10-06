@@ -111,7 +111,9 @@ export async function reserveNotificationAtomically(
 export async function finalizeNotification(
   notificationId: string,
   updates: {
-    status: 'delivered' | 'failed';
+    status: 'delivered' | 'accepted' | 'failed';
+    emailId?: string;
+    anypostEmailId?: string;
     brevoMessageId?: string;
     error?: string;
   }

@@ -1067,8 +1067,6 @@ export function saveAttemptRecord(record: TestAttemptRecord): void {
     const enrichedRecord: TestAttemptRecord = {
       ...record,
       completedAtIso: record.completedAtIso || new Date().toISOString(),
-      studentEmail: record.studentEmail || 'patel000priya000@gmail.com',
-      parentEmail: record.parentEmail || 'arjittreadingcompany@gmail.com',
       studentName: record.studentName || 'Priya Patel'
     };
     const existing = getAttemptRecords();

@@ -597,8 +597,6 @@ export async function saveAttemptRecordToCloud(record: TestAttemptRecord): Promi
       ...record,
       id: recordId,
       userId: auth.currentUser?.uid || 'guest',
-      studentEmail: record.studentEmail || 'patel000priya000@gmail.com',
-      parentEmail: record.parentEmail || 'arjittreadingcompany@gmail.com',
       studentName: record.studentName || 'Priya Patel',
       completedAtIso: record.completedAtIso || new Date().toISOString(),
       createdAt: new Date().toISOString()

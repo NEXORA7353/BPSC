@@ -4,7 +4,7 @@ import {
   DEFAULT_PARENT_EMAIL,
   DEFAULT_STUDENT_NAME
 } from '../_lib/constants.js';
-import { sendBrevoEmail } from '../_lib/brevo.js';
+import { sendAnypostEmail } from '../_lib/anypost.js';
 import {
   getPublishedTest,
   reserveNotificationAtomically,
@@ -104,18 +104,20 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
       studentName
     });
 
-    // 5. Send emails via Brevo
+    // 5. Send emails via Anypost with distinct idempotency keys
     const [studentResult, parentResult] = await Promise.all([
-      sendBrevoEmail({
-        to: [{ email: studentEmail, name: studentName }],
+      sendAnypostEmail({
+        to: studentEmail,
         subject: studentMail.subject,
-        htmlContent: studentMail.html,
+        html: studentMail.html,
+        idempotencyKey: `${notificationId}_student`,
         tags: ['bpsc-new-test-student']
       }),
-      sendBrevoEmail({
-        to: [{ email: parentEmail, name: 'Parent / Guardian' }],
+      sendAnypostEmail({
+        to: parentEmail,
         subject: parentMail.subject,
-        htmlContent: parentMail.html,
+        html: parentMail.html,
+        idempotencyKey: `${notificationId}_parent`,
         tags: ['bpsc-new-test-parent']
       })
     ]);
@@ -127,7 +129,7 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
       }).catch(() => null);
 
       return sendJson(res, 502, {
-        error: 'Failed to send Brevo emails',
+        error: 'Failed to send Anypost emails',
         details: {
           studentError: studentResult.error,
           parentError: parentResult.error
@@ -135,9 +137,11 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
       });
     }
 
+    const anypostId = studentResult.emailId || parentResult.emailId;
     await finalizeNotification(notificationId, {
-      status: 'delivered',
-      brevoMessageId: studentResult.messageId || parentResult.messageId
+      status: 'accepted',
+      emailId: anypostId,
+      anypostEmailId: anypostId
     }).catch(() => null);
 
     return sendJson(res, 200, {
@@ -145,11 +149,13 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
       notificationId,
       studentResult: {
         success: studentResult.success,
-        messageId: studentResult.messageId
+        emailId: studentResult.emailId,
+        messageId: studentResult.emailId
       },
       parentResult: {
         success: parentResult.success,
-        messageId: parentResult.messageId
+        emailId: parentResult.emailId,
+        messageId: parentResult.emailId
       }
     });
   } catch (err: any) {

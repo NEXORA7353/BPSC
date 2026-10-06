@@ -1,15 +1,5 @@
 {
   "framework": "vite",
-  "crons": [
-    {
-      "path": "/api/cron/daily-inactivity",
-      "schedule": "30 14 * * *"
-    },
-    {
-      "path": "/api/cron/weekly-report",
-      "schedule": "30 14 * * 0"
-    }
-  ],
   "rewrites": [
     {
       "source": "/api/(.*)",
