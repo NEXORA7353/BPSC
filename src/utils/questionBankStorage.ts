@@ -237,7 +237,9 @@ export function sanitizeTestSet(t: any): MockTestSet {
     subtitle: String(t.subtitle || ''),
     category: t.category || 'tri_topic',
     categoryTitle: t.categoryTitle || 'General',
-    topicBadges: Array.isArray(t.topicBadges) ? t.topicBadges.map(String) : [],
+    topicBadges: Array.isArray(t.topicBadges)
+      ? t.topicBadges.map((b: any) => cleanTitleToEnglish(String(b || ''))).filter(Boolean)
+      : [],
     questions: safeQuestions,
     totalQuestions: t.totalQuestions || safeQuestions.length,
     totalTimeMinutes: t.totalTimeMinutes || Math.max(5, safeQuestions.length)
@@ -575,6 +577,14 @@ export function saveCustomTest(testSet: MockTestSet): void {
   }
 }
 
+export function normalizeTestTitle(title?: string): string {
+  if (!title) return '';
+  return title
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
+
 export function getDeletedTestIds(): string[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.DELETED_TEST_IDS);
@@ -595,15 +605,30 @@ export function saveDeletedTestIds(ids: string[]): void {
 
 export function deleteTest(testId: string): void {
   try {
-    // Filter out from custom tests
-    const filteredCustom = getSavedCustomTests().filter((t) => t.id !== testId);
-    liveCloudTestsCache = filteredCustom;
-    localStorage.setItem(STORAGE_KEYS.CUSTOM_TESTS, JSON.stringify(filteredCustom));
+    const allKnown = getAllAvailableTests();
+    const target = allKnown.find((t) => t.id === testId);
 
-    // Record testId in deleted list
+    // Record testId in deleted list with both ID and title/subtitle signatures
     const deleted = new Set(getDeletedTestIds());
     deleted.add(testId);
+    if (target?.id) deleted.add(target.id);
+    if (target?.title) {
+      deleted.add(`title_${normalizeTestTitle(target.title)}`);
+    }
+    if (target?.subtitle) {
+      deleted.add(`sub_${normalizeTestTitle(target.subtitle)}`);
+    }
     saveDeletedTestIds(Array.from(deleted));
+
+    // Filter out from local custom tests
+    const filteredCustom = getSavedCustomTests().filter((t) => {
+      if (t.id === testId) return false;
+      if (target?.id && t.id === target.id) return false;
+      if (target?.title && normalizeTestTitle(t.title) === normalizeTestTitle(target.title)) return false;
+      return true;
+    });
+    liveCloudTestsCache = filteredCustom;
+    localStorage.setItem(STORAGE_KEYS.CUSTOM_TESTS, JSON.stringify(filteredCustom));
 
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('bpsc_test_deleted', { detail: testId }));
@@ -647,7 +672,13 @@ export function getAllAvailableTests(): MockTestSet[] {
   }
 
   return Array.from(testMap.values())
-    .filter((t) => t && t.id && !deletedIds.has(t.id))
+    .filter((t) => {
+      if (!t || !t.id) return false;
+      if (deletedIds.has(t.id)) return false;
+      if (t.title && deletedIds.has(`title_${normalizeTestTitle(t.title)}`)) return false;
+      if (t.subtitle && deletedIds.has(`sub_${normalizeTestTitle(t.subtitle)}`)) return false;
+      return true;
+    })
     .map(sanitizeTestSet);
 }
 

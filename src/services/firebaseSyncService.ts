@@ -31,7 +31,8 @@ import {
   getAttemptRecords,
   saveAttemptRecord as saveLocalAttemptRecord,
   getSavedTestResults,
-  saveFullTestResult as saveLocalFullTestResult
+  saveFullTestResult as saveLocalFullTestResult,
+  normalizeTestTitle
 } from '../utils/questionBankStorage';
 
 export interface CloudSyncState {
@@ -145,22 +146,31 @@ export async function syncFromFirestore(): Promise<void> {
     });
     const cloudTests: MockTestSet[] = [];
     testsSnap?.forEach((d) => {
-      cloudTests.push(d.data() as MockTestSet);
+      const data = d.data();
+      const testId = data?.id || d.id;
+      cloudTests.push({ ...data, id: testId } as MockTestSet);
     });
 
     if (cloudTests.length > 0) {
-      const cloudTestMap = new Map<string, MockTestSet>();
-      cloudTests.forEach((t) => cloudTestMap.set(t.id, t));
+      const isDeletedTest = (t: MockTestSet) => {
+        if (!t) return true;
+        if (deletedTestSet.has(t.id)) return true;
+        if (t.title && deletedTestSet.has(`title_${normalizeTestTitle(t.title)}`)) return true;
+        if (t.subtitle && deletedTestSet.has(`sub_${normalizeTestTitle(t.subtitle)}`)) return true;
+        return false;
+      };
 
       const localTests = getSavedCustomTests();
       const testMap = new Map<string, MockTestSet>();
       localTests.forEach((t) => {
-        if (!deletedTestSet.has(t.id) && cloudTestMap.has(t.id)) {
+        if (!isDeletedTest(t)) {
           testMap.set(t.id, t);
         }
       });
       cloudTests.forEach((t) => {
-        if (!deletedTestSet.has(t.id)) testMap.set(t.id, t);
+        if (!isDeletedTest(t)) {
+          testMap.set(t.id, t);
+        }
       });
 
       const finalTests = Array.from(testMap.values());
@@ -255,20 +265,32 @@ export function setupRealtimeSync(onDataChange: () => void): () => void {
     collection(db, 'custom_tests'),
     (snapshot) => {
       const cloudTests: MockTestSet[] = [];
-      snapshot.forEach((d) => cloudTests.push(d.data() as MockTestSet));
+      snapshot.forEach((d) => {
+        const data = d.data();
+        const testId = data?.id || d.id;
+        cloudTests.push({ ...data, id: testId } as MockTestSet);
+      });
       const deletedTestIds = new Set<string>(getDeletedTestIds());
-      const cloudTestIdSet = new Set(cloudTests.map((t) => t.id));
+      const isDeletedTest = (t: MockTestSet) => {
+        if (!t) return true;
+        if (deletedTestIds.has(t.id)) return true;
+        if (t.title && deletedTestIds.has(`title_${normalizeTestTitle(t.title)}`)) return true;
+        if (t.subtitle && deletedTestIds.has(`sub_${normalizeTestTitle(t.subtitle)}`)) return true;
+        return false;
+      };
 
       const localTests = getSavedCustomTests();
       const testMap = new Map<string, MockTestSet>();
 
       localTests.forEach((t) => {
-        if (!deletedTestIds.has(t.id) && (cloudTests.length === 0 || cloudTestIdSet.has(t.id))) {
+        if (!isDeletedTest(t)) {
           testMap.set(t.id, t);
         }
       });
       cloudTests.forEach((t) => {
-        if (!deletedTestIds.has(t.id)) testMap.set(t.id, t);
+        if (!isDeletedTest(t)) {
+          testMap.set(t.id, t);
+        }
       });
 
       const finalTests = Array.from(testMap.values());

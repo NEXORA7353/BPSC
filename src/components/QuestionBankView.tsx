@@ -7,6 +7,10 @@ import {
   Bookmark,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   Trash2,
   FileDown,
   Upload,
@@ -45,7 +49,8 @@ import {
   updateQuestionInBank,
   getQuestionCorrectKeys,
   getQuestionCorrectDisplay,
-  registerNewTopic
+  registerNewTopic,
+  cleanTitleToEnglish
 } from '../utils/questionBankStorage';
 import { syncFromFirestore, seedAllQuestionsToCloud } from '../services/firebaseSyncService';
 import { auditQuestionBatch, autoHealQuestion } from '../utils/questionQualityAudit';
@@ -89,8 +94,26 @@ export function QuestionBankView({
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
   const [editingFormState, setEditingFormState] = useState<Question | null>(null);
 
-  // Bank Quality Audit
-  const bankAuditReport = useMemo(() => auditQuestionBatch(allQuestions), [allQuestions]);
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+
+  // Bank Quality Audit - Lazy computed ONLY when audit tab is active
+  const bankAuditReport = useMemo(() => {
+    if (activeTab !== 'audit') {
+      return {
+        totalQuestions: allQuestions.length,
+        healthyCount: allQuestions.length,
+        problemCount: 0,
+        duplicateCount: 0,
+        blankOptionCount: 0,
+        blankExplanationCount: 0,
+        items: []
+      };
+    }
+    return auditQuestionBatch(allQuestions);
+  }, [allQuestions, activeTab]);
+
   const cleanPercentage = useMemo(() => {
     if (bankAuditReport.totalQuestions === 0) return 100;
     return Math.round((bankAuditReport.healthyCount / bankAuditReport.totalQuestions) * 100);
@@ -141,6 +164,19 @@ export function QuestionBankView({
       return matchesTopic && matchesBookmark && matchesSearch;
     });
   }, [allQuestions, selectedTopic, onlyBookmarked, bookmarkedIds, searchTerm]);
+
+  // Reset to page 1 on filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedTopic, onlyBookmarked]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredQuestions.length / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+
+  const paginatedQuestions = useMemo(() => {
+    const startIndex = (safeCurrentPage - 1) * pageSize;
+    return filteredQuestions.slice(startIndex, startIndex + pageSize);
+  }, [filteredQuestions, safeCurrentPage, pageSize]);
 
   // Actions
   const handleToggleBookmark = (id: string) => {
@@ -523,11 +559,13 @@ export function QuestionBankView({
                 </p>
               </div>
             ) : (
-              <div className="space-y-4">
-                {filteredQuestions.map((q, idx) => {
+              <>
+                <div className="space-y-4">
+                {paginatedQuestions.map((q, idx) => {
                   const isBookmarked = bookmarkedIds.includes(q.id);
                   const isSolutionOpen = Boolean(expandedSolutions[q.id]);
                   const isEditing = editingQuestionId === q.id;
+                  const itemNumber = (safeCurrentPage - 1) * pageSize + idx + 1;
 
                   return (
                     <div
@@ -538,10 +576,10 @@ export function QuestionBankView({
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="w-7 h-7 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-mono font-bold text-xs flex items-center justify-center">
-                            #{idx + 1}
+                            #{itemNumber}
                           </span>
                           <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20">
-                            {q.topicNameHindi || q.topic}
+                            {cleanTitleToEnglish(q.topicNameHindi || q.topic)}
                           </span>
                           <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-slate-300">
                             {q.exam}
@@ -711,9 +749,119 @@ export function QuestionBankView({
                   );
                 })}
               </div>
-            )}
-          </div>
-        )}
+
+              {/* Ultra-Fast Responsive Pagination Bar */}
+              {filteredQuestions.length > pageSize && (
+                <div className="glass-panel p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 border border-slate-200 dark:border-white/10 shadow-xs">
+                  <div className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                    Showing <span className="text-amber-600 dark:text-amber-400 font-mono">{(safeCurrentPage - 1) * pageSize + 1}</span> to{' '}
+                    <span className="text-amber-600 dark:text-amber-400 font-mono">{Math.min(safeCurrentPage * pageSize, filteredQuestions.length)}</span> of{' '}
+                    <span className="text-slate-900 dark:text-white font-mono">{filteredQuestions.length}</span> questions
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage(1)}
+                      disabled={safeCurrentPage === 1}
+                      className="p-2 rounded-xl text-xs font-bold bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                      title="First Page"
+                    >
+                      <ChevronsLeft className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={safeCurrentPage === 1}
+                      className="px-3 py-2 rounded-xl text-xs font-bold bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center gap-1"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      <span className="hidden sm:inline">Prev</span>
+                    </button>
+
+                    {/* Page Numbers */}
+                    <div className="flex items-center gap-1 px-1">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1)
+                        .filter((p) => p === 1 || p === totalPages || Math.abs(p - safeCurrentPage) <= 1)
+                        .reduce((acc: (number | string)[], p, i, arr) => {
+                          if (i > 0 && p - (arr[i - 1] as number) > 1) {
+                            acc.push('...');
+                          }
+                          acc.push(p);
+                          return acc;
+                        }, [])
+                        .map((item, idx) => {
+                          if (item === '...') {
+                            return (
+                              <span key={`dots_${idx}`} className="px-1 text-xs text-slate-400">
+                                …
+                              </span>
+                            );
+                          }
+                          const pNum = Number(item);
+                          const isActive = pNum === safeCurrentPage;
+                          return (
+                            <button
+                              key={pNum}
+                              type="button"
+                              onClick={() => setCurrentPage(pNum)}
+                              className={`w-8 h-8 rounded-xl text-xs font-mono font-bold transition-all ${
+                                isActive
+                                  ? 'bg-amber-400 text-slate-950 font-black shadow-md shadow-amber-400/20'
+                                  : 'bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
+                              }`}
+                            >
+                              {pNum}
+                            </button>
+                          );
+                        })}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={safeCurrentPage === totalPages}
+                      className="px-3 py-2 rounded-xl text-xs font-bold bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center gap-1"
+                    >
+                      <span className="hidden sm:inline">Next</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage(totalPages)}
+                      disabled={safeCurrentPage === totalPages}
+                      className="p-2 rounded-xl text-xs font-bold bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                      title="Last Page"
+                    >
+                      <ChevronsRight className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Page Size Selector */}
+                  <div className="flex items-center gap-2 text-xs font-bold">
+                    <span className="text-slate-400">Per page:</span>
+                    <select
+                      value={pageSize}
+                      onChange={(e) => {
+                        setPageSize(Number(e.target.value));
+                        setCurrentPage(1);
+                      }}
+                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-2 py-1.5 text-xs font-bold text-slate-900 dark:text-white"
+                    >
+                      <option value={15}>15</option>
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
         {/* ======================================================== */}
         {/* TAB 2: CHAPTERS & SYLLABUS MANAGEMENT                    */}

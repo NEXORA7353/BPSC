@@ -15,6 +15,7 @@ import { MockTestSet } from '../types';
 import { BackButton } from './BackButton';
 import { ScratchpadModal } from './ScratchpadModal';
 import { FormulaSheetModal } from './FormulaSheetModal';
+import { cleanTitleToEnglish } from '../utils/questionBankStorage';
 
 interface TestIntroViewProps {
   currentSet: MockTestSet;
@@ -375,7 +376,7 @@ export function TestIntroView({
                               key={bIdx}
                               className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10"
                             >
-                              {badge}
+                              {cleanTitleToEnglish(badge)}
                             </span>
                           ))}
                         </div>
