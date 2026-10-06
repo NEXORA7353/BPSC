@@ -122,6 +122,8 @@ export function CreateTestView({
   const [negativeMarking, setNegativeMarking] = useState(true);
   const [preferUnused, setPreferUnused] = useState(true);
   const [selectionMode, setSelectionMode] = useState<'random' | 'all'>('random');
+  const [scheduledDateTime, setScheduledDateTime] = useState<string>(''); // YYYY-MM-DDTHH:mm
+  const [isPublishing, setIsPublishing] = useState<boolean>(false);
 
   // Topic Distribution Map
   const [selectedTopicKeys, setSelectedTopicKeys] = useState<string[]>(() => {
@@ -326,7 +328,11 @@ export function CreateTestView({
       preferUnused
     };
 
-    return createCustomMockTest(config);
+    const blueprint = createCustomMockTest(config);
+    if (scheduledDateTime) {
+      blueprint.scheduledStartAt = new Date(scheduledDateTime).toISOString();
+    }
+    return blueprint;
   };
 
   // Move from Step 2 to Step 3
@@ -344,14 +350,63 @@ export function CreateTestView({
   // Launch or Save actions
   const handleStartExamNow = () => {
     const testSet = generatedPreviewSet || generateBlueprint();
+    testSet.isPublished = true;
+    testSet.publishedAtIso = testSet.publishedAtIso || new Date().toISOString();
+    if (scheduledDateTime) {
+      testSet.scheduledStartAt = new Date(scheduledDateTime).toISOString();
+    }
     saveCustomTest(testSet);
+
+    // Notify student and parent only upon explicit publication
+    fetch('/api/email/notify-new-test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ testId: testSet.id })
+    }).catch((err) => console.warn('Publish email notify error:', err));
+
     onStartTest(testSet);
+  };
+
+  const handlePublishAndNotify = async () => {
+    setIsPublishing(true);
+    try {
+      const testSet = generatedPreviewSet || generateBlueprint();
+      testSet.isPublished = true;
+      testSet.publishedAtIso = new Date().toISOString();
+      if (scheduledDateTime) {
+        testSet.scheduledStartAt = new Date(scheduledDateTime).toISOString();
+      }
+      saveCustomTest(testSet);
+
+      try {
+        await fetch('/api/email/notify-new-test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ testId: testSet.id })
+        });
+      } catch (e) {
+        console.warn('Publish email notify error:', e);
+      }
+
+      setStatusNotification(`Test "${testSet.title}" published & notifications dispatched!`);
+      setTimeout(() => {
+        onBack();
+      }, 1400);
+    } catch (err: any) {
+      alert(`Error publishing test: ${err?.message || err}`);
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   const handleSaveToLibraryOnly = () => {
     const testSet = generatedPreviewSet || generateBlueprint();
+    testSet.isPublished = false; // Draft only, no email sent
+    if (scheduledDateTime) {
+      testSet.scheduledStartAt = new Date(scheduledDateTime).toISOString();
+    }
     saveCustomTest(testSet);
-    setStatusNotification(`Test "${testSet.title}" successfully saved to My Tests library!`);
+    setStatusNotification(`Draft test "${testSet.title}" saved to library. (Not published, no emails sent)`);
     setTimeout(() => {
       onBack();
     }, 1200);
@@ -1368,15 +1423,47 @@ export function CreateTestView({
               </div>
             )}
 
-            {/* 3 Main Action CTA Buttons */}
+            {/* Scheduling and Publication Settings Card */}
+            <div className="glass-panel p-5 sm:p-6 rounded-3xl border border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h4 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-amber-500" />
+                    <span>Schedule Live Exam Date & Time (Optional)</span>
+                  </h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    Set a future start time in Indian Standard Time (IST). Automated email reminders will be sent 2–3 hours before and 15 minutes before start.
+                  </p>
+                </div>
+                <div className="sm:w-64">
+                  <input
+                    type="datetime-local"
+                    value={scheduledDateTime}
+                    onChange={(e) => setScheduledDateTime(e.target.value)}
+                    className="w-full text-xs font-semibold px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white focus:outline-hidden focus:border-amber-500"
+                  />
+                  {scheduledDateTime && (
+                    <button
+                      type="button"
+                      onClick={() => setScheduledDateTime('')}
+                      className="text-[11px] text-amber-600 dark:text-amber-400 hover:underline mt-1 block"
+                    >
+                      Clear schedule (Make available immediately)
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* 4 Main Action CTA Buttons */}
             <div className="glass-panel p-6 sm:p-8 rounded-3xl space-y-4 bg-gradient-to-tr from-amber-500/10 via-transparent to-indigo-500/10 border-amber-500/30">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="space-y-1 text-center sm:text-left">
                   <h4 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                    Ready to begin this examination?
+                    Ready to begin or publish this examination?
                   </h4>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    The CBT interface will open in full-screen exam mode with live timer and option E safe skip.
+                    Publishing immediately dispatches email announcements to Priya Patel and parent.
                   </p>
                 </div>
 
@@ -1384,7 +1471,7 @@ export function CreateTestView({
                   <button
                     type="button"
                     onClick={handleDownloadStandaloneHtml}
-                    className="px-5 py-3.5 rounded-2xl font-bold text-xs text-slate-700 dark:text-slate-200 bg-white dark:bg-white/10 hover:bg-slate-100 border border-slate-200 dark:border-white/10 transition-all flex items-center gap-2"
+                    className="px-4 py-3 rounded-2xl font-bold text-xs text-slate-700 dark:text-slate-200 bg-white dark:bg-white/10 hover:bg-slate-100 border border-slate-200 dark:border-white/10 transition-all flex items-center gap-2"
                   >
                     <FileDown className="w-4 h-4 text-amber-500" />
                     <span>Download Offline HTML</span>
@@ -1393,16 +1480,26 @@ export function CreateTestView({
                   <button
                     type="button"
                     onClick={handleSaveToLibraryOnly}
-                    className="px-5 py-3.5 rounded-2xl font-bold text-xs text-slate-700 dark:text-slate-200 bg-white dark:bg-white/10 hover:bg-slate-100 border border-slate-200 dark:border-white/10 transition-all flex items-center gap-2"
+                    className="px-4 py-3 rounded-2xl font-bold text-xs text-slate-700 dark:text-slate-200 bg-white dark:bg-white/10 hover:bg-slate-100 border border-slate-200 dark:border-white/10 transition-all flex items-center gap-2"
                   >
-                    <Bookmark className="w-4 h-4 text-indigo-500" />
-                    <span>Save to Tests Library</span>
+                    <Bookmark className="w-4 h-4 text-slate-500" />
+                    <span>Save Draft Only</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={isPublishing}
+                    onClick={handlePublishAndNotify}
+                    className="px-5 py-3 rounded-2xl font-black text-xs text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/20 transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-white" />
+                    <span>{isPublishing ? 'Publishing...' : 'Publish & Notify Email'}</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={handleStartExamNow}
-                    className="px-8 py-3.5 rounded-2xl font-black text-sm text-slate-950 bg-amber-400 hover:bg-amber-300 shadow-xl shadow-amber-400/25 transition-all active:scale-95 flex items-center gap-2 group"
+                    className="px-6 py-3 rounded-2xl font-black text-sm text-slate-950 bg-amber-400 hover:bg-amber-300 shadow-xl shadow-amber-400/25 transition-all active:scale-95 flex items-center gap-2 group"
                   >
                     <Play className="w-4 h-4 fill-slate-950" />
                     <span>Start CBT Test Now</span>

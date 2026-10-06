@@ -33,6 +33,17 @@ export interface TopicSegment {
   colorClass: string;
 }
 
+export interface TopicPerformanceStat {
+  topicKey: string;
+  topicLabel: string;
+  topicLabelHindi?: string;
+  total: number;
+  correct: number;
+  incorrect: number;
+  skipped: number;
+  accuracy: number;
+}
+
 export interface MockTestSet {
   id: string;
   cardIndex?: string; // '01', '02', '03' etc.
@@ -50,6 +61,10 @@ export interface MockTestSet {
   questions: Question[];
   negativeMarkingValue?: number; // default 0.33
   isCustom?: boolean;
+  isPublished?: boolean;
+  publishedAtIso?: string;
+  scheduledStartAt?: string; // ISO 8601 string
+  scheduledEndAt?: string; // ISO 8601 string
   createdAt?: string;
 }
 
@@ -71,6 +86,7 @@ export interface TestResult {
 }
 
 export interface TestAttemptRecord {
+  id?: string;
   testId: string;
   testTitle: string;
   score: number;
@@ -80,6 +96,14 @@ export interface TestAttemptRecord {
   totalQuestions: number;
   correctCount: number;
   incorrectCount: number;
+  studentEmail?: string;
+  parentEmail?: string;
+  studentName?: string;
+  completedAtIso?: string;
+  totalTimeSpentSeconds?: number;
+  safeSkipCount?: number;
+  blankPenaltyCount?: number;
+  topicBreakdown?: Record<string, TopicPerformanceStat>;
 }
 
 export interface RegisteredTopic {
@@ -92,6 +116,8 @@ export interface RegisteredTopic {
 export interface SavedTestResult extends TestResult {
   id: string;
   dateFormatted: string;
+  completedAtIso?: string;
+  topicBreakdown?: Record<string, TopicPerformanceStat>;
 }
 
 export interface CustomTestConfig {

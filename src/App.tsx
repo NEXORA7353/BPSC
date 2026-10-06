@@ -22,7 +22,8 @@ import {
   setStoredTheme,
   saveAttemptRecord,
   saveFullTestResult,
-  getAllQuestionBank
+  getAllQuestionBank,
+  calculateTopicBreakdown
 } from './utils/questionBankStorage';
 import { syncFromFirestore, setupRealtimeSync } from './services/firebaseSyncService';
 import { usePortalLanguage } from './utils/language';
@@ -237,23 +238,51 @@ export default function App() {
       hour: '2-digit',
       minute: '2-digit'
     });
+    const completedAtIso = new Date().toISOString();
+    const attemptId = `${result.setId}_${Date.now()}`;
 
-    saveAttemptRecord({
+    // Compute topic breakdown from current test questions
+    const testQuestions = (currentSet && currentSet.questions) || [];
+    const topicBreakdown = calculateTopicBreakdown(testQuestions, result.responses);
+
+    const attemptRecord = {
+      id: attemptId,
       testId: result.setId,
       testTitle: result.setTitle,
       score: result.score,
       totalMarks: result.totalMarks,
       accuracy: result.accuracy,
       date: dateFormatted,
+      completedAtIso,
+      studentEmail: 'patel000priya000@gmail.com',
+      parentEmail: 'arjittreadingcompany@gmail.com',
+      studentName: 'Priya Patel',
       totalQuestions: result.totalQuestions,
       correctCount: result.correctCount,
-      incorrectCount: result.incorrectCount
-    });
+      incorrectCount: result.incorrectCount,
+      safeSkipCount: result.safeSkipCount,
+      blankPenaltyCount: result.blankPenaltyCount,
+      totalTimeSpentSeconds: result.totalTimeSpentSeconds,
+      topicBreakdown
+    };
+
+    saveAttemptRecord(attemptRecord);
 
     saveFullTestResult({
       ...result,
       id: `result_${Date.now()}`,
-      dateFormatted
+      dateFormatted,
+      completedAtIso,
+      topicBreakdown
+    });
+
+    // Non-blocking server-side email dispatch after attempt is saved
+    fetch('/api/email/send-result', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ attemptId })
+    }).catch((err) => {
+      console.warn('[Email Notification] Non-blocking result email dispatch note:', err);
     });
   };
 

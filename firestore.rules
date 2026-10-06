@@ -88,5 +88,10 @@ service cloud.firestore {
       allow create, update: if isValidId(recordId) && isValidTombstone(incoming());
       allow delete: if isValidId(recordId);
     }
+
+    // Sent Notification Idempotency Logs (Managed exclusively by serverless backend)
+    match /sent_notifications/{notificationId} {
+      allow read, write: if false;
+    }
   }
 }

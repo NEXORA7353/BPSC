@@ -5,7 +5,9 @@ import {
   ThemeMode,
   CustomTestConfig,
   RegisteredTopic,
-  SavedTestResult
+  SavedTestResult,
+  QuestionResponse,
+  TopicPerformanceStat
 } from '../types';
 import { lcmHcfQuestions } from '../data/lcmQuestions';
 import { percentageQuestions } from '../data/percentageQuestions';
@@ -87,6 +89,56 @@ export function isQuestionAnswerCorrect(
 export function getQuestionCorrectDisplay(q?: { correctOption?: string; correctOptions?: string[] } | null): string {
   const keys = getQuestionCorrectKeys(q);
   return keys.map((k) => k.toUpperCase()).join(', ');
+}
+
+export function calculateTopicBreakdown(
+  questions: Question[],
+  responses: Record<string, QuestionResponse>
+): Record<string, TopicPerformanceStat> {
+  const breakdown: Record<string, TopicPerformanceStat> = {};
+
+  for (const q of questions) {
+    if (!q || !q.id) continue;
+    const topicKey = q.topic || 'miscellaneous';
+    const topicMeta = DEFAULT_TOPICS.find((t: RegisteredTopic) => t.key === topicKey);
+    const topicLabel = topicMeta?.labelEnglish || topicKey;
+    const topicLabelHindi = topicMeta?.labelHindi || q.topicNameHindi || topicKey;
+
+    if (!breakdown[topicKey]) {
+      breakdown[topicKey] = {
+        topicKey,
+        topicLabel,
+        topicLabelHindi,
+        total: 0,
+        correct: 0,
+        incorrect: 0,
+        skipped: 0,
+        accuracy: 0
+      };
+    }
+
+    const stat = breakdown[topicKey];
+    stat.total += 1;
+
+    const userResp = responses ? responses[q.id] : undefined;
+    const selected = userResp?.selectedOption;
+
+    if (!selected) {
+      stat.skipped += 1;
+    } else if (isQuestionAnswerCorrect(q, selected)) {
+      stat.correct += 1;
+    } else {
+      stat.incorrect += 1;
+    }
+  }
+
+  for (const key of Object.keys(breakdown)) {
+    const stat = breakdown[key];
+    const attempted = stat.correct + stat.incorrect;
+    stat.accuracy = attempted > 0 ? Math.round((stat.correct / attempted) * 100) : 0;
+  }
+
+  return breakdown;
 }
 
 // BULLETPROOF SANITIZERS (Prevents all .map crashes)
@@ -762,10 +814,10 @@ export function getTestsForTopic(
 
   return allTests.filter((test) => {
     // 1. Check topicBreakdown
-    if (test.topicBreakdown) {
-      for (const [k, count] of Object.entries(test.topicBreakdown)) {
-        if (count > 0) {
-          const kLower = k.toLowerCase();
+    if (Array.isArray(test.topicBreakdown)) {
+      for (const seg of test.topicBreakdown) {
+        if (seg && typeof seg === 'object' && seg.count > 0) {
+          const kLower = (seg.topicKey || seg.label || '').toLowerCase();
           if (kLower === keyLower || (lowerEn && kLower.includes(lowerEn)) || (lowerHi && kLower.includes(lowerHi))) {
             return true;
           }
@@ -1012,11 +1064,18 @@ export function getAttemptRecords(): TestAttemptRecord[] {
 
 export function saveAttemptRecord(record: TestAttemptRecord): void {
   try {
+    const enrichedRecord: TestAttemptRecord = {
+      ...record,
+      completedAtIso: record.completedAtIso || new Date().toISOString(),
+      studentEmail: record.studentEmail || 'patel000priya000@gmail.com',
+      parentEmail: record.parentEmail || 'arjittreadingcompany@gmail.com',
+      studentName: record.studentName || 'Priya Patel'
+    };
     const existing = getAttemptRecords();
-    const updated = [record, ...existing.slice(0, 49)];
+    const updated = [enrichedRecord, ...existing.slice(0, 49)];
     localStorage.setItem(STORAGE_KEYS.ATTEMPT_HISTORY, JSON.stringify(updated));
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('bpsc_attempt_saved', { detail: record }));
+      window.dispatchEvent(new CustomEvent('bpsc_attempt_saved', { detail: enrichedRecord }));
     }
   } catch (err) {
     console.error('Failed to save attempt record', err);

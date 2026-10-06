@@ -588,20 +588,26 @@ export async function saveTopicToCloud(topic: RegisteredTopic): Promise<void> {
 /**
  * Save attempt record to Firestore
  */
-export async function saveAttemptRecordToCloud(record: TestAttemptRecord): Promise<void> {
-  if (!record || !record.testId) return;
-  const recordId = `${record.testId}_${Date.now()}`;
+export async function saveAttemptRecordToCloud(record: TestAttemptRecord): Promise<string | null> {
+  if (!record || !record.testId) return null;
+  const recordId = record.id || `${record.testId}_${Date.now()}`;
   const path = `attempt_records/${recordId}`;
   try {
     const cleanRecord = cleanPayload({
       ...record,
       id: recordId,
       userId: auth.currentUser?.uid || 'guest',
+      studentEmail: record.studentEmail || 'patel000priya000@gmail.com',
+      parentEmail: record.parentEmail || 'arjittreadingcompany@gmail.com',
+      studentName: record.studentName || 'Priya Patel',
+      completedAtIso: record.completedAtIso || new Date().toISOString(),
       createdAt: new Date().toISOString()
     });
     await setDoc(doc(db, 'attempt_records', recordId), cleanRecord);
+    return recordId;
   } catch (err) {
     console.warn(`Cloud write attempt record failed (${path}):`, err);
+    return null;
   }
 }
 
