@@ -619,9 +619,14 @@ export function ResultAnalytics({
                 const topicPct = Math.round((stats.correct / Math.max(1, stats.total)) * 100);
                 return (
                   <div key={tKey} className="p-3.5 rounded-2xl bg-white/60 dark:bg-white/5 border border-slate-200 dark:border-white/10 space-y-2">
-                    <div className="flex items-center justify-between text-xs font-bold">
-                      <span className="text-slate-900 dark:text-slate-100">{stats.name}</span>
-                      <span className="font-mono text-amber-600 dark:text-amber-300">{topicPct}% Mastery</span>
+                    <div className="flex items-center justify-between text-xs font-bold gap-2">
+                      <span className="text-slate-900 dark:text-slate-100 flex items-center gap-1.5 min-w-0">
+                        <span className="truncate">{stats.name}</span>
+                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-700 dark:text-amber-300 font-mono font-bold shrink-0 border border-amber-500/20">
+                          {stats.total} Qs
+                        </span>
+                      </span>
+                      <span className="font-mono text-amber-600 dark:text-amber-300 shrink-0">{topicPct}% Mastery</span>
                     </div>
 
                     <div className="w-full bg-slate-200 dark:bg-white/10 h-2 rounded-full overflow-hidden">

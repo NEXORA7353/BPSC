@@ -7,6 +7,15 @@ export function generateStandaloneHtml(set: MockTestSet): string {
   const totalQ = set.questions.length;
   const totalMin = set.totalTimeMinutes;
 
+  const topicCountsMap = new Map<string, number>();
+  set.questions.forEach((q) => {
+    const name = q.topicNameHindi || q.topicName || q.topic || 'General Mathematics';
+    topicCountsMap.set(name, (topicCountsMap.get(name) || 0) + 1);
+  });
+  const topicBreakdownHtml = Array.from(topicCountsMap.entries())
+    .map(([tName, count]) => `<span style="background: rgba(217, 119, 6, 0.12); color: #92400e; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; border: 1px solid rgba(217, 119, 6, 0.25);">${tName}: ${count} Qs</span>`)
+    .join(' ');
+
   return `<!DOCTYPE html>
 <html lang="hi">
 <head>
@@ -522,6 +531,7 @@ export function generateStandaloneHtml(set: MockTestSet): string {
     <div>
       <div class="brand-title">BPSC TRE 4.0 | गणित (Mathematics) - ${setTitle}</div>
       <div class="brand-sub">${setSubtitle} · कुल प्रश्न: ${totalQ} · समय: ${totalMin} मिनट</div>
+      ${topicCountsMap.size > 1 ? `<div style="margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;"><span style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: #b45309;">अध्यायवार प्रश्न संख्या (${topicCountsMap.size} Topics):</span> ${topicBreakdownHtml}</div>` : ''}
     </div>
     <div class="timer-badge">
       <div class="time-box">

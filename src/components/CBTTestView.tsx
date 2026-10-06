@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Clock,
   ChevronLeft,
@@ -13,10 +13,17 @@ import {
   Volume2,
   VolumeX,
   Edit3,
-  BookOpen
+  BookOpen,
+  Layers
 } from 'lucide-react';
 import { MockTestSet, QuestionResponse, TestResult } from '../types';
-import { toggleBookmarkQuestion, getBookmarkedIds, isQuestionAnswerCorrect, getQuestionCorrectKeys } from '../utils/questionBankStorage';
+import {
+  toggleBookmarkQuestion,
+  getBookmarkedIds,
+  isQuestionAnswerCorrect,
+  getQuestionCorrectKeys,
+  getTestTopicBreakdown
+} from '../utils/questionBankStorage';
 import { ScratchpadModal } from './ScratchpadModal';
 import { FormulaSheetModal } from './FormulaSheetModal';
 import { MathText } from './MathText';
@@ -95,6 +102,19 @@ export function CBTTestView({
 
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
   const [isMobilePaletteOpen, setIsMobilePaletteOpen] = useState(false);
+  const [selectedPaletteTopic, setSelectedPaletteTopic] = useState<string>('all');
+
+  const topicBreakdown = useMemo(() => getTestTopicBreakdown(testSet), [testSet]);
+  const topicStats = useMemo(() => {
+    const map = new Map<string, { total: number; indices: number[] }>();
+    testSet.questions.forEach((q, i) => {
+      const k = q.topic || 'general';
+      if (!map.has(k)) map.set(k, { total: 0, indices: [] });
+      map.get(k)!.total++;
+      map.get(k)!.indices.push(i);
+    });
+    return map;
+  }, [testSet]);
 
   const currentQ = testSet.questions[currentIdx] || testSet.questions[0];
   const currentResp = (currentQ && responses[currentQ.id]) || {
@@ -104,6 +124,10 @@ export function CBTTestView({
     timeSpentSeconds: 0
   };
   const isCurrentBookmarked = currentQ?.id ? bookmarkedIds.includes(currentQ.id) : false;
+
+  const currentTopicKey = currentQ?.topic || 'general';
+  const currentTopicStat = topicStats.get(currentTopicKey);
+  const currentTopicQNum = (currentTopicStat?.indices.indexOf(currentIdx) ?? 0) + 1;
 
   // Stop TTS when question changes
   useEffect(() => {
@@ -494,8 +518,13 @@ export function CBTTestView({
               <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                 {currentQ.exam}
               </span>
-              <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                {currentQ.topicNameHindi}
+              <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 flex items-center gap-1">
+                <span>{currentQ.topicNameHindi}</span>
+                {currentTopicStat && currentTopicStat.total > 1 && (
+                  <span className="ml-1 text-amber-600 dark:text-amber-400 font-mono font-black text-[11px]">
+                    (प्र. {currentTopicQNum}/{currentTopicStat.total})
+                  </span>
+                )}
               </span>
               {getQuestionCorrectKeys(currentQ).length > 1 && (
                 <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 animate-pulse">
@@ -660,7 +689,7 @@ export function CBTTestView({
             </div>
           </div>
 
-          <div className="p-4 flex-1 overflow-y-auto space-y-4">
+          <div className="p-4 flex-1 overflow-y-auto space-y-3">
             <div className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
               <span>Question Palette</span>
               <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">
@@ -668,8 +697,52 @@ export function CBTTestView({
               </span>
             </div>
 
+            {/* Multi-Topic Filter & Breakdown in Palette */}
+            {topicBreakdown.length > 1 && (
+              <div className="space-y-1.5 p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800">
+                <div className="text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400 flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <Layers className="w-3 h-3" />
+                    <span>अध्यायवार प्रश्न ({topicBreakdown.length} Topics):</span>
+                  </span>
+                  <span className="font-mono">{totalQuestions} Qs</span>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPaletteTopic('all')}
+                    className={`px-2 py-0.5 rounded-lg text-[11px] font-bold border transition-colors ${
+                      selectedPaletteTopic === 'all'
+                        ? 'bg-amber-500 text-slate-950 border-amber-500 font-black'
+                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    सभी ({totalQuestions})
+                  </button>
+                  {topicBreakdown.map((tb) => (
+                    <button
+                      key={tb.topicKey}
+                      type="button"
+                      onClick={() => setSelectedPaletteTopic(tb.topicKey)}
+                      className={`px-2 py-0.5 rounded-lg text-[11px] font-bold border transition-colors flex items-center gap-1 ${
+                        selectedPaletteTopic === tb.topicKey
+                          ? 'bg-amber-500 text-slate-950 border-amber-500 font-black'
+                          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-amber-400'
+                      }`}
+                    >
+                      <span className="truncate max-w-[95px]">{tb.topicName.split('(')[0].trim()}</span>
+                      <span className="px-1 rounded bg-amber-500/20 text-amber-800 dark:text-amber-300 font-mono font-black text-[10px]">
+                        {tb.count}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-5 gap-2">
               {testSet.questions.map((q, idx) => {
+                const isMatchingTopic = selectedPaletteTopic === 'all' || (q.topic || 'general') === selectedPaletteTopic;
                 const r = responses[q.id];
                 const isCurrent = idx === currentIdx;
 
@@ -689,8 +762,11 @@ export function CBTTestView({
                     key={q.id}
                     onClick={() => handleJumpToQuestion(idx)}
                     className={`h-9 rounded-xl font-bold text-xs flex items-center justify-center border transition-all relative ${stateClass} ${
+                      !isMatchingTopic ? 'opacity-25 hover:opacity-100' : ''
+                    } ${
                       isCurrent ? 'ring-2 ring-amber-500 ring-offset-2 dark:ring-offset-slate-900 scale-105 z-10' : ''
                     }`}
+                    title={`${q.topicNameHindi || 'Question'} - Q${idx + 1}`}
                   >
                     <span>{idx + 1}</span>
                     {r.status === 'answered_marked_review' && (
@@ -749,6 +825,26 @@ export function CBTTestView({
               <div className="text-rose-600 font-bold">Not Answered: {notAnsweredCount}</div>
               <div>Not Visited: {notVisitedCount}</div>
             </div>
+
+            {topicBreakdown.length > 1 && (
+              <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-1.5">
+                <div className="text-[11px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>अध्यायवार प्रश्न (Topic Distribution):</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5 text-xs">
+                  {topicBreakdown.map((tb) => (
+                    <span
+                      key={tb.topicKey}
+                      className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold"
+                    >
+                      <span className="text-slate-700 dark:text-slate-300">{tb.topicName.split('(')[0].trim()}:</span>{' '}
+                      <strong className="text-amber-600 dark:text-amber-400 font-mono">{tb.count} Qs</strong>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-3 pt-2">
               <button

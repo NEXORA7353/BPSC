@@ -15,7 +15,7 @@ import { MockTestSet } from '../types';
 import { BackButton } from './BackButton';
 import { ScratchpadModal } from './ScratchpadModal';
 import { FormulaSheetModal } from './FormulaSheetModal';
-import { cleanTitleToEnglish } from '../utils/questionBankStorage';
+import { cleanTitleToEnglish, getTestTopicBreakdown } from '../utils/questionBankStorage';
 
 interface TestIntroViewProps {
   currentSet: MockTestSet;
@@ -219,7 +219,7 @@ export function TestIntroView({
           </div>
         ) : (
           <div className="flex flex-wrap items-center justify-between gap-4 p-6 glass-panel rounded-3xl">
-            <div className="space-y-1">
+            <div className="space-y-2 max-w-2xl">
               <div className="text-xs font-black uppercase tracking-widest text-amber-600 dark:text-amber-400">
                 Ready to Start Practice?
               </div>
@@ -229,6 +229,37 @@ export function TestIntroView({
               <div className="text-xs text-slate-500 dark:text-slate-400">
                 {currentSet?.totalQuestions ?? 0} Questions · {currentSet?.totalTimeMinutes ?? 20} Minutes · Negative Marking -0.33
               </div>
+
+              {/* Topic / Chapter Distribution in Selected Set */}
+              {(() => {
+                const breakdown = getTestTopicBreakdown(currentSet);
+                if (breakdown.length === 0) return null;
+                return (
+                  <div className="pt-2 border-t border-slate-200/80 dark:border-white/10 space-y-1.5">
+                    <div className="text-[11px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5" />
+                      <span>
+                        {breakdown.length > 1
+                          ? `अध्यायवार प्रश्न संख्या (${breakdown.length} Topics Combined):`
+                          : 'अध्याय (Topic):'}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {breakdown.map((item) => (
+                        <span
+                          key={item.topicKey}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 shadow-2xs"
+                        >
+                          <span className="text-blue-600 dark:text-blue-400">{item.topicName}:</span>
+                          <span className="px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-800 dark:text-amber-300 font-mono font-black text-[11px]">
+                            {item.count} Qs
+                          </span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
@@ -369,18 +400,66 @@ export function TestIntroView({
                         )}
                       </div>
 
-                      {topicBadges.length > 0 && (
-                        <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                          {topicBadges.map((badge, bIdx) => (
-                            <span
-                              key={bIdx}
-                              className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10"
-                            >
-                              {cleanTitleToEnglish(badge)}
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                      {/* Topic Breakdown with Question Counts */}
+                      {(() => {
+                        const breakdown = getTestTopicBreakdown(test);
+                        if (breakdown.length > 1) {
+                          return (
+                            <div className="p-3 rounded-2xl bg-amber-500/10 dark:bg-amber-500/5 border border-amber-500/20 space-y-1.5">
+                              <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                                <span className="flex items-center gap-1.5">
+                                  <Layers className="w-3.5 h-3.5 text-amber-500" />
+                                  <span>अध्यायवार प्रश्न संख्या ({breakdown.length} Topics):</span>
+                                </span>
+                                <span className="font-mono text-slate-500 dark:text-slate-400 font-bold">
+                                  कुल {totalQuestions} Qs
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap gap-1.5">
+                                {breakdown.map((item) => (
+                                  <span
+                                    key={item.topicKey}
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 shadow-2xs"
+                                  >
+                                    <span className="text-blue-600 dark:text-blue-400">{item.topicName}:</span>
+                                    <span className="px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-800 dark:text-amber-300 font-mono font-black text-[11px]">
+                                      {item.count} Qs
+                                    </span>
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        }
+                        if (breakdown.length === 1) {
+                          return (
+                            <div className="flex items-center gap-2 text-xs font-bold">
+                              <span className="text-[11px] uppercase tracking-wider text-slate-400">अध्याय:</span>
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold bg-slate-100 dark:bg-white/5 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-white/10">
+                                <span>{breakdown[0].topicName}</span>
+                                <span className="px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-800 dark:text-amber-300 font-mono font-black text-[11px]">
+                                  {breakdown[0].count} Qs
+                                </span>
+                              </span>
+                            </div>
+                          );
+                        }
+                        if (topicBadges.length > 0) {
+                          return (
+                            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                              {topicBadges.map((badge, bIdx) => (
+                                <span
+                                  key={bIdx}
+                                  className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10"
+                                >
+                                  {cleanTitleToEnglish(badge)}
+                                </span>
+                              ))}
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
 
                     <div className="pt-4 border-t border-slate-200 dark:border-white/10 flex items-center justify-between gap-2 relative z-10">

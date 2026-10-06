@@ -185,6 +185,21 @@ export function CustomTestModal({
     return 0;
   }, [creationMode, selectedTopicKeys, topicDistribution, handpickedIds, directParsedQuestions]);
 
+  // Topic Breakdown of Handpicked Questions
+  const handpickedTopicCounts = useMemo(() => {
+    const map = new Map<string, { key: string; name: string; count: number }>();
+    handpickedIds.forEach((id) => {
+      const q = allBankQuestions.find((item) => item.id === id);
+      if (q) {
+        const k = q.topic || 'general';
+        const name = q.topicNameHindi || q.topicName || q.topic || 'विविध गणित';
+        if (!map.has(k)) map.set(k, { key: k, name, count: 0 });
+        map.get(k)!.count++;
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => b.count - a.count);
+  }, [handpickedIds, allBankQuestions]);
+
   // SMART TITLE GENERATOR ENGINE
   const generateSmartTitle = (
     keys: string[],
@@ -958,6 +973,27 @@ export function CustomTestModal({
                   </div>
                 </div>
 
+                {/* Handpicked Topic Breakdown Pills */}
+                {handpickedTopicCounts.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-slate-200/80 dark:border-slate-800">
+                    <span className="text-[11px] font-black uppercase text-amber-700 dark:text-amber-400 flex items-center gap-1">
+                      <Layers className="w-3.5 h-3.5" />
+                      <span>चयनित अध्याय ({handpickedTopicCounts.length}):</span>
+                    </span>
+                    {handpickedTopicCounts.map((t) => (
+                      <span
+                        key={t.key}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xs text-slate-800 dark:text-slate-200"
+                      >
+                        <span className="text-blue-600 dark:text-blue-400">{t.name.split('(')[0].trim()}:</span>
+                        <strong className="px-1 rounded bg-amber-500/20 text-amber-800 dark:text-amber-300 font-mono text-[11px]">
+                          {t.count} Qs
+                        </strong>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800">
                     Fresh (Unused):
@@ -1353,15 +1389,31 @@ export function CustomTestModal({
 
         {/* Footer */}
         <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/90 flex items-center justify-between gap-3 shrink-0">
-          <div className="text-xs font-bold text-slate-700 dark:text-slate-300">
-            Total Test Size:{' '}
-            <span className="text-blue-600 dark:text-blue-400 font-extrabold text-sm">
-              {totalQuestionsCount} Questions
-            </span>{' '}
-            ·{' '}
-            <span className="text-emerald-600 dark:text-emerald-400">
-              {timeMode === 'auto' ? totalQuestionsCount : customTimeMinutes} Minutes
-            </span>
+          <div className="text-xs font-bold text-slate-700 dark:text-slate-300 space-y-0.5">
+            <div>
+              Total Test Size:{' '}
+              <span className="text-blue-600 dark:text-blue-400 font-extrabold text-sm">
+                {totalQuestionsCount} Questions
+              </span>{' '}
+              ·{' '}
+              <span className="text-emerald-600 dark:text-emerald-400">
+                {timeMode === 'auto' ? totalQuestionsCount : customTimeMinutes} Minutes
+              </span>
+            </div>
+            {creationMode === 'topic_distribution' && selectedTopicKeys.some((k) => (topicDistribution[k] || 0) > 0) && (
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium truncate max-w-md">
+                Topics:{' '}
+                {selectedTopicKeys
+                  .filter((k) => (topicDistribution[k] || 0) > 0)
+                  .map((k) => `${registeredTopics.find((t) => t.key === k)?.labelHindi.split('(')[0].trim()}: ${topicDistribution[k]} Qs`)
+                  .join(' • ')}
+              </div>
+            )}
+            {creationMode === 'handpick' && handpickedTopicCounts.length > 0 && (
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium truncate max-w-md">
+                Topics: {handpickedTopicCounts.map((t) => `${t.name.split('(')[0].trim()}: ${t.count} Qs`).join(' • ')}
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-2">

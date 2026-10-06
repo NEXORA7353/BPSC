@@ -859,6 +859,57 @@ export function getTestsForTopic(
   });
 }
 
+export interface TestTopicBreakdownItem {
+  topicKey: string;
+  topicName: string;
+  count: number;
+  percentage: number;
+}
+
+export function getTestTopicBreakdown(test?: MockTestSet | null): TestTopicBreakdownItem[] {
+  if (!test) return [];
+
+  // 1. If questions array exists and has elements, calculate directly from actual questions
+  if (Array.isArray(test.questions) && test.questions.length > 0) {
+    const map = new Map<string, { topicName: string; count: number }>();
+    const registered = getAllRegisteredTopics();
+    const registeredMap = new Map(registered.map((r) => [r.key, r.labelHindi]));
+
+    for (const q of test.questions) {
+      if (!q) continue;
+      const key = q.topic || 'general';
+      const name = q.topicNameHindi || registeredMap.get(key) || q.topicName || q.topic || 'विविध गणित';
+      if (!map.has(key)) {
+        map.set(key, { topicName: name, count: 0 });
+      }
+      map.get(key)!.count += 1;
+    }
+
+    const total = test.questions.length;
+    return Array.from(map.entries())
+      .map(([topicKey, val]) => ({
+        topicKey,
+        topicName: val.topicName,
+        count: val.count,
+        percentage: Math.round((val.count / total) * 100)
+      }))
+      .sort((a, b) => b.count - a.count);
+  }
+
+  // 2. Fallback to topicBreakdown array if stored
+  if (Array.isArray(test.topicBreakdown) && test.topicBreakdown.length > 0) {
+    const total = test.topicBreakdown.reduce((sum, s) => sum + (s.count || 0), 0) || test.totalQuestions || 1;
+    return test.topicBreakdown.map((tb) => ({
+      topicKey: tb.topicKey,
+      topicName: tb.label,
+      count: tb.count,
+      percentage: Math.round((tb.count / total) * 100)
+    }));
+  }
+
+  return [];
+}
+
 export function getUsedQuestionsInfo(): {
   usedIds: Set<string>;
   usedTextSet: Set<string>;
