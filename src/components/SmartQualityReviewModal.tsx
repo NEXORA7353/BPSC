@@ -24,6 +24,7 @@ import {
   autoHealQuestion
 } from '../utils/questionQualityAudit';
 import { getQuestionCorrectKeys, getQuestionCorrectDisplay } from '../utils/questionBankStorage';
+import { Question } from '../types';
 import { MathText } from './MathText';
 
 interface SmartQualityReviewModalProps {
@@ -464,7 +465,7 @@ export function SmartQualityReviewModal({
 
                       {/* Options Grid */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {(Array.isArray(editForm.options) ? editForm.options : []).map((opt, oIdx) => {
+                        {(Array.isArray(editForm.options) ? editForm.options : []).map((opt: any, oIdx: number) => {
                           const isBlank = !opt.text || opt.text.trim() === '';
                           return (
                             <div key={opt.key || oIdx} className="space-y-1">

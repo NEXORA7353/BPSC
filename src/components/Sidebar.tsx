@@ -25,8 +25,8 @@ import { ThemeMode } from '../types';
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
-  activeView: 'intro' | 'testing' | 'results' | 'bank' | 'history' | 'progress';
-  onNavigateView: (view: 'intro' | 'testing' | 'results' | 'bank' | 'history' | 'progress') => void;
+  activeView: 'intro' | 'testing' | 'results' | 'bank' | 'create-test' | 'bulk-import' | 'history' | 'progress';
+  onNavigateView: (view: 'intro' | 'testing' | 'results' | 'bank' | 'create-test' | 'bulk-import' | 'history' | 'progress') => void;
   onOpenRules: () => void;
   onOpenCustomTest: () => void;
   onOpenBulkImport: () => void;
@@ -281,7 +281,11 @@ export function Sidebar({
                 onOpenCustomTest();
                 onClose();
               }}
-              className="w-full p-2.5 rounded-xl font-bold text-xs flex items-center justify-between text-slate-300 hover:bg-white/5 hover:text-white transition-all"
+              className={`w-full p-2.5 rounded-xl font-bold text-xs flex items-center justify-between transition-all ${
+                activeView === 'create-test'
+                  ? 'bg-gradient-to-r from-blue-500/20 to-indigo-500/20 border border-blue-500/40 text-blue-300 shadow-sm'
+                  : 'text-slate-300 hover:bg-white/5 hover:text-white'
+              }`}
             >
               <div className="flex items-center gap-3">
                 <PlusCircle className="w-4 h-4 text-blue-400" />
@@ -295,7 +299,11 @@ export function Sidebar({
                 onOpenBulkImport();
                 onClose();
               }}
-              className="w-full p-2.5 rounded-xl font-bold text-xs flex items-center justify-between text-slate-300 hover:bg-white/5 hover:text-white transition-all"
+              className={`w-full p-2.5 rounded-xl font-bold text-xs flex items-center justify-between transition-all ${
+                activeView === 'bulk-import'
+                  ? 'bg-gradient-to-r from-indigo-500/20 to-purple-500/20 border border-indigo-500/40 text-indigo-300 shadow-sm'
+                  : 'text-slate-300 hover:bg-white/5 hover:text-white'
+              }`}
             >
               <div className="flex items-center gap-3">
                 <Sparkles className="w-4 h-4 text-indigo-400" />

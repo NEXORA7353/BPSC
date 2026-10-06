@@ -40,7 +40,7 @@ interface TopBarProps {
   isTesting: boolean;
   theme: ThemeMode;
   onToggleTheme: () => void;
-  activeView: 'intro' | 'testing' | 'results' | 'bank' | 'history' | 'progress';
+  activeView: 'intro' | 'testing' | 'results' | 'bank' | 'create-test' | 'bulk-import' | 'history' | 'progress';
   totalQuestionsCount?: number;
   userName?: string;
 }
@@ -141,7 +141,11 @@ export function TopBar({
 
             <button
               onClick={onOpenCustomTest}
-              className="px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition-all flex items-center gap-1.5"
+              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
+                activeView === 'create-test'
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold'
+                  : 'text-slate-400 hover:text-white'
+              }`}
             >
               <Shuffle className="w-3.5 h-3.5 text-amber-400" />
               <span>Custom Test</span>
@@ -161,10 +165,14 @@ export function TopBar({
 
             <button
               onClick={onOpenBulkImport}
-              className="px-3 py-1.5 rounded-lg text-indigo-400 hover:text-white transition-all flex items-center gap-1.5 font-bold"
+              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 font-bold ${
+                activeView === 'bulk-import'
+                  ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
+                  : 'text-indigo-400 hover:text-white'
+              }`}
             >
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Bulk Paste</span>
+              <span>Bulk Import</span>
             </button>
           </nav>
         )}

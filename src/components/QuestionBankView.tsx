@@ -8,7 +8,6 @@ import {
   ChevronDown,
   ChevronUp,
   Trash2,
-  ArrowLeft,
   FileDown,
   Upload,
   CheckCircle2,
@@ -17,9 +16,19 @@ import {
   RefreshCw,
   Edit2,
   Cloud,
-  Calendar,
+  Layers,
   Image as ImageIcon,
-  AlertTriangle
+  AlertTriangle,
+  ArrowRight,
+  Check,
+  RotateCcw,
+  SlidersHorizontal,
+  Wand2,
+  Copy,
+  FolderOpen,
+  ShieldCheck,
+  Zap,
+  HelpCircle
 } from 'lucide-react';
 import { Question, RegisteredTopic } from '../types';
 import {
@@ -35,11 +44,11 @@ import {
   saveCustomQuestions,
   updateQuestionInBank,
   getQuestionCorrectKeys,
-  getQuestionCorrectDisplay
+  getQuestionCorrectDisplay,
+  registerNewTopic
 } from '../utils/questionBankStorage';
-import { syncFromFirestore, seedAllQuestionsToCloud, clearCloudDatabase } from '../services/firebaseSyncService';
-import { auditQuestionBatch } from '../utils/questionQualityAudit';
-import { SmartQualityReviewModal } from './SmartQualityReviewModal';
+import { syncFromFirestore, seedAllQuestionsToCloud } from '../services/firebaseSyncService';
+import { auditQuestionBatch, autoHealQuestion } from '../utils/questionQualityAudit';
 import { MathText } from './MathText';
 import { BackButton } from './BackButton';
 import { ImageKitUploadModal } from './ImageKitUploadModal';
@@ -47,7 +56,7 @@ import { ImageKitUploadModal } from './ImageKitUploadModal';
 interface QuestionBankViewProps {
   onBackToTests: () => void;
   onOpenBulkImport: (topicKey?: string) => void;
-  onOpenCustomTest: () => void;
+  onOpenCustomTest: (topicKey?: string) => void;
 }
 
 export function QuestionBankView({
@@ -55,6 +64,9 @@ export function QuestionBankView({
   onOpenBulkImport,
   onOpenCustomTest
 }: QuestionBankViewProps) {
+  // Navigation Tabs: 'browse' | 'chapters' | 'audit' | 'data'
+  const [activeTab, setActiveTab] = useState<'browse' | 'chapters' | 'audit' | 'data'>('browse');
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTopic, setSelectedTopic] = useState<string>('all');
@@ -66,12 +78,23 @@ export function QuestionBankView({
   const [registeredTopics, setRegisteredTopics] = useState<RegisteredTopic[]>(() => getAllRegisteredTopics());
   const [dbNotification, setDbNotification] = useState<string | null>(null);
   const [isImageKitModalOpen, setIsImageKitModalOpen] = useState(false);
-  const [isBankAuditOpen, setIsBankAuditOpen] = useState(false);
+  const [isCloudSyncing, setIsCloudSyncing] = useState(false);
 
-  const bankAuditReport = useMemo(
-    () => auditQuestionBatch(allQuestions),
-    [allQuestions]
-  );
+  // In-line Chapter Creator
+  const [isAddingTopic, setIsAddingTopic] = useState(false);
+  const [newTopicHindi, setNewTopicHindi] = useState('');
+  const [newTopicEnglish, setNewTopicEnglish] = useState('');
+
+  // In-line Edit Question State
+  const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
+  const [editingFormState, setEditingFormState] = useState<Question | null>(null);
+
+  // Bank Quality Audit
+  const bankAuditReport = useMemo(() => auditQuestionBatch(allQuestions), [allQuestions]);
+  const cleanPercentage = useMemo(() => {
+    if (bankAuditReport.totalQuestions === 0) return 100;
+    return Math.round((bankAuditReport.healthyCount / bankAuditReport.totalQuestions) * 100);
+  }, [bankAuditReport]);
 
   const refreshData = () => {
     setAllQuestions(getAllQuestionBank());
@@ -93,9 +116,41 @@ export function QuestionBankView({
     };
   }, []);
 
-  const [isCloudSyncing, setIsCloudSyncing] = useState(false);
-  const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
-  const [editingFormState, setEditingFormState] = useState<Question | null>(null);
+  // Stats calculation
+  const statsByTopic = useMemo(() => {
+    const counts: Record<string, number> = {};
+    allQuestions.forEach((q) => {
+      const k = q.topic || 'custom';
+      counts[k] = (counts[k] || 0) + 1;
+    });
+    return counts;
+  }, [allQuestions]);
+
+  // Filtered Questions in Browse tab
+  const filteredQuestions = useMemo(() => {
+    return allQuestions.filter((q) => {
+      const matchesTopic = selectedTopic === 'all' || q.topic === selectedTopic;
+      const matchesBookmark = !onlyBookmarked || bookmarkedIds.includes(q.id);
+      const query = searchTerm.trim().toLowerCase();
+      const matchesSearch =
+        query === '' ||
+        q.questionText.toLowerCase().includes(query) ||
+        q.explanation.toLowerCase().includes(query) ||
+        (q.topicNameHindi && q.topicNameHindi.toLowerCase().includes(query)) ||
+        (q.exam && q.exam.toLowerCase().includes(query));
+      return matchesTopic && matchesBookmark && matchesSearch;
+    });
+  }, [allQuestions, selectedTopic, onlyBookmarked, bookmarkedIds, searchTerm]);
+
+  // Actions
+  const handleToggleBookmark = (id: string) => {
+    toggleBookmarkQuestion(id);
+    setBookmarkedIds(getBookmarkedIds());
+  };
+
+  const toggleExpandSolution = (id: string) => {
+    setExpandedSolutions((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
 
   const handleStartEditQuestion = (q: Question) => {
     setEditingQuestionId(q.id);
@@ -106,112 +161,61 @@ export function QuestionBankView({
     });
   };
 
-  const handleToggleFormCorrectKey = (key: 'a' | 'b' | 'c' | 'd' | 'e') => {
-    if (!editingFormState) return;
-    const currentKeys = getQuestionCorrectKeys(editingFormState);
-    let nextKeys: ('a' | 'b' | 'c' | 'd' | 'e')[];
-    if (currentKeys.includes(key)) {
-      nextKeys = currentKeys.length > 1 ? currentKeys.filter((k) => k !== key) : currentKeys;
-    } else {
-      nextKeys = [...currentKeys, key];
-    }
-    setEditingFormState({
-      ...editingFormState,
-      correctOption: nextKeys.join(','),
-      correctOptions: nextKeys
-    });
-  };
-
   const handleSaveQuestionEdit = () => {
     if (!editingFormState) return;
     updateQuestionInBank(editingFormState);
     setEditingQuestionId(null);
     setEditingFormState(null);
     refreshData();
-    setDbNotification('प्रश्न सफलतापूर्वक संशोधित (Updated) किया गया!');
+    setDbNotification('प्रश्न सफलतापूर्वक अपडेट हुआ!');
     setTimeout(() => setDbNotification(null), 3000);
   };
 
-  const handleCloudSync = async () => {
-    setIsCloudSyncing(true);
-    try {
-      await syncFromFirestore();
-      refreshData();
-      setDbNotification('Successfully synced with Firestore Cloud Database!');
-    } catch {
-      setDbNotification('Cloud sync failed.');
-    } finally {
-      setIsCloudSyncing(false);
-      setTimeout(() => setDbNotification(null), 3500);
-    }
-  };
-
-  const handleToggleBookmark = (id: string) => {
-    toggleBookmarkQuestion(id);
-    setBookmarkedIds(getBookmarkedIds());
-  };
-
-  const handleDelete = (id: string) => {
-    if (window.confirm('Delete this question from your Question Bank?')) {
+  const handleDeleteSingleQuestion = (id: string) => {
+    if (window.confirm('क्या आप वाकई इस प्रश्न को हटाना चाहते हैं?')) {
       deleteCustomQuestion(id);
-      setSelectedIds((prev) => prev.filter((item) => item !== id));
       refreshData();
+      setDbNotification('प्रश्न हटाया गया!');
+      setTimeout(() => setDbNotification(null), 3000);
     }
   };
 
-  const handleToggleSelectAll = () => {
-    if (selectedIds.length === filteredQuestions.length && filteredQuestions.length > 0) {
-      setSelectedIds([]);
-    } else {
-      setSelectedIds(filteredQuestions.map((q) => q.id));
-    }
-  };
-
-  const handleToggleSelectOne = (id: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    );
-  };
-
-  const handleBulkDelete = () => {
+  const handleBatchDelete = () => {
     if (selectedIds.length === 0) return;
-    if (
-      window.confirm(
-        `क्या आप सचमुच इन ${selectedIds.length} चुने हुए प्रश्नों को हटाना चाहते हैं?\n(Are you sure you want to permanently delete ${selectedIds.length} selected questions?)`
-      )
-    ) {
-      deleteMultipleQuestions(selectedIds);
-      const count = selectedIds.length;
+    if (window.confirm(`क्या आप चयनित ${selectedIds.length} प्रश्नों को हटाना चाहते हैं?`)) {
+      const count = deleteMultipleQuestions(selectedIds);
       setSelectedIds([]);
       refreshData();
-      setDbNotification(`Successfully deleted ${count} questions from Question Bank!`);
-      setTimeout(() => setDbNotification(null), 3500);
+      setDbNotification(`${count} प्रश्न हटाए गए!`);
+      setTimeout(() => setDbNotification(null), 3000);
     }
   };
 
-  const toggleSolution = (id: string) => {
-    setExpandedSolutions((prev) => ({
-      ...prev,
-      [id]: !prev[id]
-    }));
+  const handleCreateNewChapter = () => {
+    if (!newTopicHindi.trim()) return;
+    registerNewTopic('', newTopicHindi, newTopicEnglish || newTopicHindi);
+    setRegisteredTopics(getAllRegisteredTopics());
+    setIsAddingTopic(false);
+    setNewTopicHindi('');
+    setNewTopicEnglish('');
+    setDbNotification(`नया अध्याय "${newTopicHindi}" पंजीकृत हुआ!`);
+    setTimeout(() => setDbNotification(null), 3000);
   };
 
-  // Full Database Export
   const handleExportDb = () => {
     const jsonStr = exportFullDatabaseJson();
     const blob = new Blob([jsonStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `bpsc_tre4_full_database_backup_${Date.now()}.json`;
-    a.click();
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `BPSC_QuestionBank_Backup_${Date.now()}.json`;
+    link.click();
     URL.revokeObjectURL(url);
-    setDbNotification('Database backup exported successfully!');
+    setDbNotification('डेटाबेस JSON बैकअप डाउनलोड हुआ!');
     setTimeout(() => setDbNotification(null), 3000);
   };
 
-  // Full Database Import
-  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportDb = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
@@ -220,579 +224,834 @@ export function QuestionBankView({
       const res = importFullDatabaseJson(content);
       if (res.success) {
         refreshData();
-        setDbNotification('Database imported & restored successfully!');
+        setDbNotification(`डेटाबेस रिस्टोर सफल: ${res.message}`);
       } else {
-        alert(res.message);
+        alert('डेटाबेस रिस्टोर विफल: ' + res.message);
       }
-      setTimeout(() => setDbNotification(null), 3000);
+      setTimeout(() => setDbNotification(null), 4000);
     };
     reader.readAsText(file);
-    if (e.target) e.target.value = '';
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // Clear Entire Database
-  const handleClearDatabase = async () => {
-    if (
-      window.confirm(
-        'चेतावनी: क्या आप पूरा डेटाबेस खाली (Wipe/Clear All Data) करना चाहते हैं?\n(WARNING: This will permanently delete all custom questions, mock tests, attempt history, and bookmarks. This action cannot be undone!)'
-      )
-    ) {
-      await clearCloudDatabase();
+  const handleClearDatabase = () => {
+    const conf = window.prompt(
+      'चेतावनी: यह संपूर्ण डेटाबेस साफ़ कर देगा! जारी रखने के लिए "CLEAR" टाइप करें:'
+    );
+    if (conf === 'CLEAR') {
       clearEntireDatabase();
       refreshData();
-      setDbNotification('पूरा डेटाबेस सफलतापूर्वक साफ़ (Database Cleared) हो गया है!');
+      setDbNotification('डेटाबेस पूरी तरह साफ़ कर दिया गया है!');
       setTimeout(() => setDbNotification(null), 4000);
     }
   };
 
-  const filteredQuestions = useMemo(() => {
-    return allQuestions.filter((q) => {
-      if (!q) return false;
-      const searchLower = searchTerm.toLowerCase();
-      const textMatch = String(q.questionText || '').toLowerCase().includes(searchLower);
-      const examMatch = String(q.exam || '').toLowerCase().includes(searchLower);
-      const expMatch = q.explanation ? String(q.explanation).toLowerCase().includes(searchLower) : false;
-      const matchesSearch = !searchTerm || textMatch || examMatch || expMatch;
+  const handleCloudSync = async () => {
+    setIsCloudSyncing(true);
+    try {
+      await syncFromFirestore();
+      refreshData();
+      setDbNotification('Google Firestore क्लाउड डेटाबेस सिंक सफल!');
+    } catch (err: any) {
+      alert('क्लाउड सिंक विफल: ' + (err?.message || 'अज्ञात त्रुटि'));
+    } finally {
+      setIsCloudSyncing(false);
+      setTimeout(() => setDbNotification(null), 3000);
+    }
+  };
 
-      const matchesTopic = selectedTopic === 'all' || q.topic === selectedTopic;
-      const matchesBookmark = !onlyBookmarked || bookmarkedIds.includes(q.id);
-
-      return matchesSearch && matchesTopic && matchesBookmark;
-    });
-  }, [allQuestions, searchTerm, selectedTopic, onlyBookmarked, bookmarkedIds]);
-
-  // Topic metrics
-  const statsByTopic = useMemo(() => {
-    const counts: Record<string, number> = { all: allQuestions.length };
-    allQuestions.forEach((q) => {
-      counts[q.topic] = (counts[q.topic] || 0) + 1;
-    });
-    return counts;
-  }, [allQuestions]);
+  const handleAutoHealAuditIssues = () => {
+    const healed = allQuestions.map((q) => autoHealQuestion(q));
+    saveCustomQuestions(healed);
+    refreshData();
+    setDbNotification('सभी प्रश्नों की गुणवत्ता स्वतः ठीक कर दी गई!');
+    setTimeout(() => setDbNotification(null), 3000);
+  };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 text-slate-900 dark:text-slate-100 font-sans">
-      {/* Hidden File Input for Database Import */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleImportFile}
-        accept=".json"
-        className="hidden"
-      />
+    <div className="min-h-screen bg-app-canvas grid-lines-44 text-slate-900 dark:text-slate-100 font-sans pb-24 transition-colors duration-200">
+      {/* Top Header & Breadcrumb */}
+      <div className="border-b border-slate-200 dark:border-white/10 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl sticky top-0 z-30 shadow-xs">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <BackButton onClick={onBackToTests} label="Back to Tests" variant="compact" />
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-lg sm:text-xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+                    <BookOpen className="w-5 h-5 text-indigo-500" />
+                    <span>BPSC Question Bank Repository</span>
+                  </h1>
+                  <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 uppercase tracking-wider">
+                    {allQuestions.length} Questions
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Search, manage, edit, and organize authentic BPSC TRE & Bihar STET mathematics questions
+                </p>
+              </div>
+            </div>
 
-      {/* Top Header Card */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
-        <div className="space-y-2">
-          <BackButton onClick={onBackToTests} label="Back to Mock Tests / वापस" variant="subtle" />
+            {/* Two Primary Action CTAs */}
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => onOpenBulkImport(selectedTopic !== 'all' ? selectedTopic : undefined)}
+                className="px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-black text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/20 transition-all active:scale-95 flex items-center gap-2"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>Bulk Import Questions</span>
+              </button>
 
-          <h1 className="text-xl sm:text-2xl font-black tracking-tight flex flex-wrap items-center gap-2.5">
-            <span>Question Repository & Database</span>
-            <span className="text-xs font-mono font-bold px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-300 border border-blue-200 dark:border-blue-900">
-              {allQuestions.length} Questions
-            </span>
-            <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1.5" title="Firestore Cloud Database Active - No Sign In Needed">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>Cloud Auto-Sync Live</span>
-            </span>
-          </h1>
-
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Browse, search, edit, bookmark, or import authentic questions across all mathematics topics
-          </p>
-        </div>
-
-        {/* Action Controls */}
-        <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
-          <button
-            onClick={() => onOpenBulkImport(selectedTopic !== 'all' ? selectedTopic : undefined)}
-            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md transition-all active:scale-95"
-          >
-            <Sparkles className="w-4 h-4" />
-            <span>Bulk Paste / Import</span>
-          </button>
-
-          <button
-            onClick={() => setIsImageKitModalOpen(true)}
-            title="Upload Diagram/PNG to ImageKit CDN"
-            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors text-xs sm:text-sm font-bold shadow-2xs active:scale-95"
-          >
-            <ImageIcon className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            <span>Upload Diagram</span>
-          </button>
-
-          <button
-            onClick={onOpenCustomTest}
-            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-md transition-all active:scale-95"
-          >
-            <Shuffle className="w-4 h-4" />
-            <span>Create Custom Test</span>
-          </button>
-
-          {/* Smart Quality & Duplicate Audit Button */}
-          <button
-            onClick={() => setIsBankAuditOpen(true)}
-            title="Scan & Clean Duplicates or Blank Explanations (डुप्लीकेट व अधूरी व्याख्या स्कैन व साफ़ करें)"
-            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors text-xs sm:text-sm font-bold shadow-2xs active:scale-95"
-          >
-            <AlertTriangle className={`w-4 h-4 text-amber-600 dark:text-amber-400 ${bankAuditReport.problemCount > 0 ? 'animate-pulse' : ''}`} />
-            <span>Audit & Clean ({bankAuditReport.problemCount})</span>
-          </button>
-
-          {/* Backup Export Button */}
-          <button
-            onClick={handleExportDb}
-            title="Download / Backup Database to JSON (डेटाबेस बैकअप डाउनलोड करें)"
-            className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-xs font-bold shadow-2xs"
-          >
-            <FileDown className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            <span className="hidden lg:inline">Backup</span>
-          </button>
-
-          {/* Backup Restore Button */}
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            title="Restore Database from JSON File (बैकअप रिस्टोर करें)"
-            className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-xs font-bold shadow-2xs"
-          >
-            <Upload className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-            <span className="hidden lg:inline">Restore</span>
-          </button>
-
-          {/* Clear Entire Database Button */}
-          <button
-            onClick={handleClearDatabase}
-            title="Wipe & Clear Entire Database (सभी प्रश्न और टेस्ट हटाएँ)"
-            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition-colors text-xs font-bold shadow-xs active:scale-95"
-          >
-            <Trash2 className="w-4 h-4 text-rose-600 dark:text-rose-400" />
-            <span>Clear Database</span>
-          </button>
-
-          {/* Cloud Sync Button */}
-          <button
-            onClick={handleCloudSync}
-            disabled={isCloudSyncing}
-            title="Sync with Firestore Cloud Database"
-            className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors text-xs font-bold shadow-2xs disabled:opacity-50"
-          >
-            <Cloud className={`w-4 h-4 text-emerald-600 dark:text-emerald-400 ${isCloudSyncing ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">{isCloudSyncing ? 'Syncing...' : 'Cloud Sync'}</span>
-          </button>
+              <button
+                type="button"
+                onClick={() => onOpenCustomTest(selectedTopic !== 'all' ? selectedTopic : undefined)}
+                className="px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-black text-slate-950 bg-amber-400 hover:bg-amber-300 shadow-md shadow-amber-400/20 transition-all active:scale-95 flex items-center gap-2"
+              >
+                <Shuffle className="w-4 h-4 fill-slate-950" />
+                <span>Create Custom Test</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Notification Toast */}
       {dbNotification && (
-        <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-xs font-bold text-emerald-800 dark:text-emerald-200 flex items-center gap-2 animate-in fade-in">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span>{dbNotification}</span>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-4">
+          <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-sm font-bold flex items-center gap-2 animate-in fade-in">
+            <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+            <span>{dbNotification}</span>
+          </div>
         </div>
       )}
 
-      {/* Filter and Search Bar */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          {/* Search Box */}
-          <div className="flex-1 relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search questions in Hindi or English (ल.स., प्रतिशत, क्रय मूल्य, STET 2024)..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl pl-10 pr-4 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500 font-medium"
-            />
+      {/* Main Container */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-8 space-y-8">
+        {/* 4 Stats Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="glass-panel p-4 rounded-2xl">
+            <div className="text-[10px] font-black uppercase text-slate-400">Total Questions</div>
+            <div className="text-2xl sm:text-3xl font-black font-mono text-indigo-600 dark:text-indigo-400 mt-1">
+              {allQuestions.length}
+            </div>
+            <div className="text-[11px] text-slate-500 mt-0.5">In Master Question Bank</div>
           </div>
 
-          {/* Bookmarked Filter */}
+          <div className="glass-panel p-4 rounded-2xl">
+            <div className="text-[10px] font-black uppercase text-slate-400">Chapters Registered</div>
+            <div className="text-2xl sm:text-3xl font-black font-mono text-amber-500 mt-1">
+              {registeredTopics.length}
+            </div>
+            <div className="text-[11px] text-slate-500 mt-0.5">Mathematics Topics</div>
+          </div>
+
+          <div className="glass-panel p-4 rounded-2xl">
+            <div className="text-[10px] font-black uppercase text-slate-400">Bookmarked</div>
+            <div className="text-2xl sm:text-3xl font-black font-mono text-emerald-500 mt-1">
+              {bookmarkedIds.length}
+            </div>
+            <div className="text-[11px] text-slate-500 mt-0.5">Saved for Practice</div>
+          </div>
+
+          <div className="glass-panel p-4 rounded-2xl">
+            <div className="text-[10px] font-black uppercase text-slate-400">Quality Health</div>
+            <div className="text-2xl sm:text-3xl font-black font-mono text-teal-500 mt-1">
+              {cleanPercentage}%
+            </div>
+            <div className="text-[11px] text-slate-500 mt-0.5">
+              {bankAuditReport.problemCount === 0 ? 'Zero Issues' : `${bankAuditReport.problemCount} Issues to Fix`}
+            </div>
+          </div>
+        </div>
+
+        {/* Tab Navigation Strip (Uncongested, Clean Tabs) */}
+        <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-xs font-bold">
           <button
-            onClick={() => setOnlyBookmarked(!onlyBookmarked)}
-            className={`inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold border transition-colors shrink-0 ${
-              onlyBookmarked
-                ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300 border-amber-300 dark:border-amber-700'
-                : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+            type="button"
+            onClick={() => setActiveTab('browse')}
+            className={`px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 ${
+              activeTab === 'browse'
+                ? 'bg-indigo-600 text-white shadow-xs font-black'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-white/10'
             }`}
           >
-            <Bookmark className={`w-4 h-4 ${onlyBookmarked ? 'fill-amber-500 text-amber-500' : ''}`} />
-            <span>Bookmarked ({bookmarkedIds.length})</span>
+            <Search className="w-4 h-4" />
+            <span>1. Browse Questions ({allQuestions.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('chapters')}
+            className={`px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 ${
+              activeTab === 'chapters'
+                ? 'bg-indigo-600 text-white shadow-xs font-black'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-white/10'
+            }`}
+          >
+            <Layers className="w-4 h-4" />
+            <span>2. Chapters & Syllabus ({registeredTopics.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('audit')}
+            className={`px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 ${
+              activeTab === 'audit'
+                ? 'bg-indigo-600 text-white shadow-xs font-black'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-white/10'
+            }`}
+          >
+            <AlertTriangle className={`w-4 h-4 ${bankAuditReport.problemCount > 0 ? 'text-amber-500 animate-pulse' : ''}`} />
+            <span>3. Quality Audit & Clean ({bankAuditReport.problemCount})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('data')}
+            className={`px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 ${
+              activeTab === 'data'
+                ? 'bg-indigo-600 text-white shadow-xs font-black'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-white/10'
+            }`}
+          >
+            <Database className="w-4 h-4" />
+            <span>4. Cloud Sync & Backup Studio</span>
           </button>
         </div>
 
-        {/* Dynamic Registered Topics Pills */}
-        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
-          <button
-            onClick={() => setSelectedTopic('all')}
-            className={`px-3.5 py-1.5 rounded-xl font-bold transition-all ${
-              selectedTopic === 'all'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-            }`}
-          >
-            All Topics ({allQuestions.length})
-          </button>
+        {/* ======================================================== */}
+        {/* TAB 1: BROWSE QUESTIONS REPOSITORY                       */}
+        {/* ======================================================== */}
+        {activeTab === 'browse' && (
+          <div className="space-y-6 animate-in fade-in duration-300">
+            {/* Search & Filter Bar */}
+            <div className="glass-panel p-5 rounded-3xl space-y-4">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <div className="flex-1 relative">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Search in Hindi or English (ल.स., प्रतिशत, क्रय मूल्य, STET 2024)..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl pl-10 pr-4 py-3 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-hidden font-medium"
+                  />
+                </div>
 
-          {registeredTopics.map((topic) => {
-            const count = statsByTopic[topic.key] || 0;
-            return (
-              <button
-                key={topic.key}
-                onClick={() => setSelectedTopic(topic.key)}
-                className={`px-3.5 py-1.5 rounded-xl font-bold transition-all ${
-                  selectedTopic === topic.key
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-                }`}
-              >
-                {topic.labelEnglish} ({count})
-              </button>
-            );
-          })}
-        </div>
-      </div>
+                <button
+                  type="button"
+                  onClick={() => setOnlyBookmarked(!onlyBookmarked)}
+                  className={`px-4 py-3 rounded-2xl border text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-colors shrink-0 ${
+                    onlyBookmarked
+                      ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500'
+                      : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10'
+                  }`}
+                >
+                  <Bookmark className={`w-4 h-4 ${onlyBookmarked ? 'fill-amber-500' : ''}`} />
+                  <span>Bookmarked Only ({bookmarkedIds.length})</span>
+                </button>
+              </div>
 
-      {/* Results & Bulk Action Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 dark:bg-slate-900/80 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 text-xs font-semibold px-4">
-        <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-800 dark:text-slate-200">
-            <input
-              type="checkbox"
-              checked={filteredQuestions.length > 0 && selectedIds.length === filteredQuestions.length}
-              onChange={handleToggleSelectAll}
-              className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 cursor-pointer"
-            />
-            <span>Select All ({filteredQuestions.length})</span>
-          </label>
-          <span className="text-slate-400">|</span>
-          <span className="text-slate-500 dark:text-slate-400">
-            Showing {filteredQuestions.length} of {allQuestions.length} Questions
-          </span>
-        </div>
+              {/* Chapter Filter Pills */}
+              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-200 dark:border-white/10 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setSelectedTopic('all')}
+                  className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
+                    selectedTopic === 'all'
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                  }`}
+                >
+                  All Topics ({allQuestions.length})
+                </button>
 
-        <div className="flex items-center gap-2">
-          {selectedIds.length > 0 && (
-            <button
-              onClick={handleBulkDelete}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-sm transition-all active:scale-95 animate-in fade-in"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>Delete Selected ({selectedIds.length})</span>
-            </button>
-          )}
+                {registeredTopics.map((topic) => {
+                  const count = statsByTopic[topic.key] || 0;
+                  return (
+                    <button
+                      key={topic.key}
+                      type="button"
+                      onClick={() => setSelectedTopic(topic.key)}
+                      className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
+                        selectedTopic === topic.key
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : 'bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                      }`}
+                    >
+                      {topic.labelHindi} ({count})
+                    </button>
+                  );
+                })}
+              </div>
 
-          {searchTerm && (
-            <button
-              onClick={() => setSearchTerm('')}
-              className="text-blue-600 dark:text-blue-400 hover:underline"
-            >
-              Clear Search
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Questions List */}
-      <div className="space-y-4">
-        {filteredQuestions.length === 0 ? (
-          <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800">
-            <BookOpen className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-            <h3 className="font-bold text-base text-slate-800 dark:text-slate-200">No questions found</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Try changing the search keywords, topic tabs, or click "Bulk Paste / Import" to add questions from PDFs.
-            </p>
-          </div>
-        ) : (
-          filteredQuestions.map((q, idx) => {
-            const isBookmarked = bookmarkedIds.includes(q.id);
-            const isSelected = selectedIds.includes(q.id);
-            const isSolExpanded = expandedSolutions[q.id];
-
-            return (
-              <div
-                key={q.id}
-                className={`bg-white dark:bg-slate-900 border rounded-3xl p-5 sm:p-6 shadow-sm space-y-4 transition-all ${
-                  isSelected
-                    ? 'border-blue-500 ring-2 ring-blue-500/20 bg-blue-50/20 dark:bg-blue-950/20'
-                    : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-                }`}
-              >
-                {/* Header */}
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-                  <div className="flex flex-wrap items-center gap-2.5">
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => handleToggleSelectOne(q.id)}
-                      className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                      title="Select question"
-                    />
-                    <span className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono font-bold text-xs flex items-center justify-center">
-                      #{idx + 1}
-                    </span>
-                    <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-900">
-                      {q.topicNameHindi}
-                    </span>
-                    <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                      {q.exam}
-                    </span>
-                    {q.createdAt && (
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 flex items-center gap-1">
-                        <Calendar className="w-3 h-3" />
-                        <span>{q.createdAt}</span>
-                      </span>
-                    )}
-                  </div>
-
+              {/* Batch Action Strip */}
+              {selectedIds.length > 0 && (
+                <div className="flex items-center justify-between p-3 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 text-xs font-bold text-indigo-700 dark:text-indigo-300">
+                  <span>Selected {selectedIds.length} Questions</span>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => handleToggleBookmark(q.id)}
-                      className={`p-1.5 rounded-lg border transition-colors ${
-                        isBookmarked
-                          ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 text-amber-600'
-                          : 'border-slate-200 dark:border-slate-800 text-slate-400 hover:text-slate-600'
-                      }`}
-                      title={isBookmarked ? 'Remove Bookmark' : 'Bookmark Question'}
+                      type="button"
+                      onClick={handleBatchDelete}
+                      className="px-3 py-1.5 rounded-xl bg-rose-500 text-white hover:bg-rose-600 transition-colors flex items-center gap-1.5"
                     >
-                      <Bookmark className={`w-4 h-4 ${isBookmarked ? 'fill-amber-500' : ''}`} />
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete Selected</span>
                     </button>
-
                     <button
-                      onClick={() => handleStartEditQuestion(q)}
-                      className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors"
-                      title="Edit Question (प्रश्न सुधारें)"
+                      type="button"
+                      onClick={() => setSelectedIds([])}
+                      className="px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-slate-300"
                     >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-
-                    <button
-                      onClick={() => handleDelete(q.id)}
-                      className="p-1.5 rounded-lg border border-red-200 dark:border-red-900/40 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
-                      title="Delete Question from Bank"
-                    >
-                      <Trash2 className="w-4 h-4" />
+                      Cancel
                     </button>
                   </div>
                 </div>
+              )}
+            </div>
 
-                {editingQuestionId === q.id && editingFormState ? (
-                  /* Inline Edit Form */
-                  <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/30 space-y-3">
-                    <div className="flex items-center justify-between text-xs font-bold text-amber-600 dark:text-amber-400">
-                      <span>प्रश्न संपादन (Editing Question)</span>
-                      <span>1 या 2 (अधिक) उत्तर चुन सकते हैं</span>
-                    </div>
+            {/* Questions Cards List */}
+            {filteredQuestions.length === 0 ? (
+              <div className="glass-panel p-16 rounded-3xl text-center space-y-3">
+                <BookOpen className="w-12 h-12 text-slate-400 mx-auto" />
+                <h3 className="font-bold text-base text-slate-700 dark:text-slate-300">
+                  No questions match your search or filter
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Try clearing the search term, or click "Bulk Import Questions" to add new questions.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredQuestions.map((q, idx) => {
+                  const isBookmarked = bookmarkedIds.includes(q.id);
+                  const isSolutionOpen = Boolean(expandedSolutions[q.id]);
+                  const isEditing = editingQuestionId === q.id;
 
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1 block">
-                        प्रश्न विवरण (Question Text):
-                      </label>
-                      <textarea
-                        rows={2}
-                        value={editingFormState.questionText}
-                        onChange={(e) =>
-                          setEditingFormState({ ...editingFormState, questionText: e.target.value })
-                        }
-                        className="w-full p-2.5 text-xs sm:text-sm rounded-xl bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 focus:outline-none"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {editingFormState.options.map((opt, oIdx) => (
-                        <div key={opt.key} className="space-y-1">
-                          <label className="text-[11px] font-bold uppercase text-slate-500">
-                            Option ({opt.key}):
-                          </label>
-                          <input
-                            type="text"
-                            value={opt.text}
-                            onChange={(e) => {
-                              const updated = [...editingFormState.options];
-                              updated[oIdx] = { ...opt, text: e.target.value };
-                              setEditingFormState({ ...editingFormState, options: updated });
-                            }}
-                            className="w-full p-2 text-xs rounded-xl bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700"
-                          />
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                      <div>
-                        <div className="flex items-center justify-between mb-1">
-                          <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
-                            सही उत्तर कुंजी (Correct Answer Keys):
-                          </label>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          {(['a', 'b', 'c', 'd', 'e'] as const).map((k) => {
-                            const activeKeys = getQuestionCorrectKeys(editingFormState);
-                            const isSelected = activeKeys.includes(k);
-                            return (
-                              <button
-                                key={k}
-                                type="button"
-                                onClick={() => handleToggleFormCorrectKey(k)}
-                                className={`w-8 h-8 rounded-xl font-bold text-xs uppercase transition-all flex items-center justify-center ${
-                                  isSelected
-                                    ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-400 scale-105'
-                                    : 'bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-emerald-500'
-                                }`}
-                              >
-                                {k}
-                              </button>
-                            );
-                          })}
-                          <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 ml-2">
-                            ({getQuestionCorrectDisplay(editingFormState)})
+                  return (
+                    <div
+                      key={q.id}
+                      className="glass-panel p-6 rounded-3xl space-y-4 border transition-all"
+                    >
+                      {/* Question Header */}
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="w-7 h-7 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-mono font-bold text-xs flex items-center justify-center">
+                            #{idx + 1}
+                          </span>
+                          <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20">
+                            {q.topicNameHindi || q.topic}
+                          </span>
+                          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-slate-300">
+                            {q.exam}
                           </span>
                         </div>
-                      </div>
 
-                      <div>
-                        <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1 block">
-                          विस्तृत व्याख्या (Explanation):
-                        </label>
-                        <textarea
-                          rows={2}
-                          value={editingFormState.explanation}
-                          onChange={(e) =>
-                            setEditingFormState({ ...editingFormState, explanation: e.target.value })
-                          }
-                          className="w-full p-2 text-xs rounded-xl bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end gap-2 pt-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingQuestionId(null);
-                          setEditingFormState(null);
-                        }}
-                        className="px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                      >
-                        रद्द करें (Cancel)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleSaveQuestionEdit}
-                        className="px-4 py-1.5 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-500 shadow-sm"
-                      >
-                        सहेजें (Save Question)
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    {/* Question Text in Hindi */}
-                    <div className="text-base sm:text-lg font-semibold text-slate-900 dark:text-slate-100 leading-relaxed font-sans">
-                      <MathText text={q.questionText} />
-                    </div>
-
-                    {q.imageUrl && !q.questionText?.includes(q.imageUrl) && (
-                      <div className="my-3 flex flex-col items-center justify-center p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 shadow-xs max-w-md mx-auto">
-                        <img
-                          src={q.imageUrl}
-                          alt="प्रश्न आकृति / Diagram"
-                          className="max-h-60 w-auto object-contain rounded-xl"
-                        />
-                        <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-semibold">
-                          प्रश्न संबंधित आकृति (Diagram)
-                        </span>
-                      </div>
-                    )}
-
-                    {q.svgContent && (
-                      <div
-                        className="my-3 flex flex-col items-center justify-center p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 shadow-xs max-w-xs sm:max-w-sm mx-auto overflow-hidden"
-                        dangerouslySetInnerHTML={{ __html: q.svgContent }}
-                      />
-                    )}
-
-                    {/* Options Grid in Hindi */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                      {(Array.isArray(q.options) ? q.options : []).map((opt) => {
-                        const optKey = String(opt?.key || '').toLowerCase();
-                        const correctKeys = getQuestionCorrectKeys(q);
-                        const isCorrect = correctKeys.includes(optKey as any);
-                        return (
-                          <div
-                            key={optKey || Math.random().toString()}
-                            className={`px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm flex items-center gap-3 transition-colors ${
-                              isCorrect
-                                ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-400 dark:border-emerald-700 text-emerald-900 dark:text-emerald-100 font-bold shadow-2xs'
-                                : 'bg-slate-50/70 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'
+                        <div className="flex items-center gap-2">
+                          {/* Bookmark */}
+                          <button
+                            type="button"
+                            onClick={() => handleToggleBookmark(q.id)}
+                            className={`p-2 rounded-xl transition-colors ${
+                              isBookmarked
+                                ? 'text-amber-500 bg-amber-500/10'
+                                : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-white/10'
                             }`}
+                            title="Bookmark question"
                           >
-                            <span
-                              className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs uppercase shrink-0 ${
-                                isCorrect
-                                  ? 'bg-emerald-600 text-white'
-                                  : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
-                              }`}
+                            <Bookmark className={`w-4 h-4 ${isBookmarked ? 'fill-amber-500' : ''}`} />
+                          </button>
+
+                          {/* Edit */}
+                          <button
+                            type="button"
+                            onClick={() => handleStartEditQuestion(q)}
+                            className="p-2 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+                            title="Edit question"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+
+                          {/* Delete */}
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteSingleQuestion(q.id)}
+                            className="p-2 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+                            title="Delete question"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Content or Edit Form */}
+                      {!isEditing ? (
+                        <div className="space-y-3">
+                          <div className="text-sm font-semibold text-slate-900 dark:text-white leading-relaxed">
+                            <MathText text={q.questionText} />
+                          </div>
+
+                          {/* 5 Options Grid */}
+                          <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 pt-2 text-xs">
+                            {q.options.map((opt) => {
+                              const isCorrect = q.correctOption?.includes(opt.key);
+                              return (
+                                <div
+                                  key={opt.key}
+                                  className={`p-2.5 rounded-xl border font-medium ${
+                                    isCorrect
+                                      ? 'bg-emerald-500/15 border-emerald-500/60 text-emerald-800 dark:text-emerald-200 font-bold'
+                                      : 'bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/5 text-slate-700 dark:text-slate-300'
+                                  }`}
+                                >
+                                  <span className="uppercase font-bold">({opt.key})</span>{' '}
+                                  <MathText text={opt.text} />
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* Expand Solution Button & View */}
+                          <div className="pt-2">
+                            <button
+                              type="button"
+                              onClick={() => toggleExpandSolution(q.id)}
+                              className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1.5"
                             >
-                              {optKey}
-                            </span>
-                            <span className="flex-1 font-sans">
-                              <MathText text={String(opt?.text || '')} />
-                            </span>
-                            {isCorrect && (
-                              <span className="text-[10px] uppercase font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded">
-                                Official Key
-                              </span>
+                              <span>{isSolutionOpen ? 'व्याख्या छुपाएं' : 'विस्तृत हल व व्याख्या देखें (Hindi Solution)'}</span>
+                              {isSolutionOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                            </button>
+
+                            {isSolutionOpen && (
+                              <div className="mt-3 p-4 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-xs text-slate-700 dark:text-slate-200 leading-relaxed space-y-1 animate-in fade-in">
+                                <div className="font-bold text-amber-600 dark:text-amber-400">
+                                  BPSC आधिकारिक व्याख्या:
+                                </div>
+                                <MathText text={q.explanation || 'व्याख्या उपलब्ध नहीं है।'} />
+                              </div>
                             )}
                           </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* Solution Toggle & Box */}
-                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-                      <button
-                        onClick={() => toggleSolution(q.id)}
-                        className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline"
-                      >
-                        <span>{isSolExpanded ? 'Hide Solution' : 'View Detailed Solution (व्याख्या)'}</span>
-                        {isSolExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                      </button>
-
-                      {isSolExpanded && (
-                        <div className="mt-3 p-4 rounded-2xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 text-xs sm:text-sm text-slate-800 dark:text-slate-200 leading-relaxed space-y-1.5">
-                          <div className="font-bold text-amber-950 dark:text-amber-300 flex items-center gap-1.5">
-                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                            <span>सही उत्तर: विकल्प ({getQuestionCorrectDisplay(q)})</span>
+                        </div>
+                      ) : (
+                        /* Inline Editor for this question */
+                        <div className="p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/30 space-y-4">
+                          <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-500">Edit Question Text:</label>
+                            <textarea
+                              rows={3}
+                              value={editingFormState?.questionText || ''}
+                              onChange={(e) =>
+                                setEditingFormState({
+                                  ...editingFormState!,
+                                  questionText: e.target.value
+                                })
+                              }
+                              className="w-full p-2.5 rounded-xl text-xs bg-white dark:bg-slate-900 border focus:outline-hidden font-medium"
+                            />
                           </div>
-                          <div className="whitespace-pre-line pt-1 text-slate-800 dark:text-slate-200 font-sans">
-                            <MathText text={q.explanation} />
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                            {editingFormState?.options.map((opt, oIdx) => (
+                              <div key={opt.key} className="space-y-1">
+                                <label className="text-[11px] font-bold uppercase text-slate-500">
+                                  Option ({opt.key}):
+                                </label>
+                                <input
+                                  type="text"
+                                  value={opt.text}
+                                  onChange={(e) => {
+                                    const opts = [...editingFormState.options];
+                                    opts[oIdx] = { ...opt, text: e.target.value };
+                                    setEditingFormState({ ...editingFormState, options: opts });
+                                  }}
+                                  className="w-full p-2 rounded-xl text-xs bg-white dark:bg-slate-900 border focus:outline-hidden"
+                                />
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-500">Explanation (व्याख्या):</label>
+                            <textarea
+                              rows={3}
+                              value={editingFormState?.explanation || ''}
+                              onChange={(e) =>
+                                setEditingFormState({
+                                  ...editingFormState!,
+                                  explanation: e.target.value
+                                })
+                              }
+                              className="w-full p-2.5 rounded-xl text-xs bg-white dark:bg-slate-900 border focus:outline-hidden font-medium"
+                            />
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={handleSaveQuestionEdit}
+                              className="px-4 py-2 rounded-xl text-xs font-black bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+                            >
+                              Save Updates
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingQuestionId(null);
+                                setEditingFormState(null);
+                              }}
+                              className="px-3 py-2 rounded-xl text-xs font-bold text-slate-500"
+                            >
+                              Cancel
+                            </button>
                           </div>
                         </div>
                       )}
                     </div>
-                  </>
-                )}
+                  );
+                })}
               </div>
-            );
-          })
+            )}
+          </div>
         )}
-      </div>
 
-      {/* ImageKit Cloud Upload Modal */}
-      <ImageKitUploadModal
-        isOpen={isImageKitModalOpen}
-        onClose={() => setIsImageKitModalOpen(false)}
-      />
+        {/* ======================================================== */}
+        {/* TAB 2: CHAPTERS & SYLLABUS MANAGEMENT                    */}
+        {/* ======================================================== */}
+        {activeTab === 'chapters' && (
+          <div className="space-y-6 animate-in fade-in duration-300">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-black text-slate-900 dark:text-white">
+                  Mathematics Chapters ({registeredTopics.length})
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Manage syllabus topics and launch topic-specific mock tests directly
+                </p>
+              </div>
 
-      {/* Smart Quality & Duplicate Attention Modal */}
-      {isBankAuditOpen && (
-        <SmartQualityReviewModal
-          isOpen={isBankAuditOpen}
-          onClose={() => setIsBankAuditOpen(false)}
-          auditReport={bankAuditReport}
-          onUpdateQuestions={(updated) => {
-            saveCustomQuestions(updated);
-            refreshData();
-            setDbNotification('प्रश्न बैंक सफलतापूर्वक अपडेट किया गया!');
+              <button
+                type="button"
+                onClick={() => setIsAddingTopic(!isAddingTopic)}
+                className="px-4 py-2 rounded-2xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-500 transition-colors flex items-center gap-1.5 self-start"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add New Chapter</span>
+              </button>
+            </div>
+
+            {/* In-place Chapter Registration */}
+            {isAddingTopic && (
+              <div className="glass-panel p-6 rounded-3xl space-y-4 border-indigo-500/40">
+                <h4 className="text-sm font-black text-indigo-700 dark:text-indigo-300">
+                  Register New Chapter (नया अध्याय जोड़ें):
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <input
+                    type="text"
+                    placeholder="Chapter Hindi Name (e.g. द्विघात समीकरण)"
+                    value={newTopicHindi}
+                    onChange={(e) => setNewTopicHindi(e.target.value)}
+                    className="p-3 rounded-2xl text-xs bg-white dark:bg-slate-900 border focus:outline-hidden font-bold"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Chapter English Name (e.g. Quadratic Equations)"
+                    value={newTopicEnglish}
+                    onChange={(e) => setNewTopicEnglish(e.target.value)}
+                    className="p-3 rounded-2xl text-xs bg-white dark:bg-slate-900 border focus:outline-hidden font-bold"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleCreateNewChapter}
+                    className="px-5 py-2.5 rounded-xl text-xs font-black bg-indigo-600 text-white"
+                  >
+                    Confirm & Save
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingTopic(false)}
+                    className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-500"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Chapters Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {registeredTopics.map((topic) => {
+                const count = statsByTopic[topic.key] || 0;
+
+                return (
+                  <div
+                    key={topic.key}
+                    className="glass-panel p-6 rounded-3xl space-y-4 flex flex-col justify-between"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <h4 className="font-black text-base text-slate-900 dark:text-white">
+                          {topic.labelHindi}
+                        </h4>
+                        <span className="font-mono font-black text-xs px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                          {count} Qs
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500">{topic.labelEnglish}</p>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-3 border-t border-slate-200 dark:border-white/5">
+                      <button
+                        type="button"
+                        onClick={() => onOpenCustomTest(topic.key)}
+                        className="flex-1 py-2 rounded-xl text-[11px] font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 transition-colors text-center"
+                      >
+                        Create Test
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => onOpenBulkImport(topic.key)}
+                        className="flex-1 py-2 rounded-xl text-[11px] font-bold bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 transition-colors text-center"
+                      >
+                        + Import Qs
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* TAB 3: QUALITY AUDIT & CLEANER                          */}
+        {/* ======================================================== */}
+        {activeTab === 'audit' && (
+          <div className="space-y-6 animate-in fade-in duration-300">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-emerald-500" />
+                  <span>Question Quality & Duplicate Scanner</span>
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Scans database for duplicate questions, missing 5th option (e), or missing Hindi solutions
+                </p>
+              </div>
+
+              {bankAuditReport.problemCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleAutoHealAuditIssues}
+                  className="px-5 py-2.5 rounded-2xl text-xs font-black bg-amber-400 text-slate-950 hover:bg-amber-300 transition-colors flex items-center gap-2 self-start"
+                >
+                  <Wand2 className="w-4 h-4" />
+                  <span>1-Click Auto-Fix All ({bankAuditReport.problemCount} Issues)</span>
+                </button>
+              )}
+            </div>
+
+            {/* Audit Status Card */}
+            {bankAuditReport.problemCount === 0 ? (
+              <div className="glass-panel p-12 rounded-3xl text-center space-y-3 bg-emerald-500/5 border-emerald-500/30">
+                <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
+                <h4 className="text-base font-black text-emerald-700 dark:text-emerald-300">
+                  Question Bank 100% Validated & Clean!
+                </h4>
+                <p className="text-xs text-slate-500 max-w-md mx-auto">
+                  Every question has valid options A-E, an answer key, and an explanation. No duplicates found.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {bankAuditReport.items.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="glass-panel p-5 rounded-3xl space-y-3 border-amber-500/30"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-amber-500" />
+                        <span className="text-xs font-bold text-amber-600 dark:text-amber-400">
+                          {item.issues.map((iss) => iss.title).join(' · ')}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteSingleQuestion(item.question.id)}
+                        className="text-xs text-rose-500 font-bold hover:underline"
+                      >
+                        Delete Question
+                      </button>
+                    </div>
+
+                    <div className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                      <MathText text={item.question.questionText} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* TAB 4: CLOUD SYNC & BACKUP MANAGEMENT                   */}
+        {/* ======================================================== */}
+        {activeTab === 'data' && (
+          <div className="space-y-6 animate-in fade-in duration-300">
+            <div>
+              <h3 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                <Database className="w-5 h-5 text-indigo-500" />
+                <span>Cloud Sync & Database Backup Studio</span>
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Export offline JSON backups, restore databases, or synchronize with Google Cloud Firestore
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* Firestore Cloud Sync */}
+              <div className="glass-panel p-6 rounded-3xl space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-500 flex items-center justify-center font-black">
+                    <Cloud className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-black text-sm text-slate-900 dark:text-white">
+                      Google Cloud Firestore Live Sync
+                    </h4>
+                    <p className="text-[11px] text-slate-500">
+                      Sync question bank across multiple devices and browsers in realtime
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleCloudSync}
+                  disabled={isCloudSyncing}
+                  className="w-full py-3 rounded-2xl font-black text-xs text-white bg-emerald-600 hover:bg-emerald-500 transition-colors flex items-center justify-center gap-2"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isCloudSyncing ? 'animate-spin' : ''}`} />
+                  <span>{isCloudSyncing ? 'Syncing...' : 'Sync with Cloud Database Now'}</span>
+                </button>
+              </div>
+
+              {/* JSON Backup & Export */}
+              <div className="glass-panel p-6 rounded-3xl space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 text-indigo-500 flex items-center justify-center font-black">
+                    <FileDown className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-black text-sm text-slate-900 dark:text-white">
+                      Offline JSON Backup & Restore
+                    </h4>
+                    <p className="text-[11px] text-slate-500">
+                      Export questions to local file or restore from a previously saved JSON
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={handleExportDb}
+                    className="py-3 rounded-2xl font-bold text-xs bg-slate-100 dark:bg-white/10 hover:bg-slate-200 transition-colors flex items-center justify-center gap-1.5"
+                  >
+                    <FileDown className="w-4 h-4 text-emerald-500" />
+                    <span>Export JSON</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="py-3 rounded-2xl font-bold text-xs bg-slate-100 dark:bg-white/10 hover:bg-slate-200 transition-colors flex items-center justify-center gap-1.5"
+                  >
+                    <Upload className="w-4 h-4 text-indigo-500" />
+                    <span>Restore JSON</span>
+                  </button>
+                </div>
+
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleImportDb}
+                  accept=".json"
+                  className="hidden"
+                />
+              </div>
+
+              {/* Upload Diagrams to CDN */}
+              <div className="glass-panel p-6 rounded-3xl space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-500 flex items-center justify-center font-black">
+                    <ImageIcon className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-black text-sm text-slate-900 dark:text-white">
+                      ImageKit Mathematics Diagrams
+                    </h4>
+                    <p className="text-[11px] text-slate-500">
+                      Upload geometric figures, graphs, and triangle diagrams to ImageKit CDN
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsImageKitModalOpen(true)}
+                  className="w-full py-3 rounded-2xl font-bold text-xs bg-slate-100 dark:bg-white/10 hover:bg-slate-200 transition-colors flex items-center justify-center gap-2"
+                >
+                  <ImageIcon className="w-4 h-4 text-amber-500" />
+                  <span>Upload & Generate Diagram Markdown</span>
+                </button>
+              </div>
+
+              {/* Wipe & Reset Database */}
+              <div className="glass-panel p-6 rounded-3xl space-y-4 border-rose-500/30">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-rose-500/20 text-rose-500 flex items-center justify-center font-black">
+                    <Trash2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-black text-sm text-rose-600 dark:text-rose-400">
+                      Danger Zone: Clear Database
+                    </h4>
+                    <p className="text-[11px] text-slate-500">
+                      Permanently wipes all local questions and restores default template
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleClearDatabase}
+                  className="w-full py-3 rounded-2xl font-bold text-xs text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Wipe All Questions & Reset</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* ImageKit Upload Helper Modal */}
+      {isImageKitModalOpen && (
+        <ImageKitUploadModal
+          isOpen={isImageKitModalOpen}
+          onClose={() => setIsImageKitModalOpen(false)}
+          onImageUploaded={(markdownSnippet: string) => {
+            navigator.clipboard.writeText(markdownSnippet);
+            setDbNotification('Diagram Markdown Copied to Clipboard!');
+            setIsImageKitModalOpen(false);
             setTimeout(() => setDbNotification(null), 3000);
           }}
         />

@@ -38,8 +38,10 @@ interface BeforeInstallPromptEvent extends Event {
 import { AiWeakSpotModal } from './components/AiWeakSpotModal';
 import { RapidDrillModal } from './components/RapidDrillModal';
 import { ProgressAnalyticsView } from './components/ProgressAnalyticsView';
+import { CreateTestView } from './components/CreateTestView';
+import { BulkImportView } from './components/BulkImportView';
 
-type AppView = 'intro' | 'testing' | 'results' | 'bank' | 'history' | 'progress';
+type AppView = 'intro' | 'testing' | 'results' | 'bank' | 'create-test' | 'bulk-import' | 'history' | 'progress';
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -288,7 +290,14 @@ export default function App() {
 
   const handleOpenBulkImportWithTopic = (topicKey?: string) => {
     setBulkImportTopic(topicKey);
-    setIsBulkImportModalOpen(true);
+    navigateToView('bulk-import');
+    setTestResult(null);
+  };
+
+  const handleOpenCustomTest = (topicKey?: string) => {
+    setBulkImportTopic(topicKey);
+    navigateToView('create-test');
+    setTestResult(null);
   };
 
   const handleStartCustomCreatedTest = (newTest: MockTestSet) => {
@@ -380,7 +389,7 @@ export default function App() {
         activeView={activeView}
         onNavigateView={navigateToView}
         onOpenRules={() => setIsRulesModalOpen(true)}
-        onOpenCustomTest={() => setIsCustomTestModalOpen(true)}
+        onOpenCustomTest={() => handleOpenCustomTest()}
         onOpenBulkImport={() => handleOpenBulkImportWithTopic(undefined)}
         onOpenCloudModal={() => setIsCloudModalOpen(true)}
         onRestoreTests={handleRestoreTests}
@@ -401,7 +410,7 @@ export default function App() {
         onDownloadHtml={handleDownloadHtml}
         onGoHome={handleGoHome}
         onOpenQuestionBank={handleOpenBank}
-        onOpenCustomTest={() => setIsCustomTestModalOpen(true)}
+        onOpenCustomTest={() => handleOpenCustomTest()}
         onOpenBulkImport={() => handleOpenBulkImportWithTopic(undefined)}
         onOpenShareModal={() => setIsShareModalOpen(true)}
         onOpenResultsHistory={handleOpenResultsHistory}
@@ -430,7 +439,7 @@ export default function App() {
             onDownloadHtml={handleDownloadHtml}
             onDownloadAllHtml={handleDownloadAllHtml}
             onOpenQuestionBank={handleOpenBank}
-            onOpenCustomTest={() => setIsCustomTestModalOpen(true)}
+            onOpenCustomTest={() => handleOpenCustomTest()}
             onOpenBulkImport={handleOpenBulkImportWithTopic}
             onOpenShareModal={() => setIsShareModalOpen(true)}
             onOpenResultsHistory={handleOpenResultsHistory}
@@ -448,7 +457,29 @@ export default function App() {
           <QuestionBankView
             onBackToTests={handleGoBack}
             onOpenBulkImport={handleOpenBulkImportWithTopic}
-            onOpenCustomTest={() => setIsCustomTestModalOpen(true)}
+            onOpenCustomTest={handleOpenCustomTest}
+          />
+        )}
+
+        {activeView === 'create-test' && (
+          <CreateTestView
+            onBack={handleGoBack}
+            onStartTest={handleStartCustomCreatedTest}
+            onOpenBulkImport={handleOpenBulkImportWithTopic}
+            preselectedTopic={bulkImportTopic}
+          />
+        )}
+
+        {activeView === 'bulk-import' && (
+          <BulkImportView
+            onBack={handleGoBack}
+            defaultTopic={bulkImportTopic}
+            onSuccess={() => {
+              setAvailableSets(getAllAvailableTests());
+              setTotalQuestionsCount(getAllQuestionBank().length);
+            }}
+            onStartTestImmediately={handleStartCustomCreatedTest}
+            onNavigateToBank={handleOpenBank}
           />
         )}
 
@@ -464,7 +495,7 @@ export default function App() {
         {activeView === 'progress' && (
           <ProgressAnalyticsView
             onBackToTests={handleGoBack}
-            onOpenCustomTest={() => setIsCustomTestModalOpen(true)}
+            onOpenCustomTest={() => handleOpenCustomTest()}
             onOpenRapidDrills={() => setIsRapidDrillModalOpen(true)}
           />
         )}

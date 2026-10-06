@@ -328,7 +328,7 @@ export function CustomTestModal({
     allBankQuestions,
     handpickTopicFilter,
     handpickExamFilter,
-    handpickBookmarkFilter => handpickOnlyBookmarks,
+    handpickOnlyBookmarks,
     handpickUsageFilter,
     handpickSearch,
     bookmarkedIds,
