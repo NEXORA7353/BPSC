@@ -13,16 +13,15 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
   };
 
   try {
-    const [studentLogs, parentLogs, accountInfo] = await Promise.all([
-      fetch('https://api.brevo.com/v3/smtp/emails?email=patel000priya000@gmail.com&limit=5&sort=desc', { headers }).then((r) => r.json()).catch((e) => ({ error: e.message })),
-      fetch('https://api.brevo.com/v3/smtp/emails?email=arjittreadingcompany@gmail.com&limit=5&sort=desc', { headers }).then((r) => r.json()).catch((e) => ({ error: e.message })),
-      fetch('https://api.brevo.com/v3/account', { headers }).then((r) => r.json()).catch((e) => ({ error: e.message }))
+    const uuid = '0bb0d861-e8bd-4fe1-bf9d-808ef5ddaab9';
+    const [emailDetail, eventLogs] = await Promise.all([
+      fetch(`https://api.brevo.com/v3/smtp/emails/${uuid}`, { headers }).then((r) => r.json()).catch((e) => ({ error: e.message })),
+      fetch(`https://api.brevo.com/v3/smtp/statistics/events?limit=10&email=arjittreadingcompany@gmail.com`, { headers }).then((r) => r.json()).catch((e) => ({ error: e.message }))
     ]);
 
     return sendJson(res, 200, {
-      accountInfo,
-      studentLogs,
-      parentLogs
+      emailDetail,
+      eventLogs
     });
   } catch (err: any) {
     return sendJson(res, 500, { error: err?.message || err });
