@@ -709,7 +709,15 @@ export function getDeletedTestIds(): string[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.DELETED_TEST_IDS);
     const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    // Sanitize: filter out legacy generic 'title_' and 'sub_' masks that broke test counts
+    const cleanIds = parsed.filter(
+      (id: string) => typeof id === 'string' && !id.startsWith('title_') && !id.startsWith('sub_')
+    );
+    if (cleanIds.length !== parsed.length) {
+      localStorage.setItem(STORAGE_KEYS.DELETED_TEST_IDS, JSON.stringify(cleanIds));
+    }
+    return cleanIds;
   } catch {
     return [];
   }
@@ -728,23 +736,16 @@ export function deleteTest(testId: string): void {
     const allKnown = getAllAvailableTests();
     const target = allKnown.find((t) => t.id === testId);
 
-    // Record testId in deleted list with both ID and title/subtitle signatures
+    // Record testId in deleted list strictly by ID (never mask tests by generic title)
     const deleted = new Set(getDeletedTestIds());
     deleted.add(testId);
     if (target?.id) deleted.add(target.id);
-    if (target?.title) {
-      deleted.add(`title_${normalizeTestTitle(target.title)}`);
-    }
-    if (target?.subtitle) {
-      deleted.add(`sub_${normalizeTestTitle(target.subtitle)}`);
-    }
     saveDeletedTestIds(Array.from(deleted));
 
-    // Filter out from local custom tests
+    // Filter out from local custom tests strictly by ID
     const filteredCustom = getSavedCustomTests().filter((t) => {
       if (t.id === testId) return false;
       if (target?.id && t.id === target.id) return false;
-      if (target?.title && normalizeTestTitle(t.title) === normalizeTestTitle(target.title)) return false;
       return true;
     });
     liveCloudTestsCache = filteredCustom;
@@ -795,8 +796,6 @@ export function getAllAvailableTests(): MockTestSet[] {
     .filter((t) => {
       if (!t || !t.id) return false;
       if (deletedIds.has(t.id)) return false;
-      if (t.title && deletedIds.has(`title_${normalizeTestTitle(t.title)}`)) return false;
-      if (t.subtitle && deletedIds.has(`sub_${normalizeTestTitle(t.subtitle)}`)) return false;
       return true;
     })
     .map(sanitizeTestSet);

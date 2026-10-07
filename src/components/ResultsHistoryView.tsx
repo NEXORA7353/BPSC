@@ -15,12 +15,13 @@ import {
   Layers,
   ChevronRight
 } from 'lucide-react';
-import { MockTestSet, SavedTestResult, TestResult } from '../types';
+import { MockTestSet, SavedTestResult, TestResult, Question } from '../types';
 import {
   getSavedTestResults,
   deleteSavedTestResult,
   clearAllHistoryRecords,
-  getAllAvailableTests
+  getAllAvailableTests,
+  getAllQuestionBank
 } from '../utils/questionBankStorage';
 import { BackButton } from './BackButton';
 
@@ -97,10 +98,57 @@ export function ResultsHistoryView({
   };
 
   const handleOpenReview = (saved: SavedTestResult) => {
-    // Find the corresponding mock test set or create a virtual set
+    // 1. If saved test result already has questions embedded, use them directly
+    if (Array.isArray(saved.questions) && saved.questions.length > 0) {
+      const customSet: MockTestSet = {
+        id: saved.setId,
+        title: saved.setTitle,
+        subtitle: `Attempted on ${saved.dateFormatted || new Date(saved.completedAt).toLocaleDateString()}`,
+        targetExam: 'BPSC TRE 4.0',
+        category: 'custom',
+        categoryTitle: 'Attempt Review',
+        topicBadges: ['Review Set'],
+        totalQuestions: saved.questions.length,
+        totalTimeMinutes: Math.max(5, Math.round((saved.totalTimeSpentSeconds || 60) / 60)),
+        questions: saved.questions,
+        negativeMarkingValue: saved.negativeMarkingValue ?? 0.33
+      };
+      onReviewResult(saved, customSet);
+      return;
+    }
+
+    // 2. Find matching test in current available tests
     let matchingTest = availableTests.find((t) => t.id === saved.setId);
+    if (!matchingTest && saved.setTitle) {
+      matchingTest = availableTests.find((t) => t.title === saved.setTitle);
+    }
+
+    // 3. Fallback: Recover questions by response IDs from question bank
+    if (!matchingTest || !Array.isArray(matchingTest.questions) || matchingTest.questions.length === 0) {
+      const qIds = Object.keys(saved.responses || {});
+      if (qIds.length > 0) {
+        const bank = getAllQuestionBank();
+        const idMap = new Map(bank.map((q) => [q.id, q]));
+        const recoveredQuestions = qIds.map((id) => idMap.get(id)).filter(Boolean) as Question[];
+        if (recoveredQuestions.length > 0) {
+          matchingTest = {
+            id: saved.setId,
+            title: saved.setTitle,
+            subtitle: 'Recovered Questions Review',
+            targetExam: 'BPSC TRE 4.0',
+            category: 'custom',
+            categoryTitle: 'Recovered Review',
+            topicBadges: ['Recovered'],
+            totalQuestions: recoveredQuestions.length,
+            totalTimeMinutes: Math.max(5, Math.round((saved.totalTimeSpentSeconds || 60) / 60)),
+            questions: recoveredQuestions,
+            negativeMarkingValue: saved.negativeMarkingValue ?? 0.33
+          };
+        }
+      }
+    }
+
     if (!matchingTest) {
-      // Fallback
       matchingTest = availableTests[0];
     }
     onReviewResult(saved, matchingTest);

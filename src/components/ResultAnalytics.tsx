@@ -24,7 +24,7 @@ import {
   ShieldCheck,
   Award
 } from 'lucide-react';
-import { MockTestSet, TestResult } from '../types';
+import { MockTestSet, TestResult, Question } from '../types';
 import { calculateBPSCNormalization } from '../utils/normalizationEngine';
 import {
   createReattemptMissedQuestionsTest,
@@ -32,7 +32,8 @@ import {
   getBookmarkedIds,
   isQuestionAnswerCorrect,
   getQuestionCorrectKeys,
-  getQuestionCorrectDisplay
+  getQuestionCorrectDisplay,
+  getAllQuestionBank
 } from '../utils/questionBankStorage';
 import { exportTestToPrintablePdf } from '../utils/pdfExporter';
 import { BackButton } from './BackButton';
@@ -65,9 +66,29 @@ export function ResultAnalytics({
     'all' | 'correct' | 'incorrect' | 'blank_penalty' | 'safe_skip' | 'bookmarked'
   >('all');
   const [bookmarkedIds, setBookmarkedIds] = useState<string[]>(() => getBookmarkedIds());
-  const [expandedAccordionId, setExpandedAccordionId] = useState<string | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
+  const [isAllExpanded, setIsAllExpanded] = useState(false);
 
-  const negPenalty = result.negativeMarkingValue ?? testSet.negativeMarkingValue ?? 0.33;
+  // Guarantee all test questions are present even if review was opened from history or different device
+  const allTestQuestions = useMemo<Question[]>(() => {
+    if (Array.isArray(result.questions) && result.questions.length > 0) {
+      return result.questions;
+    }
+    if (Array.isArray(testSet?.questions) && testSet.questions.length > 0) {
+      return testSet.questions;
+    }
+    // Fallback: recover questions from question bank using response keys
+    const respIds = Object.keys(result.responses || {});
+    if (respIds.length > 0) {
+      const bank = getAllQuestionBank();
+      const map = new Map(bank.map((q) => [q.id, q]));
+      const recovered = respIds.map((id) => map.get(id)).filter(Boolean) as Question[];
+      if (recovered.length > 0) return recovered;
+    }
+    return [];
+  }, [result, testSet]);
+
+  const negPenalty = result.negativeMarkingValue ?? testSet?.negativeMarkingValue ?? 0.33;
 
   const handleToggleBookmark = (id: string) => {
     toggleBookmarkQuestion(id);
@@ -83,14 +104,14 @@ export function ResultAnalytics({
   );
 
   // Identify missed questions
-  const missedQuestionIds = testSet.questions
+  const missedQuestionIds = allTestQuestions
     .filter((q) => {
-      const resp = result.responses[q.id];
+      const resp = result.responses?.[q.id];
       const sel = resp?.selectedOption;
       const isCorrect = isQuestionAnswerCorrect(q, sel);
       const correctKeys = getQuestionCorrectKeys(q);
       const isSafeSkip = sel === 'e' && !correctKeys.includes('e');
-      return sel === null || (!isCorrect && !isSafeSkip);
+      return sel === null || sel === undefined || (!isCorrect && !isSafeSkip);
     })
     .map((q) => q.id);
 
@@ -102,25 +123,25 @@ export function ResultAnalytics({
 
   // Topic Breakdown Matrix
   const topicStats: Record<string, { total: number; correct: number; incorrect: number; name: string }> = {};
-  testSet.questions.forEach((q) => {
+  allTestQuestions.forEach((q) => {
     const topicKey = q.topic || 'custom';
     const topicName = q.topicNameHindi || 'सामान्य';
     if (!topicStats[topicKey]) {
       topicStats[topicKey] = { total: 0, correct: 0, incorrect: 0, name: topicName };
     }
     topicStats[topicKey].total += 1;
-    const resp = result.responses[q.id];
+    const resp = result.responses?.[q.id];
     const isCorrect = isQuestionAnswerCorrect(q, resp?.selectedOption);
     const correctKeys = getQuestionCorrectKeys(q);
     const isSafeSkip = resp?.selectedOption === 'e' && !correctKeys.includes('e');
     if (isCorrect) {
       topicStats[topicKey].correct += 1;
-    } else if (resp?.selectedOption !== null && !isSafeSkip) {
+    } else if (resp?.selectedOption !== null && resp?.selectedOption !== undefined && !isSafeSkip) {
       topicStats[topicKey].incorrect += 1;
     }
   });
 
-  const scorePercent = Math.min(100, Math.max(0, Math.round((result.score / result.totalMarks) * 100)));
+  const scorePercent = Math.min(100, Math.max(0, Math.round((result.score / Math.max(1, result.totalMarks)) * 100)));
   const circumference = 2 * Math.PI * 54;
   const strokeDashoffset = circumference - (scorePercent / 100) * circumference;
 
@@ -131,21 +152,45 @@ export function ResultAnalytics({
       ? '#F5A524'
       : '#F43F5E';
 
-  const filteredQuestions = testSet.questions.filter((q) => {
-    const resp = result.responses[q.id];
+  const filteredQuestions = allTestQuestions.filter((q) => {
+    const resp = result.responses?.[q.id];
     const sel = resp?.selectedOption;
     const isCorrect = isQuestionAnswerCorrect(q, sel);
     const correctKeys = getQuestionCorrectKeys(q);
     const isSafeSkip = sel === 'e' && !correctKeys.includes('e');
+    const isBlank = sel === null || sel === undefined;
+
     if (filterType === 'all') return true;
     if (filterType === 'correct') return isCorrect;
     if (filterType === 'incorrect')
-      return sel !== null && !isCorrect && !isSafeSkip;
-    if (filterType === 'blank_penalty') return sel === null;
+      return !isBlank && !isCorrect && !isSafeSkip;
+    if (filterType === 'blank_penalty') return isBlank;
     if (filterType === 'safe_skip') return isSafeSkip;
     if (filterType === 'bookmarked') return bookmarkedIds.includes(q.id);
     return true;
   });
+
+  const toggleAccordion = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleExpandAll = () => {
+    if (isAllExpanded) {
+      setExpandedIds(new Set());
+      setIsAllExpanded(false);
+    } else {
+      setExpandedIds(new Set(allTestQuestions.map((q) => q.id)));
+      setIsAllExpanded(true);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-app-canvas grid-lines-44 text-slate-900 dark:text-slate-100 font-sans pb-16 relative transition-colors duration-200">
@@ -649,7 +694,7 @@ export function ResultAnalytics({
 
         {/* SOLUTIONS REVIEW ACCORDION */}
         <section className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
               <span>Detailed Hindi Solutions & Review</span>
               <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-white/5 text-amber-600 dark:text-amber-300 border border-slate-200 dark:border-white/10">
@@ -657,102 +702,124 @@ export function ResultAnalytics({
               </span>
             </h2>
 
-            <div className="flex flex-wrap items-center gap-1.5 text-xs font-bold">
-              {[
-                { id: 'all', label: `All (${result.totalQuestions})` },
-                { id: 'correct', label: `Correct (${result.correctCount})` },
-                { id: 'incorrect', label: `Incorrect (${result.incorrectCount})` },
-                { id: 'safe_skip', label: `Safe Skip (${result.safeSkipCount})` },
-                { id: 'blank_penalty', label: `Blank (${result.blankPenaltyCount})` },
-                { id: 'bookmarked', label: `Bookmarked (${bookmarkedIds.length})` }
-              ].map((pill) => (
-                <button
-                  key={pill.id}
-                  onClick={() => setFilterType(pill.id as any)}
-                  className={`px-3 py-1.5 rounded-xl transition-all ${
-                    filterType === pill.id
-                      ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/40 shadow-xs'
-                      : 'bg-white/60 dark:bg-white/5 text-slate-600 dark:text-slate-400 hover:text-slate-900 border border-slate-200 dark:border-white/5'
-                  }`}
-                >
-                  {pill.label}
-                </button>
-              ))}
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={toggleExpandAll}
+                className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 bg-white dark:bg-white/10 hover:bg-slate-100 border border-slate-300 dark:border-white/20 transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                title={isAllExpanded ? 'Collapse all solutions' : 'Expand all solutions'}
+              >
+                {isAllExpanded ? <ChevronUp className="w-3.5 h-3.5 text-amber-500" /> : <ChevronDown className="w-3.5 h-3.5 text-amber-500" />}
+                <span>{isAllExpanded ? 'सभी संक्षिप्त करें (Collapse All)' : 'सभी हल खोलें (Expand All)'}</span>
+              </button>
+
+              <div className="flex flex-wrap items-center gap-1.5 text-xs font-bold">
+                {[
+                  { id: 'all', label: `All (${result.totalQuestions || allTestQuestions.length})` },
+                  { id: 'correct', label: `Correct (${result.correctCount})` },
+                  { id: 'incorrect', label: `Incorrect (${result.incorrectCount})` },
+                  { id: 'safe_skip', label: `Safe Skip (${result.safeSkipCount})` },
+                  { id: 'blank_penalty', label: `Blank (${result.blankPenaltyCount})` },
+                  { id: 'bookmarked', label: `Bookmarked (${bookmarkedIds.length})` }
+                ].map((pill) => (
+                  <button
+                    key={pill.id}
+                    onClick={() => setFilterType(pill.id as any)}
+                    className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+                      filterType === pill.id
+                        ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/40 shadow-xs'
+                        : 'bg-white/60 dark:bg-white/5 text-slate-600 dark:text-slate-400 hover:text-slate-900 border border-slate-200 dark:border-white/5'
+                    }`}
+                  >
+                    {pill.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
           <div className="space-y-3">
-            {filteredQuestions.map((q, idx) => {
-              const resp = result.responses[q.id];
-              const sel = resp?.selectedOption;
-              const isCorrect = isQuestionAnswerCorrect(q, sel);
-              const correctKeys = getQuestionCorrectKeys(q);
-              const isSafeSkip = sel === 'e' && !correctKeys.includes('e');
-              const isBlank = sel === null;
-              const isExpanded = expandedAccordionId === q.id;
-
-              let statusChip = (
-                <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/25">
-                  Correct (+1.00)
-                </span>
-              );
-              if (isBlank) {
-                statusChip = (
-                  <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/25">
-                    Blank Penalty (-{negPenalty.toFixed(2)})
-                  </span>
-                );
-              } else if (isSafeSkip) {
-                statusChip = (
-                  <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-sky-500/10 text-sky-700 dark:text-sky-400 border border-sky-500/25">
-                    Safe Skip (0.00)
-                  </span>
-                );
-              } else if (!isCorrect) {
-                statusChip = (
-                  <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/25">
-                    Incorrect (-{negPenalty.toFixed(2)})
-                  </span>
-                );
-              }
-
-              return (
-                <div
-                  key={q.id}
-                  className="glass-panel rounded-2xl overflow-hidden transition-all"
+            {filteredQuestions.length === 0 ? (
+              <div className="p-8 text-center rounded-2xl glass-panel space-y-3">
+                <div className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                  इस श्रेणी में कोई प्रश्न उपलब्ध नहीं है (No questions in this filter: {filterType}).
+                </div>
+                <button
+                  onClick={() => setFilterType('all')}
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-400 text-slate-950 hover:bg-amber-300 transition-colors cursor-pointer"
                 >
+                  सभी प्रश्न देखें (View All {allTestQuestions.length} Questions)
+                </button>
+              </div>
+            ) : (
+              filteredQuestions.map((q, idx) => {
+                const resp = result.responses?.[q.id];
+                const sel = resp?.selectedOption;
+                const isCorrect = isQuestionAnswerCorrect(q, sel);
+                const correctKeys = getQuestionCorrectKeys(q);
+                const isSafeSkip = sel === 'e' && !correctKeys.includes('e');
+                const isBlank = sel === null || sel === undefined;
+                const isExpanded = expandedIds.has(q.id);
+
+                let statusChip = (
+                  <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/25">
+                    Correct (+1.00)
+                  </span>
+                );
+                if (isBlank) {
+                  statusChip = (
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/25">
+                      Blank Penalty (-{negPenalty.toFixed(2)})
+                    </span>
+                  );
+                } else if (isSafeSkip) {
+                  statusChip = (
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-sky-500/10 text-sky-700 dark:text-sky-400 border border-sky-500/25">
+                      Safe Skip (0.00)
+                    </span>
+                  );
+                } else if (!isCorrect) {
+                  statusChip = (
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/25">
+                      Incorrect (-{negPenalty.toFixed(2)})
+                    </span>
+                  );
+                }
+
+                return (
                   <div
-                    onClick={() =>
-                      setExpandedAccordionId(isExpanded ? null : q.id)
-                    }
-                    className="p-4 sm:p-5 flex items-center justify-between gap-4 cursor-pointer hover:bg-slate-100/50 dark:hover:bg-white/5 transition-colors"
+                    key={q.id}
+                    className="glass-panel rounded-2xl overflow-hidden transition-all"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className="font-mono font-bold text-xs text-amber-600 dark:text-amber-400 shrink-0">
-                        #{idx + 1}
-                      </span>
-                      <div className="font-semibold text-sm sm:text-base text-slate-900 dark:text-white truncate font-sans">
-                        <MathText text={q.questionText} />
+                    <div
+                      onClick={() => toggleAccordion(q.id)}
+                      className="p-4 sm:p-5 flex items-start sm:items-center justify-between gap-4 cursor-pointer hover:bg-slate-100/50 dark:hover:bg-white/5 transition-colors"
+                    >
+                      <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+                        <span className="font-mono font-bold text-xs text-amber-600 dark:text-amber-400 shrink-0 mt-0.5 sm:mt-0">
+                          #{idx + 1}
+                        </span>
+                        <div className="font-semibold text-sm sm:text-base text-slate-900 dark:text-white leading-relaxed font-sans flex-1">
+                          <MathText text={q.questionText} />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                        {resp?.timeSpentSeconds !== undefined && resp.timeSpentSeconds > 0 && (
+                          <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 flex items-center gap-1" title="Time spent on this question">
+                            <Clock className="w-3 h-3 text-amber-500" />
+                            <span>{resp.timeSpentSeconds}s</span>
+                          </span>
+                        )}
+                        {statusChip}
+                        <button className="p-1 text-slate-400 hover:text-slate-900 dark:hover:text-white" type="button">
+                          {isExpanded ? (
+                            <ChevronUp className="w-5 h-5" />
+                          ) : (
+                            <ChevronDown className="w-5 h-5" />
+                          )}
+                        </button>
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                      {resp?.timeSpentSeconds !== undefined && resp.timeSpentSeconds > 0 && (
-                        <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 flex items-center gap-1" title="Time spent on this question">
-                          <Clock className="w-3 h-3 text-amber-500" />
-                          <span>{resp.timeSpentSeconds}s</span>
-                        </span>
-                      )}
-                      {statusChip}
-                      <button className="p-1 text-slate-400 hover:text-slate-900 dark:hover:text-white">
-                        {isExpanded ? (
-                          <ChevronUp className="w-5 h-5" />
-                        ) : (
-                          <ChevronDown className="w-5 h-5" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
 
                   {isExpanded && (
                     <div className="p-5 border-t border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/2 space-y-4 animate-in fade-in duration-200">
@@ -814,7 +881,7 @@ export function ResultAnalytics({
                   )}
                 </div>
               );
-            })}
+            }))}
           </div>
         </section>
       </div>

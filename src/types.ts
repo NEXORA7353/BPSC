@@ -83,6 +83,7 @@ export interface TestResult {
   responses: Record<string, QuestionResponse>;
   completedAt: string;
   negativeMarkingValue?: number;
+  questions?: Question[];
 }
 
 export interface TestAttemptRecord {
@@ -118,6 +119,7 @@ export interface SavedTestResult extends TestResult {
   dateFormatted: string;
   completedAtIso?: string;
   topicBreakdown?: Record<string, TopicPerformanceStat>;
+  questions?: Question[];
 }
 
 export interface CustomTestConfig {

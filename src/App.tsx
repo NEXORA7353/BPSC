@@ -271,7 +271,8 @@ export default function App() {
       id: `result_${Date.now()}`,
       dateFormatted,
       completedAtIso,
-      topicBreakdown
+      topicBreakdown,
+      questions: result.questions || (currentSet && currentSet.questions) || []
     });
   };
 

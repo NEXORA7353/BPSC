@@ -361,7 +361,8 @@ export function CBTTestView({
       accuracy,
       responses: finalResponses,
       completedAt: new Date().toISOString(),
-      negativeMarkingValue: negPenalty
+      negativeMarkingValue: negPenalty,
+      questions: testSet.questions
     };
 
     onSubmitTest(result);

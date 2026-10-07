@@ -145,37 +145,44 @@ export async function syncFromFirestore(): Promise<void> {
       return null;
     });
     const cloudTests: MockTestSet[] = [];
+    const cloudTestIdSet = new Set<string>();
     testsSnap?.forEach((d) => {
       const data = d.data();
       const testId = data?.id || d.id;
-      cloudTests.push({ ...data, id: testId } as MockTestSet);
+      const testObj = { ...data, id: testId } as MockTestSet;
+      cloudTests.push(testObj);
+      cloudTestIdSet.add(testId);
     });
 
-    if (cloudTests.length > 0) {
-      const isDeletedTest = (t: MockTestSet) => {
-        if (!t) return true;
-        if (deletedTestSet.has(t.id)) return true;
-        if (t.title && deletedTestSet.has(`title_${normalizeTestTitle(t.title)}`)) return true;
-        if (t.subtitle && deletedTestSet.has(`sub_${normalizeTestTitle(t.subtitle)}`)) return true;
-        return false;
-      };
+    const isDeletedTest = (t: MockTestSet) => {
+      if (!t || !t.id) return true;
+      if (deletedTestSet.has(t.id)) return true;
+      return false;
+    };
 
-      const localTests = getSavedCustomTests();
-      const testMap = new Map<string, MockTestSet>();
-      localTests.forEach((t) => {
-        if (!isDeletedTest(t)) {
-          testMap.set(t.id, t);
-        }
-      });
-      cloudTests.forEach((t) => {
-        if (!isDeletedTest(t)) {
-          testMap.set(t.id, t);
-        }
-      });
+    const localTests = getSavedCustomTests();
+    const testMap = new Map<string, MockTestSet>();
+    localTests.forEach((t) => {
+      if (!isDeletedTest(t)) {
+        testMap.set(t.id, t);
+      }
+    });
+    cloudTests.forEach((t) => {
+      if (!isDeletedTest(t)) {
+        testMap.set(t.id, t);
+      }
+    });
 
-      const finalTests = Array.from(testMap.values());
-      setLiveCloudTests(finalTests);
-    }
+    const finalTests = Array.from(testMap.values());
+    setLiveCloudTests(finalTests);
+
+    // Bidirectional sync: Push local custom tests that are missing in Firestore
+    // so both bpsc.dpdns.org and bpsc-chi.vercel.app have the exact same mock tests
+    localTests.forEach((t) => {
+      if (t && t.id && !cloudTestIdSet.has(t.id) && !isDeletedTest(t)) {
+        saveTestSetToCloud(t).catch((err) => console.warn('Sync test to cloud error:', err));
+      }
+    });
 
     // 4. Fetch Registered Topics from Firestore
     const topicsSnap = await getDocs(collection(db, 'topics')).catch((err) => {
@@ -272,10 +279,8 @@ export function setupRealtimeSync(onDataChange: () => void): () => void {
       });
       const deletedTestIds = new Set<string>(getDeletedTestIds());
       const isDeletedTest = (t: MockTestSet) => {
-        if (!t) return true;
+        if (!t || !t.id) return true;
         if (deletedTestIds.has(t.id)) return true;
-        if (t.title && deletedTestIds.has(`title_${normalizeTestTitle(t.title)}`)) return true;
-        if (t.subtitle && deletedTestIds.has(`sub_${normalizeTestTitle(t.subtitle)}`)) return true;
         return false;
       };
 
