@@ -34,6 +34,7 @@ import {
   saveFullTestResult as saveLocalFullTestResult,
   normalizeTestTitle
 } from '../utils/questionBankStorage';
+import { getUserSyncId, getUserProfile } from '../utils/userProfile';
 
 export interface CloudSyncState {
   isConnected: boolean;
@@ -175,6 +176,11 @@ export async function syncFromFirestore(): Promise<void> {
 
     const finalTests = Array.from(testMap.values());
     setLiveCloudTests(finalTests);
+    try {
+      localStorage.setItem('bpsc_custom_test_sets', JSON.stringify(finalTests));
+    } catch (e) {
+      console.warn('Failed to cache custom tests in localStorage:', e);
+    }
 
     // Bidirectional sync: Push local custom tests that are missing in Firestore
     // so both bpsc.dpdns.org and bpsc-chi.vercel.app have the exact same mock tests
@@ -202,6 +208,111 @@ export async function syncFromFirestore(): Promise<void> {
       localStorage.setItem('bpsc_registered_topics', JSON.stringify(Array.from(topicMap.values())));
     }
 
+    // 5. Fetch Attempt Records & History from Firestore
+    // Ensures all devices, browsers, and URLs have the exact same results history
+    const attemptsSnap = await getDocs(collection(db, 'attempt_records')).catch((err) => {
+      console.warn('attempt_records fetch warning:', err);
+      return null;
+    });
+    const cloudAttempts: TestAttemptRecord[] = [];
+    const cloudAttemptIdSet = new Set<string>();
+    attemptsSnap?.forEach((d) => {
+      const data = d.data();
+      const attemptId = data?.id || d.id;
+      cloudAttempts.push({ ...data, id: attemptId } as TestAttemptRecord);
+      cloudAttemptIdSet.add(attemptId);
+    });
+
+    // Merge with local attempt records
+    const localAttempts = getAttemptRecords();
+    const attemptMap = new Map<string, TestAttemptRecord>();
+
+    cloudAttempts.forEach((a) => {
+      if (a && a.id) attemptMap.set(a.id, a);
+    });
+
+    localAttempts.forEach((a) => {
+      if (a && a.id) {
+        const existing = attemptMap.get(a.id);
+        if (!existing) {
+          attemptMap.set(a.id, a);
+          // Push local attempt to cloud if missing in cloud!
+          if (!cloudAttemptIdSet.has(a.id)) {
+            saveAttemptRecordToCloud(a).catch((err) => console.warn('Sync local attempt to cloud error:', err));
+          }
+        } else {
+          // Merge to retain questions or responses if one has them and the other doesn't
+          attemptMap.set(a.id, {
+            ...existing,
+            ...a,
+            responses: a.responses || existing.responses,
+            questions: a.questions || existing.questions
+          });
+        }
+      }
+    });
+
+    const finalAttempts = Array.from(attemptMap.values()).sort((a, b) => {
+      const timeA = new Date(a.completedAtIso || a.date).getTime() || 0;
+      const timeB = new Date(b.completedAtIso || b.date).getTime() || 0;
+      return timeB - timeA;
+    });
+
+    try {
+      localStorage.setItem('bpsc_attempt_records', JSON.stringify(finalAttempts.slice(0, 50)));
+    } catch (e) {
+      console.warn('Failed to cache attempt records in localStorage:', e);
+    }
+
+    // Reconstruct / merge into FULL SAVED RESULTS ARCHIVE so ResultsHistoryView & ResultAnalytics immediately display them
+    const localFullResults = getSavedTestResults();
+    const fullResultMap = new Map<string, SavedTestResult>();
+    localFullResults.forEach((r) => { if (r && r.id) fullResultMap.set(r.id, r); });
+
+    finalAttempts.forEach((att) => {
+      const existingKey = Array.from(fullResultMap.keys()).find((k) => {
+        const r = fullResultMap.get(k);
+        return r && (r.setId === att.testId || r.setTitle === att.testTitle) && (r.dateFormatted === att.date || r.completedAtIso === att.completedAtIso);
+      });
+
+      if (!existingKey) {
+        const synthesizedResult: SavedTestResult = {
+          id: att.id || `result_${Date.now()}_${Math.random()}`,
+          setId: att.testId,
+          setTitle: att.testTitle,
+          totalQuestions: att.totalQuestions || 20,
+          attemptedCount: (att.correctCount || 0) + (att.incorrectCount || 0),
+          correctCount: att.correctCount || 0,
+          incorrectCount: att.incorrectCount || 0,
+          safeSkipCount: att.safeSkipCount || 0,
+          score: att.score || 0,
+          totalMarks: att.totalMarks || (att.totalQuestions || 20),
+          blankPenaltyCount: att.blankPenaltyCount || 0,
+          totalTimeSpentSeconds: att.totalTimeSpentSeconds || 60,
+          accuracy: att.accuracy || 0,
+          responses: att.responses || {},
+          completedAt: att.date || new Date().toLocaleDateString('hi-IN'),
+          dateFormatted: att.date || new Date().toLocaleDateString('hi-IN'),
+          completedAtIso: att.completedAtIso || new Date().toISOString(),
+          topicBreakdown: att.topicBreakdown,
+          questions: att.questions || []
+        };
+        fullResultMap.set(synthesizedResult.id, synthesizedResult);
+      }
+    });
+
+    const finalFullResults = Array.from(fullResultMap.values()).sort((a, b) => {
+      const timeA = new Date(a.completedAtIso || 0).getTime();
+      const timeB = new Date(b.completedAtIso || 0).getTime();
+      return timeB - timeA;
+    });
+
+    try {
+      localStorage.setItem('bpsc_full_results_archive', JSON.stringify(finalFullResults.slice(0, 50)));
+    } catch (e) {
+      console.warn('Failed to cache full results archive in localStorage:', e);
+    }
+
     syncState = {
       isConnected: true,
       isSyncing: false,
@@ -214,6 +325,7 @@ export async function syncFromFirestore(): Promise<void> {
 
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('bpsc_cloud_data_updated'));
+      window.dispatchEvent(new CustomEvent('bpsc_history_updated'));
     }
   } catch (err: any) {
     console.error('Failed to sync from Firestore:', err);
@@ -300,6 +412,11 @@ export function setupRealtimeSync(onDataChange: () => void): () => void {
 
       const finalTests = Array.from(testMap.values());
       setLiveCloudTests(finalTests);
+      try {
+        localStorage.setItem('bpsc_custom_test_sets', JSON.stringify(finalTests));
+      } catch (e) {
+        console.warn('Failed to cache custom tests in localStorage:', e);
+      }
       syncState = {
         ...syncState,
         cloudTestCount: finalTests.length,
@@ -313,6 +430,111 @@ export function setupRealtimeSync(onDataChange: () => void): () => void {
     },
     (err) => {
       console.warn('Realtime sync custom_tests listener:', err);
+    }
+  );
+
+  const unsubAttempts = onSnapshot(
+    collection(db, 'attempt_records'),
+    (snapshot) => {
+      const cloudAttempts: TestAttemptRecord[] = [];
+      snapshot.forEach((d) => {
+        const data = d.data();
+        const attemptId = data?.id || d.id;
+        cloudAttempts.push({ ...data, id: attemptId } as TestAttemptRecord);
+      });
+
+      const localAttempts = getAttemptRecords();
+      const attemptMap = new Map<string, TestAttemptRecord>();
+
+      cloudAttempts.forEach((a) => {
+        if (a && a.id) attemptMap.set(a.id, a);
+      });
+
+      localAttempts.forEach((a) => {
+        if (a && a.id) {
+          const existing = attemptMap.get(a.id);
+          if (!existing) {
+            attemptMap.set(a.id, a);
+          } else {
+            attemptMap.set(a.id, {
+              ...existing,
+              ...a,
+              responses: a.responses || existing.responses,
+              questions: a.questions || existing.questions
+            });
+          }
+        }
+      });
+
+      const finalAttempts = Array.from(attemptMap.values()).sort((a, b) => {
+        const timeA = new Date(a.completedAtIso || a.date).getTime() || 0;
+        const timeB = new Date(b.completedAtIso || b.date).getTime() || 0;
+        return timeB - timeA;
+      });
+
+      try {
+        localStorage.setItem('bpsc_attempt_records', JSON.stringify(finalAttempts.slice(0, 50)));
+      } catch (e) {
+        console.warn('Failed to cache attempt records in localStorage:', e);
+      }
+
+      // Reconstruct / merge into FULL SAVED RESULTS ARCHIVE
+      const localFullResults = getSavedTestResults();
+      const fullResultMap = new Map<string, SavedTestResult>();
+      localFullResults.forEach((r) => { if (r && r.id) fullResultMap.set(r.id, r); });
+
+      finalAttempts.forEach((att) => {
+        const existingKey = Array.from(fullResultMap.keys()).find((k) => {
+          const r = fullResultMap.get(k);
+          return r && (r.setId === att.testId || r.setTitle === att.testTitle) && (r.dateFormatted === att.date || r.completedAtIso === att.completedAtIso);
+        });
+
+        if (!existingKey) {
+          const synthesizedResult: SavedTestResult = {
+            id: att.id || `result_${Date.now()}_${Math.random()}`,
+            setId: att.testId,
+            setTitle: att.testTitle,
+            totalQuestions: att.totalQuestions || 20,
+            attemptedCount: (att.correctCount || 0) + (att.incorrectCount || 0),
+            correctCount: att.correctCount || 0,
+            incorrectCount: att.incorrectCount || 0,
+            safeSkipCount: att.safeSkipCount || 0,
+            score: att.score || 0,
+            totalMarks: att.totalMarks || (att.totalQuestions || 20),
+            blankPenaltyCount: att.blankPenaltyCount || 0,
+            totalTimeSpentSeconds: att.totalTimeSpentSeconds || 60,
+            accuracy: att.accuracy || 0,
+            responses: att.responses || {},
+            completedAt: att.date || new Date().toLocaleDateString('hi-IN'),
+            dateFormatted: att.date || new Date().toLocaleDateString('hi-IN'),
+            completedAtIso: att.completedAtIso || new Date().toISOString(),
+            topicBreakdown: att.topicBreakdown,
+            questions: att.questions || []
+          };
+          fullResultMap.set(synthesizedResult.id, synthesizedResult);
+        }
+      });
+
+      const finalFullResults = Array.from(fullResultMap.values()).sort((a, b) => {
+        const timeA = new Date(a.completedAtIso || 0).getTime();
+        const timeB = new Date(b.completedAtIso || 0).getTime();
+        return timeB - timeA;
+      });
+
+      try {
+        localStorage.setItem('bpsc_full_results_archive', JSON.stringify(finalFullResults.slice(0, 50)));
+      } catch (e) {
+        console.warn('Failed to cache full results archive in localStorage:', e);
+      }
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('bpsc_cloud_data_updated'));
+        window.dispatchEvent(new CustomEvent('bpsc_history_updated'));
+      }
+      onDataChange();
+    },
+    (err) => {
+      console.warn('Realtime sync attempt_records listener:', err);
     }
   );
 
@@ -395,6 +617,7 @@ export function setupRealtimeSync(onDataChange: () => void): () => void {
   return () => {
     unsubQuestions();
     unsubTests();
+    unsubAttempts();
     unsubDeletedQuestions();
     unsubDeletedTests();
     unsubTopics();
@@ -598,11 +821,12 @@ export async function saveAttemptRecordToCloud(record: TestAttemptRecord): Promi
   const recordId = record.id || `${record.testId}_${Date.now()}`;
   const path = `attempt_records/${recordId}`;
   try {
+    const profile = getUserProfile();
     const cleanRecord = cleanPayload({
       ...record,
       id: recordId,
-      userId: auth.currentUser?.uid || 'guest',
-      studentName: record.studentName || 'Priya Patel',
+      userId: record.userId || getUserSyncId(),
+      studentName: record.studentName || profile.displayName || 'PrIyA PaTeL',
       completedAtIso: record.completedAtIso || new Date().toISOString(),
       createdAt: new Date().toISOString()
     });
@@ -611,6 +835,18 @@ export async function saveAttemptRecordToCloud(record: TestAttemptRecord): Promi
   } catch (err) {
     console.warn(`Cloud write attempt record failed (${path}):`, err);
     return null;
+  }
+}
+
+/**
+ * Delete an attempt record from Firestore
+ */
+export async function deleteAttemptRecordFromCloud(attemptId: string): Promise<void> {
+  if (!attemptId) return;
+  try {
+    await deleteDoc(doc(db, 'attempt_records', attemptId));
+  } catch (err) {
+    console.warn(`Cloud delete attempt record failed (${attemptId}):`, err);
   }
 }
 
@@ -739,6 +975,12 @@ if (typeof window !== 'undefined') {
   window.addEventListener('bpsc_attempt_saved', ((e: CustomEvent<TestAttemptRecord>) => {
     if (e.detail) {
       saveAttemptRecordToCloud(e.detail).catch((err) => console.warn('Cloud sync error (save attempt):', err));
+    }
+  }) as EventListener);
+
+  window.addEventListener('bpsc_history_deleted', ((e: CustomEvent<string>) => {
+    if (e.detail) {
+      deleteAttemptRecordFromCloud(e.detail).catch((err) => console.warn('Cloud sync error (delete attempt):', err));
     }
   }) as EventListener);
 

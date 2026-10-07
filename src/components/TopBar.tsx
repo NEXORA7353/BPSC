@@ -47,6 +47,7 @@ interface TopBarProps {
   activeView: 'intro' | 'testing' | 'results' | 'bank' | 'create-test' | 'bulk-import' | 'history' | 'progress';
   totalQuestionsCount?: number;
   userName?: string;
+  onOpenProfileModal?: () => void;
 }
 
 export function TopBar({
@@ -74,7 +75,8 @@ export function TopBar({
   onToggleLanguage = () => {},
   activeView,
   totalQuestionsCount = 0,
-  userName = 'PrIyA PaTeL'
+  userName = 'PrIyA PaTeL',
+  onOpenProfileModal
 }: TopBarProps) {
   const qCount = totalQuestionsCount > 0 ? totalQuestionsCount : 0;
   const qLabel = qCount > 0 ? `${qCount}` : '…';
@@ -185,13 +187,20 @@ export function TopBar({
 
         {/* Right: User Profile & Actions */}
         <div className="flex items-center gap-2 shrink-0">
-          {/* User Name Badge */}
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs font-bold text-slate-200">
+          {/* User Name Badge / Sync Profile Trigger */}
+          <button
+            onClick={onOpenProfileModal}
+            className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-xs font-bold text-amber-300 transition-all cursor-pointer shadow-xs"
+            title="Click to view & sync Universal Candidate ID (क्लाउड सिंक)"
+          >
             <div className="w-6 h-6 rounded-lg bg-amber-500 text-slate-950 flex items-center justify-center font-black text-[10px]">
               PP
             </div>
-            <span>{userName}</span>
-          </div>
+            <span className="hidden sm:inline">{userName}</span>
+            <span className="text-[9px] uppercase tracking-wider font-extrabold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
+              Sync
+            </span>
+          </button>
 
           <button
             onClick={onOpenCloudModal}

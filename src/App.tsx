@@ -42,6 +42,8 @@ import { RapidDrillModal } from './components/RapidDrillModal';
 import { ProgressAnalyticsView } from './components/ProgressAnalyticsView';
 import { CreateTestView } from './components/CreateTestView';
 import { BulkImportView } from './components/BulkImportView';
+import { UserProfileModal } from './components/UserProfileModal';
+import { getUserProfile, getUserSyncId } from './utils/userProfile';
 
 type AppView = 'intro' | 'testing' | 'results' | 'bank' | 'create-test' | 'bulk-import' | 'history' | 'progress';
 
@@ -74,7 +76,21 @@ export default function App() {
   const [isRapidDrillModalOpen, setIsRapidDrillModalOpen] = useState(false);
   const [bulkImportTopic, setBulkImportTopic] = useState<string | undefined>(undefined);
 
-  const candidateName = 'PrIyA PaTeL';
+  const [candidateProfile, setCandidateProfile] = useState(() => getUserProfile());
+  const candidateName = candidateProfile.displayName || 'PrIyA PaTeL';
+  const [isUserProfileModalOpen, setIsUserProfileModalOpen] = useState(false);
+
+  useEffect(() => {
+    const handleProfileUpdate = () => {
+      setCandidateProfile(getUserProfile());
+    };
+    window.addEventListener('bpsc_user_profile_updated', handleProfileUpdate);
+    window.addEventListener('bpsc_user_sync_id_changed', handleProfileUpdate);
+    return () => {
+      window.removeEventListener('bpsc_user_profile_updated', handleProfileUpdate);
+      window.removeEventListener('bpsc_user_sync_id_changed', handleProfileUpdate);
+    };
+  }, []);
 
   // PWA Install Prompt State
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
@@ -254,14 +270,17 @@ export default function App() {
       accuracy: result.accuracy,
       date: dateFormatted,
       completedAtIso,
-      studentName: 'Priya Patel',
+      studentName: candidateName,
+      userId: getUserSyncId(),
       totalQuestions: result.totalQuestions,
       correctCount: result.correctCount,
       incorrectCount: result.incorrectCount,
       safeSkipCount: result.safeSkipCount,
       blankPenaltyCount: result.blankPenaltyCount,
       totalTimeSpentSeconds: result.totalTimeSpentSeconds,
-      topicBreakdown
+      topicBreakdown,
+      responses: result.responses,
+      questions: result.questions || (currentSet && currentSet.questions) || []
     };
 
     saveAttemptRecord(attemptRecord);
@@ -451,6 +470,7 @@ export default function App() {
         activeView={activeView}
         totalQuestionsCount={totalQuestionsCount}
         userName={candidateName}
+        onOpenProfileModal={() => setIsUserProfileModalOpen(true)}
       />
 
       {/* Main View Router */}
@@ -613,6 +633,17 @@ export default function App() {
           isOpen={isRapidDrillModalOpen}
           onClose={() => setIsRapidDrillModalOpen(false)}
           onStartTest={handleStartCustomCreatedTest}
+        />
+      )}
+
+      {isUserProfileModalOpen && (
+        <UserProfileModal
+          isOpen={isUserProfileModalOpen}
+          onClose={() => setIsUserProfileModalOpen(false)}
+          onProfileUpdated={() => {
+            setCandidateProfile(getUserProfile());
+            setAvailableSets(getAllAvailableTests());
+          }}
         />
       )}
 

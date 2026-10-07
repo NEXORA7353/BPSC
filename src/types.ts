@@ -100,11 +100,14 @@ export interface TestAttemptRecord {
   studentEmail?: string;
   parentEmail?: string;
   studentName?: string;
+  userId?: string;
   completedAtIso?: string;
   totalTimeSpentSeconds?: number;
   safeSkipCount?: number;
   blankPenaltyCount?: number;
   topicBreakdown?: Record<string, TopicPerformanceStat>;
+  responses?: Record<string, QuestionResponse>;
+  questions?: Question[];
 }
 
 export interface RegisteredTopic {
