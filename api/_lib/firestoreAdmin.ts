@@ -77,6 +77,11 @@ export async function reserveNotificationAtomically(
     attemptId?: string;
   }
 ): Promise<boolean> {
+  if (!isFirebaseAdminConfigured()) {
+    console.warn(`[reserveNotificationAtomically] Firebase Admin not configured for ${notificationId}, proceeding.`);
+    return true;
+  }
+
   const db = getAdminFirestore();
   const docRef = db.collection('sent_notifications').doc(notificationId);
 
@@ -118,6 +123,10 @@ export async function finalizeNotification(
     error?: string;
   }
 ): Promise<void> {
+  if (!isFirebaseAdminConfigured()) {
+    return;
+  }
+
   const db = getAdminFirestore();
   const docRef = db.collection('sent_notifications').doc(notificationId);
   await docRef.set(
@@ -145,6 +154,9 @@ export async function releaseNotificationReservation(notificationId: string): Pr
  * Fetches a persisted attempt record from Firestore to verify score data before emailing.
  */
 export async function getPersistedAttempt(attemptId: string): Promise<any | null> {
+  if (!isFirebaseAdminConfigured()) {
+    return null;
+  }
   const db = getAdminFirestore();
   const docSnap = await db.collection('attempt_records').doc(attemptId).get();
   if (!docSnap.exists) {
@@ -157,6 +169,9 @@ export async function getPersistedAttempt(attemptId: string): Promise<any | null
  * Fetches a published custom test by ID.
  */
 export async function getPublishedTest(testId: string): Promise<any | null> {
+  if (!isFirebaseAdminConfigured()) {
+    return null;
+  }
   const db = getAdminFirestore();
   const docSnap = await db.collection('custom_tests').doc(testId).get();
   if (!docSnap.exists) {
@@ -173,6 +188,9 @@ export async function getStudentAttemptsInRange(
   startIso: string,
   endIso: string
 ): Promise<any[]> {
+  if (!isFirebaseAdminConfigured()) {
+    return [];
+  }
   const db = getAdminFirestore();
   const snap = await db
     .collection('attempt_records')
@@ -191,6 +209,9 @@ export async function getScheduledPublishedTests(
   windowStartIso: string,
   windowEndIso: string
 ): Promise<any[]> {
+  if (!isFirebaseAdminConfigured()) {
+    return [];
+  }
   const db = getAdminFirestore();
   const snap = await db
     .collection('custom_tests')

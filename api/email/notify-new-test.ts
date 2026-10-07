@@ -7,7 +7,8 @@ import { sendBrevoEmail } from '../_lib/brevo.js';
 import {
   getPublishedTest,
   reserveNotificationAtomically,
-  finalizeNotification
+  finalizeNotification,
+  isFirebaseAdminConfigured
 } from '../_lib/firestoreAdmin.js';
 import {
   renderStudentNewTestEmail
@@ -63,14 +64,22 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
 
     let isReserved = false;
     try {
-      isReserved = await reserveNotificationAtomically(notificationId, {
-        type: 'new_test',
-        recipients: [studentEmail],
-        testId
-      });
+      if (isFirebaseAdminConfigured()) {
+        isReserved = await reserveNotificationAtomically(notificationId, {
+          type: 'new_test',
+          recipients: [studentEmail],
+          testId
+        });
+      } else {
+        isReserved = true;
+      }
     } catch (dbErr: any) {
       console.warn('[notify-new-test] Reservation error:', dbErr?.message || dbErr);
-      isReserved = false;
+      if (dbErr?.code === 6 || dbErr?.message?.includes('ALREADY_EXISTS') || dbErr?.message?.includes('already exists')) {
+        isReserved = false;
+      } else {
+        isReserved = true;
+      }
     }
 
     if (!isReserved) {

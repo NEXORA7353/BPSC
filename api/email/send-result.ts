@@ -8,7 +8,8 @@ import { sendBrevoEmail } from '../_lib/brevo.js';
 import {
   getPersistedAttempt,
   reserveNotificationAtomically,
-  finalizeNotification
+  finalizeNotification,
+  isFirebaseAdminConfigured
 } from '../_lib/firestoreAdmin.js';
 import {
   renderStudentResultEmail,
@@ -72,15 +73,23 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
 
     let isReserved = false;
     try {
-      isReserved = await reserveNotificationAtomically(notificationId, {
-        type: 'test_result',
-        recipients: [studentEmail, parentEmail],
-        attemptId,
-        testId: attempt.testId
-      });
+      if (isFirebaseAdminConfigured()) {
+        isReserved = await reserveNotificationAtomically(notificationId, {
+          type: 'test_result',
+          recipients: [studentEmail, parentEmail],
+          attemptId,
+          testId: attempt.testId
+        });
+      } else {
+        isReserved = true;
+      }
     } catch (dbErr: any) {
       console.warn('[send-result] Reservation error:', dbErr?.message || dbErr);
-      isReserved = false;
+      if (dbErr?.code === 6 || dbErr?.message?.includes('ALREADY_EXISTS') || dbErr?.message?.includes('already exists')) {
+        isReserved = false;
+      } else {
+        isReserved = true;
+      }
     }
 
     if (!isReserved) {
