@@ -3,9 +3,10 @@ import { normalizeTestTitle } from './questionBankStorage';
 
 export interface ChapterFolderDef {
   id: string;
-  nameHindi: string;
   nameEnglish: string;
+  nameHindi: string;
   categoryKey: string;
+  description: string;
   color: {
     bgLight: string;
     bgDark: string;
@@ -13,6 +14,7 @@ export interface ChapterFolderDef {
     text: string;
     badge: string;
     iconBg: string;
+    gradient: string;
   };
   iconType: 'discount' | 'mensuration' | 'geometry' | 'number_system' | 'percentage' | 'algebra' | 'grand' | 'custom' | 'general';
 }
@@ -20,136 +22,154 @@ export interface ChapterFolderDef {
 export const CHAPTER_DEFINITIONS: ChapterFolderDef[] = [
   {
     id: 'lcm_hcf_number',
+    nameEnglish: 'Number System, LCM & HCF',
     nameHindi: 'संख्या पद्धति, ल.स. एवं म.स.',
-    nameEnglish: 'Number System, LCM & HCF Chapter Tests',
     categoryKey: 'lcm_hcf_number',
+    description: 'Divisibility, Unit Digits, Remainders, Factors, LCM & HCF real exam problems',
     color: {
       bgLight: 'bg-amber-500/10',
       bgDark: 'dark:bg-amber-500/5',
       border: 'border-amber-500/30',
       text: 'text-amber-500',
       badge: 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30',
-      iconBg: 'bg-amber-500 text-slate-950'
+      iconBg: 'bg-amber-500 text-slate-950',
+      gradient: 'from-amber-500/20 via-orange-500/10 to-transparent'
     },
     iconType: 'number_system'
   },
   {
     id: 'discount',
-    nameHindi: 'बट्टा एवं छूट विशेष',
-    nameEnglish: 'Discount & Marked Price Tests',
+    nameEnglish: 'Discount & Marked Price',
+    nameHindi: 'बट्टा एवं अंकित मूल्य',
     categoryKey: 'discount',
+    description: 'Successive Discounts, Marked Price (MP), Cost Price (CP) & Selling Price relations',
     color: {
       bgLight: 'bg-emerald-500/10',
       bgDark: 'dark:bg-emerald-500/5',
       border: 'border-emerald-500/30',
       text: 'text-emerald-500',
       badge: 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30',
-      iconBg: 'bg-emerald-500 text-slate-950'
+      iconBg: 'bg-emerald-500 text-slate-950',
+      gradient: 'from-emerald-500/20 via-teal-500/10 to-transparent'
     },
     iconType: 'discount'
   },
   {
     id: 'mensuration',
+    nameEnglish: '2D & 3D Mensuration',
     nameHindi: 'क्षेत्रमिति (2D एवं 3D)',
-    nameEnglish: '2D & 3D Mensuration Real Papers',
     categoryKey: 'mensuration',
+    description: 'Cuboid, Cylinder, Cone, Sphere, Rhombus, Circle & Perimeter diagrams',
     color: {
       bgLight: 'bg-blue-500/10',
       bgDark: 'dark:bg-blue-500/5',
       border: 'border-blue-500/30',
       text: 'text-blue-500',
       badge: 'bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-500/30',
-      iconBg: 'bg-blue-500 text-white'
+      iconBg: 'bg-blue-500 text-white',
+      gradient: 'from-blue-500/20 via-cyan-500/10 to-transparent'
     },
     iconType: 'mensuration'
   },
   {
     id: 'geometry',
+    nameEnglish: 'Geometry & Coordinate Geometry',
     nameHindi: 'ज्यामिति एवं निर्देशांक ज्यामिति',
-    nameEnglish: 'Geometry & Coordinate Geometry with Diagrams',
     categoryKey: 'geometry',
+    description: 'Circle Theorems, Tangents, Triangle Medians, Trapezium & Coordinate formulas',
     color: {
       bgLight: 'bg-purple-500/10',
       bgDark: 'dark:bg-purple-500/5',
       border: 'border-purple-500/30',
       text: 'text-purple-500',
       badge: 'bg-purple-500/20 text-purple-700 dark:text-purple-300 border-purple-500/30',
-      iconBg: 'bg-purple-500 text-white'
+      iconBg: 'bg-purple-500 text-white',
+      gradient: 'from-purple-500/20 via-fuchsia-500/10 to-transparent'
     },
     iconType: 'geometry'
   },
   {
     id: 'percentage_profit',
+    nameEnglish: 'Percentage, Profit & Loss',
     nameHindi: 'प्रतिशत, लाभ एवं हानि',
-    nameEnglish: 'Percentage, Profit & Loss Sets',
     categoryKey: 'percentage_profit',
+    description: 'Percentage changes, Profit-Loss percentages, False Weights & Dishonest Seller',
     color: {
       bgLight: 'bg-rose-500/10',
       bgDark: 'dark:bg-rose-500/5',
       border: 'border-rose-500/30',
       text: 'text-rose-500',
       badge: 'bg-rose-500/20 text-rose-700 dark:text-rose-300 border-rose-500/30',
-      iconBg: 'bg-rose-500 text-white'
+      iconBg: 'bg-rose-500 text-white',
+      gradient: 'from-rose-500/20 via-pink-500/10 to-transparent'
     },
     iconType: 'percentage'
   },
   {
     id: 'algebra_equations',
-    nameHindi: 'बीजगणित एवं समीकरण',
-    nameEnglish: 'Algebra, Polynomials & Quadratic Equations',
+    nameEnglish: 'Algebra & Quadratic Equations',
+    nameHindi: 'बीजगणित एवं द्विघात समीकरण',
     categoryKey: 'algebra_equations',
+    description: 'Polynomial zeroes, Algebraic identities, Linear & Quadratic equations',
     color: {
       bgLight: 'bg-cyan-500/10',
       bgDark: 'dark:bg-cyan-500/5',
       border: 'border-cyan-500/30',
       text: 'text-cyan-500',
       badge: 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border-cyan-500/30',
-      iconBg: 'bg-cyan-500 text-slate-950'
+      iconBg: 'bg-cyan-500 text-slate-950',
+      gradient: 'from-cyan-500/20 via-sky-500/10 to-transparent'
     },
     iconType: 'algebra'
   },
   {
     id: 'grand_syllabus',
-    nameHindi: 'ग्रांड सिलेबस एवं संपूर्ण कंबाइंड मॉक',
-    nameEnglish: 'Grand Syllabus & Full Multi-Topic Mocks',
+    nameEnglish: 'Grand Syllabus & Combined Mocks',
+    nameHindi: 'संपूर्ण पाठ्यक्रम कंबाइंड मॉक',
     categoryKey: 'grand_syllabus',
+    description: 'Full syllabus 40-question and multi-chapter comprehensive BPSC TRE 4.0 exam sets',
     color: {
       bgLight: 'bg-indigo-500/10',
       bgDark: 'dark:bg-indigo-500/5',
       border: 'border-indigo-500/30',
-      text: 'text-indigo-500',
+      text: 'text-indigo-400',
       badge: 'bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border-indigo-500/30',
-      iconBg: 'bg-indigo-500 text-white'
+      iconBg: 'bg-indigo-500 text-white',
+      gradient: 'from-indigo-500/20 via-purple-500/10 to-transparent'
     },
     iconType: 'grand'
   },
   {
     id: 'custom_tests',
-    nameHindi: 'कस्टम एवं स्वयं बनाए गए टेस्ट',
-    nameEnglish: 'Custom User-Created Mock Tests',
+    nameEnglish: 'Custom Generated Tests',
+    nameHindi: 'कस्टम निर्मित टेस्ट सेट्स',
     categoryKey: 'custom_tests',
+    description: 'Tests generated on-demand with customized question count, timer, and topics',
     color: {
       bgLight: 'bg-amber-600/10',
       bgDark: 'dark:bg-amber-600/5',
       border: 'border-amber-600/30',
       text: 'text-amber-500',
       badge: 'bg-amber-600/20 text-amber-700 dark:text-amber-300 border-amber-600/30',
-      iconBg: 'bg-amber-600 text-white'
+      iconBg: 'bg-amber-600 text-white',
+      gradient: 'from-amber-600/20 via-orange-600/10 to-transparent'
     },
     iconType: 'custom'
   },
   {
     id: 'general_mocks',
-    nameHindi: 'अन्य विषयवार अभ्यास टेस्ट',
-    nameEnglish: 'General Subject Practice Tests',
+    nameEnglish: 'General Subject Tests',
+    nameHindi: 'सामान्य विषयवार टेस्ट',
     categoryKey: 'general_mocks',
+    description: 'Practice questions covering additional core mathematics curriculum',
     color: {
       bgLight: 'bg-slate-500/10',
       bgDark: 'dark:bg-slate-500/5',
       border: 'border-slate-500/30',
       text: 'text-slate-400',
       badge: 'bg-slate-500/20 text-slate-700 dark:text-slate-300 border-slate-500/30',
-      iconBg: 'bg-slate-700 text-white'
+      iconBg: 'bg-slate-700 text-white',
+      gradient: 'from-slate-500/20 via-slate-600/10 to-transparent'
     },
     iconType: 'general'
   }
@@ -256,24 +276,24 @@ export function getTestChapterId(test: MockTestSet): string {
 }
 
 /**
- * Extract human-readable creation date & time from a test
+ * Extract human-readable creation date & time from a test in English
  */
 export function formatTestDateTime(test: MockTestSet): { formatted: string; isApprox: boolean } {
   // If explicitly stored createdAt
   if (test.createdAt) {
     const d = new Date(test.createdAt);
     if (!isNaN(d.getTime())) {
-      const datePart = d.toLocaleDateString('hi-IN', {
-        day: '2-digit',
+      const datePart = d.toLocaleDateString('en-US', {
         month: 'short',
+        day: 'numeric',
         year: 'numeric'
       });
-      const timePart = d.toLocaleTimeString('en-IN', {
-        hour: '2-digit',
+      const timePart = d.toLocaleTimeString('en-US', {
+        hour: 'numeric',
         minute: '2-digit',
         hour12: true
       });
-      return { formatted: `${datePart}, ${timePart}`, isApprox: false };
+      return { formatted: `${datePart} · ${timePart}`, isApprox: false };
     }
   }
 
@@ -283,21 +303,21 @@ export function formatTestDateTime(test: MockTestSet): { formatted: string; isAp
     const ts = parseInt(match[1], 10);
     const d = new Date(ts);
     if (!isNaN(d.getTime()) && d.getFullYear() >= 2024 && d.getFullYear() <= 2030) {
-      const datePart = d.toLocaleDateString('hi-IN', {
-        day: '2-digit',
+      const datePart = d.toLocaleDateString('en-US', {
         month: 'short',
+        day: 'numeric',
         year: 'numeric'
       });
-      const timePart = d.toLocaleTimeString('en-IN', {
-        hour: '2-digit',
+      const timePart = d.toLocaleTimeString('en-US', {
+        hour: 'numeric',
         minute: '2-digit',
         hour12: true
       });
-      return { formatted: `${datePart}, ${timePart}`, isApprox: false };
+      return { formatted: `${datePart} · ${timePart}`, isApprox: false };
     }
   }
 
-  return { formatted: '07 Oct 2026, 02:30 PM', isApprox: true };
+  return { formatted: 'Oct 7, 2026 · 2:30 PM', isApprox: true };
 }
 
 /**
