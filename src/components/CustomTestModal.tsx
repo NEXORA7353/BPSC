@@ -1767,7 +1767,7 @@ export function CustomTestModal({
                                   >
                                     <span className="font-bold text-slate-400">({letters[optIdx]})</span>
                                     <div className="flex-1">
-                                      <MathText text={opt} />
+                                      <MathText text={typeof opt === 'string' ? opt : (opt as any)?.text || ''} />
                                     </div>
                                   </div>
                                 );

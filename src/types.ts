@@ -2,6 +2,7 @@ export interface Question {
   id: string;
   originalNumber?: number;
   topic: string; // 'lcm_hcf' | 'percentage' | 'profit_loss' or custom string
+  topicName?: string;
   topicNameHindi: string;
   exam: string;
   questionText: string;
@@ -121,6 +122,7 @@ export interface SavedTestResult extends TestResult {
   id: string;
   dateFormatted: string;
   completedAtIso?: string;
+  attemptedCount?: number;
   topicBreakdown?: Record<string, TopicPerformanceStat>;
   questions?: Question[];
 }

@@ -6,7 +6,7 @@ import {
   DEFAULT_STUDENT_NAME,
   getIstIsoDayRange
 } from '../_lib/constants.js';
-import { sendAnypostEmail } from '../_lib/anypost.js';
+import { sendBrevoEmail } from '../_lib/brevo.js';
 import {
   getStudentAttemptsInRange,
   reserveNotificationAtomically,
@@ -75,38 +75,39 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
     const studentMail = renderStudentDailyInactivityEmail(studentName);
     const parentMail = renderParentDailyInactivityEmail(studentName);
 
-    // 7. Send emails via Anypost with distinct idempotency keys
+    // 7. Send emails via Brevo with distinct idempotency keys
     const [sRes, pRes] = await Promise.all([
-      sendAnypostEmail({
+      sendBrevoEmail({
         to: studentEmail,
         subject: studentMail.subject,
-        html: studentMail.html,
+        htmlContent: studentMail.html,
         idempotencyKey: `${notificationId}_student`,
         tags: ['bpsc-daily-inactivity-student']
       }),
-      sendAnypostEmail({
+      sendBrevoEmail({
         to: parentEmail,
         subject: parentMail.subject,
-        html: parentMail.html,
+        htmlContent: parentMail.html,
         idempotencyKey: `${notificationId}_parent`,
         tags: ['bpsc-daily-inactivity-parent']
       })
     ]);
 
-    const anypostId = sRes.emailId || pRes.emailId;
+    const brevoId = sRes.messageId || pRes.messageId;
     await finalizeNotification(notificationId, {
-      status: sRes.success || pRes.success ? 'accepted' : 'failed',
-      emailId: anypostId,
-      anypostEmailId: anypostId,
+      status: sRes.success || pRes.success ? 'delivered' : 'failed',
+      emailId: brevoId,
+      brevoMessageId: brevoId,
       error: !sRes.success && !pRes.success ? (sRes.error || pRes.error) : undefined
     }).catch(() => null);
 
     return sendJson(res, 200, {
       success: true,
+      provider: 'brevo',
       date: dateStr,
       notificationId,
-      studentResult: { success: sRes.success, emailId: sRes.emailId, messageId: sRes.emailId },
-      parentResult: { success: pRes.success, emailId: pRes.emailId, messageId: pRes.emailId }
+      studentResult: { success: sRes.success, messageId: sRes.messageId, statusCode: sRes.statusCode },
+      parentResult: { success: pRes.success, messageId: pRes.messageId, statusCode: pRes.statusCode }
     });
   } catch (err: any) {
     console.error('[cron/daily-inactivity error]:', err?.message || err);

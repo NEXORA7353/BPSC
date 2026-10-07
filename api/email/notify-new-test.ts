@@ -4,7 +4,7 @@ import {
   DEFAULT_PARENT_EMAIL,
   DEFAULT_STUDENT_NAME
 } from '../_lib/constants.js';
-import { sendAnypostEmail } from '../_lib/anypost.js';
+import { sendBrevoEmail } from '../_lib/brevo.js';
 import {
   getPublishedTest,
   reserveNotificationAtomically,
@@ -104,19 +104,19 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
       studentName
     });
 
-    // 5. Send emails via Anypost with distinct idempotency keys
+    // 5. Send emails via Brevo with distinct idempotency keys
     const [studentResult, parentResult] = await Promise.all([
-      sendAnypostEmail({
+      sendBrevoEmail({
         to: studentEmail,
         subject: studentMail.subject,
-        html: studentMail.html,
+        htmlContent: studentMail.html,
         idempotencyKey: `${notificationId}_student`,
         tags: ['bpsc-new-test-student']
       }),
-      sendAnypostEmail({
+      sendBrevoEmail({
         to: parentEmail,
         subject: parentMail.subject,
-        html: parentMail.html,
+        htmlContent: parentMail.html,
         idempotencyKey: `${notificationId}_parent`,
         tags: ['bpsc-new-test-parent']
       })
@@ -129,7 +129,7 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
       }).catch(() => null);
 
       return sendJson(res, 502, {
-        error: 'Failed to send Anypost emails',
+        error: 'Failed to send Brevo emails',
         details: {
           studentError: studentResult.error,
           parentError: parentResult.error
@@ -137,25 +137,26 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
       });
     }
 
-    const anypostId = studentResult.emailId || parentResult.emailId;
+    const brevoId = studentResult.messageId || parentResult.messageId;
     await finalizeNotification(notificationId, {
-      status: 'accepted',
-      emailId: anypostId,
-      anypostEmailId: anypostId
+      status: 'delivered',
+      emailId: brevoId,
+      brevoMessageId: brevoId
     }).catch(() => null);
 
     return sendJson(res, 200, {
       success: true,
       notificationId,
+      provider: 'brevo',
       studentResult: {
         success: studentResult.success,
-        emailId: studentResult.emailId,
-        messageId: studentResult.emailId
+        messageId: studentResult.messageId,
+        statusCode: studentResult.statusCode
       },
       parentResult: {
         success: parentResult.success,
-        emailId: parentResult.emailId,
-        messageId: parentResult.emailId
+        messageId: parentResult.messageId,
+        statusCode: parentResult.statusCode
       }
     });
   } catch (err: any) {

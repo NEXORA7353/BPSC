@@ -5,7 +5,7 @@ import {
   DEFAULT_PARENT_EMAIL,
   DEFAULT_STUDENT_NAME
 } from '../_lib/constants.js';
-import { sendAnypostEmail } from '../_lib/anypost.js';
+import { sendBrevoEmail } from '../_lib/brevo.js';
 import {
   getScheduledPublishedTests,
   reserveNotificationAtomically,
@@ -66,27 +66,27 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
         if (reserved) {
           const mail = renderTestReminderEmail(test, '2h', studentName);
           const [sRes, pRes] = await Promise.all([
-            sendAnypostEmail({
+            sendBrevoEmail({
               to: studentEmail,
               subject: mail.subject,
-              html: mail.html,
+              htmlContent: mail.html,
               idempotencyKey: `${notifId}_student`,
               tags: ['bpsc-reminder-2h-student']
             }),
-            sendAnypostEmail({
+            sendBrevoEmail({
               to: parentEmail,
               subject: mail.subject,
-              html: mail.html,
+              htmlContent: mail.html,
               idempotencyKey: `${notifId}_parent`,
               tags: ['bpsc-reminder-2h-parent']
             })
           ]);
 
-          const anypostId = sRes.emailId || pRes.emailId;
+          const brevoId = sRes.messageId || pRes.messageId;
           await finalizeNotification(notifId, {
-            status: sRes.success || pRes.success ? 'accepted' : 'failed',
-            emailId: anypostId,
-            anypostEmailId: anypostId,
+            status: sRes.success || pRes.success ? 'delivered' : 'failed',
+            emailId: brevoId,
+            brevoMessageId: brevoId,
             error: !sRes.success && !pRes.success ? (sRes.error || pRes.error) : undefined
           }).catch(() => null);
           results.reminders2hSent += 1;
@@ -109,18 +109,18 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
 
         if (reserved) {
           const mail = renderTestReminderEmail(test, 'soon', studentName);
-          const sRes = await sendAnypostEmail({
+          const sRes = await sendBrevoEmail({
             to: studentEmail,
             subject: mail.subject,
-            html: mail.html,
+            htmlContent: mail.html,
             idempotencyKey: `${notifId}_student`,
             tags: ['bpsc-reminder-soon-student']
           });
 
           await finalizeNotification(notifId, {
-            status: sRes.success ? 'accepted' : 'failed',
-            emailId: sRes.emailId,
-            anypostEmailId: sRes.emailId,
+            status: sRes.success ? 'delivered' : 'failed',
+            emailId: sRes.messageId,
+            brevoMessageId: sRes.messageId,
             error: !sRes.success ? sRes.error : undefined
           }).catch(() => null);
           results.remindersSoonSent += 1;

@@ -831,6 +831,23 @@ export async function saveAttemptRecordToCloud(record: TestAttemptRecord): Promi
       createdAt: new Date().toISOString()
     });
     await setDoc(doc(db, 'attempt_records', recordId), cleanRecord);
+
+    // Non-blocking trigger to send result email to student & parent
+    try {
+      fetch('/api/email/send-result', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          attemptId: recordId,
+          attemptData: cleanRecord
+        })
+      }).catch((emailErr) => {
+        console.warn('[send-result] Background trigger warning:', emailErr);
+      });
+    } catch {
+      // ignore
+    }
+
     return recordId;
   } catch (err) {
     console.warn(`Cloud write attempt record failed (${path}):`, err);

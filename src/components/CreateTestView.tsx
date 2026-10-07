@@ -445,6 +445,22 @@ export function CreateTestView({
         console.warn('Direct cloud test save warning:', err);
       }
 
+      // 3. Attempt email notification in background (never blocks test creation)
+      try {
+        fetch('/api/email/notify-new-test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            testId: testSet.id,
+            testData: testSet
+          })
+        }).catch((err) => {
+          console.warn('[notify-new-test] Background trigger warning:', err);
+        });
+      } catch (emailErr) {
+        console.warn('[notify-new-test] Trigger error:', emailErr);
+      }
+
       setStatusNotification(`Test "${testSet.title}" published & saved to portal successfully!`);
       setTimeout(() => {
         onBack();
