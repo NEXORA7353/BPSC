@@ -13,9 +13,10 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
   };
 
   try {
-    const [domainDetail] = await Promise.all([
-      fetch(`https://api.brevo.com/v3/senders/domains/bpsc.dpdns.org`, { headers }).then((r) => r.json()).catch((e) => ({ error: e.message }))
-    ]);
+    const domainId = '6ac4b2a7d9caafa7ac02c323';
+    const domainDetail = await fetch(`https://api.brevo.com/v3/senders/domains/${domainId}`, { headers })
+      .then((r) => r.json())
+      .catch((e) => ({ error: e.message }));
 
     return sendJson(res, 200, {
       domainDetail
