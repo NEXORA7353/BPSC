@@ -421,7 +421,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950 transition-colors duration-150 relative">
+    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950 transition-colors duration-150 relative max-w-full overflow-x-hidden">
       {/* Sidebar Navigation Component */}
       <Sidebar
         isOpen={isSidebarOpen}

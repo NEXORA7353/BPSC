@@ -7,6 +7,20 @@
     color-scheme: light dark;
   }
   
+  html, body {
+    overflow-x: hidden;
+    max-width: 100vw;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+  
   body {
     font-feature-settings: "cv02", "cv03", "cv04", "cv11", "tnum";
     font-variant-numeric: tabular-nums;
@@ -113,16 +127,18 @@
 
 /* Glassmorphism Panels (Theme Aware) */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
 }
 
 .dark .glass-panel {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
 }
 
