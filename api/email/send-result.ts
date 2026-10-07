@@ -80,7 +80,7 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
       });
     } catch (dbErr: any) {
       console.warn('[send-result] Reservation error:', dbErr?.message || dbErr);
-      isReserved = true;
+      isReserved = false;
     }
 
     if (!isReserved) {

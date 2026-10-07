@@ -1,7 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import {
   DEFAULT_STUDENT_EMAIL,
-  DEFAULT_PARENT_EMAIL,
   DEFAULT_STUDENT_NAME
 } from '../_lib/constants.js';
 import { sendBrevoEmail } from '../_lib/brevo.js';
@@ -11,8 +10,7 @@ import {
   finalizeNotification
 } from '../_lib/firestoreAdmin.js';
 import {
-  renderStudentNewTestEmail,
-  renderParentNewTestEmail
+  renderStudentNewTestEmail
 } from '../_lib/emailTemplates.js';
 import { sendJson } from '../_lib/response.js';
 
@@ -61,20 +59,18 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
     // 3. Atomically reserve notification
     const notificationId = `publish_${testId}`;
     const studentEmail = test.studentEmail || DEFAULT_STUDENT_EMAIL;
-    const parentEmail = test.parentEmail || DEFAULT_PARENT_EMAIL;
     const studentName = test.studentName || DEFAULT_STUDENT_NAME;
 
     let isReserved = false;
     try {
       isReserved = await reserveNotificationAtomically(notificationId, {
         type: 'new_test',
-        recipients: [studentEmail, parentEmail],
+        recipients: [studentEmail],
         testId
       });
     } catch (dbErr: any) {
       console.warn('[notify-new-test] Reservation error:', dbErr?.message || dbErr);
-      // If serverless Firestore is unavailable, allow proceeding without duplicate prevention
-      isReserved = true;
+      isReserved = false;
     }
 
     if (!isReserved) {
@@ -84,7 +80,7 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
       });
     }
 
-    // 4. Render student and parent templates
+    // 4. Render student template (Publish notification sends exactly ONE student email)
     const studentMail = renderStudentNewTestEmail({
       id: testId,
       title: test.title,
@@ -95,53 +91,33 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
       studentName
     });
 
-    const parentMail = renderParentNewTestEmail({
-      id: testId,
-      title: test.title,
-      totalQuestions: test.totalQuestions,
-      totalTimeMinutes: test.totalTimeMinutes,
-      scheduledStartAt: test.scheduledStartAt,
-      studentName
+    // 5. Send single student email via Brevo with idempotency key
+    const studentResult = await sendBrevoEmail({
+      to: studentEmail,
+      subject: studentMail.subject,
+      htmlContent: studentMail.html,
+      idempotencyKey: `${notificationId}_student`,
+      tags: ['bpsc-new-test-student']
     });
 
-    // 5. Send emails via Brevo with distinct idempotency keys
-    const [studentResult, parentResult] = await Promise.all([
-      sendBrevoEmail({
-        to: studentEmail,
-        subject: studentMail.subject,
-        htmlContent: studentMail.html,
-        idempotencyKey: `${notificationId}_student`,
-        tags: ['bpsc-new-test-student']
-      }),
-      sendBrevoEmail({
-        to: parentEmail,
-        subject: parentMail.subject,
-        htmlContent: parentMail.html,
-        idempotencyKey: `${notificationId}_parent`,
-        tags: ['bpsc-new-test-parent']
-      })
-    ]);
-
-    if (!studentResult.success && !parentResult.success) {
+    if (!studentResult.success) {
       await finalizeNotification(notificationId, {
         status: 'failed',
-        error: studentResult.error || parentResult.error
+        error: studentResult.error
       }).catch(() => null);
 
       return sendJson(res, 502, {
-        error: 'Failed to send Brevo emails',
+        error: 'Failed to send Brevo email to student',
         details: {
-          studentError: studentResult.error,
-          parentError: parentResult.error
+          studentError: studentResult.error
         }
       });
     }
 
-    const brevoId = studentResult.messageId || parentResult.messageId;
     await finalizeNotification(notificationId, {
       status: 'delivered',
-      emailId: brevoId,
-      brevoMessageId: brevoId
+      emailId: studentResult.messageId,
+      brevoMessageId: studentResult.messageId
     }).catch(() => null);
 
     return sendJson(res, 200, {
@@ -152,11 +128,6 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
         success: studentResult.success,
         messageId: studentResult.messageId,
         statusCode: studentResult.statusCode
-      },
-      parentResult: {
-        success: parentResult.success,
-        messageId: parentResult.messageId,
-        statusCode: parentResult.statusCode
       }
     });
   } catch (err: any) {

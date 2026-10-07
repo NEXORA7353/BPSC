@@ -62,5 +62,5 @@ export function getIstYearWeek(date: Date = new Date()): string {
   dNum.setUTCDate(dNum.getUTCDate() + 4 - dayNum);
   const yearStart = new Date(Date.UTC(dNum.getUTCFullYear(), 0, 1));
   const weekNo = Math.ceil(((dNum.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
-  return `${dNum.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+  return `${dNum.getUTCFullYear()}-${String(weekNo).padStart(2, '0')}`;
 }
