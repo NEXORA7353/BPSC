@@ -27,13 +27,22 @@ import {
   Hash,
   ChevronRight,
   BarChart3,
+  TrendingUp,
+  Zap,
   Sparkle
 } from 'lucide-react';
 import { MockTestSet, TestAttemptRecord } from '../types';
 import { BackButton } from './BackButton';
 import { ScratchpadModal } from './ScratchpadModal';
 import { FormulaSheetModal } from './FormulaSheetModal';
-import { cleanTitleToEnglish, getTestTopicBreakdown, getAttemptRecords } from '../utils/questionBankStorage';
+import {
+  cleanTitleToEnglish,
+  getTestTopicBreakdown,
+  getAttemptRecords,
+  isTodayAttempt,
+  getAllQuestionBank,
+  getAllRegisteredTopics
+} from '../utils/questionBankStorage';
 import { printQuestionPaperWithOmr } from '../utils/exportPdfOmr';
 import {
   getTestAttempt,
@@ -101,13 +110,20 @@ export function TestIntroView({
     window.addEventListener('bpsc_cloud_data_updated', updateAttempts);
     window.addEventListener('bpsc_history_updated', updateAttempts);
     window.addEventListener('bpsc_history_deleted', updateAttempts);
+    window.addEventListener('bpsc_history_all_cleared', updateAttempts);
     return () => {
       window.removeEventListener('bpsc_attempt_saved', updateAttempts);
       window.removeEventListener('bpsc_cloud_data_updated', updateAttempts);
       window.removeEventListener('bpsc_history_updated', updateAttempts);
       window.removeEventListener('bpsc_history_deleted', updateAttempts);
+      window.removeEventListener('bpsc_history_all_cleared', updateAttempts);
     };
   }, []);
+
+  // Dashboard maintains today's attempts only
+  const todayAttemptRecords = useMemo(() => {
+    return attemptRecords.filter(isTodayAttempt);
+  }, [attemptRecords]);
 
   const safeSets = useMemo(() => {
     return Array.isArray(availableSets)
@@ -115,10 +131,18 @@ export function TestIntroView({
       : [];
   }, [availableSets]);
 
-  // Group tests into Chapter Folders
+  // Group tests into Chapter Folders using today's attempts, questions bank, and registered topics
+  const allQuestionBank = useMemo(() => {
+    return getAllQuestionBank();
+  }, [safeSets]);
+
+  const allRegisteredTopics = useMemo(() => {
+    return getAllRegisteredTopics();
+  }, []);
+
   const chapterFolders = useMemo(() => {
-    return groupTestsIntoChapters(safeSets, attemptRecords);
-  }, [safeSets, attemptRecords]);
+    return groupTestsIntoChapters(safeSets, todayAttemptRecords, allQuestionBank, allRegisteredTopics);
+  }, [safeSets, todayAttemptRecords, allQuestionBank, allRegisteredTopics]);
 
   // Current active chapter group if inside sub-page
   const currentChapterGroup = useMemo(() => {
@@ -126,10 +150,10 @@ export function TestIntroView({
     return chapterFolders.find((c) => c.definition.id === activeChapterId) || null;
   }, [chapterFolders, activeChapterId]);
 
-  // Attempted count
+  // Attempted count for today
   const attemptedTotalCount = useMemo(() => {
-    return safeSets.filter((t) => Boolean(getTestAttempt(t, attemptRecords))).length;
-  }, [safeSets, attemptRecords]);
+    return safeSets.filter((t) => Boolean(getTestAttempt(t, todayAttemptRecords))).length;
+  }, [safeSets, todayAttemptRecords]);
 
   // Flat list filtered for "All Tests" tab or search
   const filteredAllSets = useMemo(() => {
@@ -149,7 +173,7 @@ export function TestIntroView({
 
   const currentTitle = currentSet?.title ?? 'Mock Test';
   const currentId = currentSet?.id ?? '';
-  const currentAttempt = currentSet ? getTestAttempt(currentSet, attemptRecords) : null;
+  const currentAttempt = currentSet ? getTestAttempt(currentSet, todayAttemptRecords) : null;
   const currentCreationTime = currentSet ? formatTestDateTime(currentSet) : null;
   const qCount = totalQuestionsCount !== undefined ? totalQuestionsCount : 0;
 
@@ -157,22 +181,52 @@ export function TestIntroView({
     switch (type) {
       case 'number_system':
         return <Calculator className="w-5 h-5 text-amber-400" />;
+      case 'lcm_hcf':
+      case 'equations':
+      case 'algebra':
+      case 'progression':
+        return <Hash className="w-5 h-5 text-cyan-400" />;
       case 'discount':
         return <Tag className="w-5 h-5 text-emerald-400" />;
       case 'mensuration':
         return <Shapes className="w-5 h-5 text-blue-400" />;
       case 'geometry':
+      case 'coordinate_geometry':
         return <Compass className="w-5 h-5 text-purple-400" />;
+      case 'trigonometry':
+      case 'height_distance':
+        return <Compass className="w-5 h-5 text-pink-400" />;
       case 'percentage':
         return <Percent className="w-5 h-5 text-rose-400" />;
-      case 'algebra':
-        return <Hash className="w-5 h-5 text-cyan-400" />;
+      case 'profit_loss':
+      case 'simple_interest':
+      case 'compound_interest':
+      case 'stocks_shares':
+        return <TrendingUp className="w-5 h-5 text-emerald-400" />;
+      case 'average':
+      case 'statistics':
+        return <BarChart3 className="w-5 h-5 text-teal-400" />;
+      case 'ratio_proportion':
+      case 'partnership':
+      case 'mixture':
+        return <Layers className="w-5 h-5 text-violet-400" />;
+      case 'age_problems':
+        return <Calendar className="w-5 h-5 text-amber-400" />;
+      case 'time_distance':
+      case 'boats_stream':
+        return <Clock className="w-5 h-5 text-orange-400" />;
+      case 'time_work':
+      case 'pipe_cistern':
+        return <Zap className="w-5 h-5 text-sky-400" />;
       case 'grand':
+      case 'grand_syllabus':
         return <Sparkles className="w-5 h-5 text-indigo-400" />;
       case 'custom':
+      case 'custom_tests':
+      case 'probability_perm_comb':
         return <Shuffle className="w-5 h-5 text-amber-400" />;
       default:
-        return <Folder className="w-5 h-5 text-slate-400" />;
+        return <Folder className="w-5 h-5 text-amber-400" />;
     }
   };
 

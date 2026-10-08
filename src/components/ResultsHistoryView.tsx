@@ -45,9 +45,13 @@ export function ResultsHistoryView({
   useEffect(() => {
     const handleUpdate = () => setResultsList(getSavedTestResults());
     window.addEventListener('bpsc_history_deleted', handleUpdate);
+    window.addEventListener('bpsc_history_all_cleared', handleUpdate);
+    window.addEventListener('bpsc_history_updated', handleUpdate);
     window.addEventListener('bpsc_cloud_data_updated', handleUpdate);
     return () => {
       window.removeEventListener('bpsc_history_deleted', handleUpdate);
+      window.removeEventListener('bpsc_history_all_cleared', handleUpdate);
+      window.removeEventListener('bpsc_history_updated', handleUpdate);
       window.removeEventListener('bpsc_cloud_data_updated', handleUpdate);
     };
   }, []);

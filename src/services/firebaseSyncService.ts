@@ -209,50 +209,19 @@ export async function syncFromFirestore(): Promise<void> {
     }
 
     // 5. Fetch Attempt Records & History from Firestore
-    // Ensures all devices, browsers, and URLs have the exact same results history
+    // Firebase is the single source of truth for attempts
     const attemptsSnap = await getDocs(collection(db, 'attempt_records')).catch((err) => {
       console.warn('attempt_records fetch warning:', err);
       return null;
     });
     const cloudAttempts: TestAttemptRecord[] = [];
-    const cloudAttemptIdSet = new Set<string>();
     attemptsSnap?.forEach((d) => {
       const data = d.data();
       const attemptId = data?.id || d.id;
       cloudAttempts.push({ ...data, id: attemptId } as TestAttemptRecord);
-      cloudAttemptIdSet.add(attemptId);
     });
 
-    // Merge with local attempt records
-    const localAttempts = getAttemptRecords();
-    const attemptMap = new Map<string, TestAttemptRecord>();
-
-    cloudAttempts.forEach((a) => {
-      if (a && a.id) attemptMap.set(a.id, a);
-    });
-
-    localAttempts.forEach((a) => {
-      if (a && a.id) {
-        const existing = attemptMap.get(a.id);
-        if (!existing) {
-          attemptMap.set(a.id, a);
-          // Push local attempt to cloud if missing in cloud!
-          if (!cloudAttemptIdSet.has(a.id)) {
-            saveAttemptRecordToCloud(a).catch((err) => console.warn('Sync local attempt to cloud error:', err));
-          }
-        } else {
-          // Merge to retain questions or responses if one has them and the other doesn't
-          attemptMap.set(a.id, {
-            ...existing,
-            ...a,
-            responses: a.responses || existing.responses,
-            questions: a.questions || existing.questions
-          });
-        }
-      }
-    });
-
-    const finalAttempts = Array.from(attemptMap.values()).sort((a, b) => {
+    const finalAttempts = cloudAttempts.sort((a, b) => {
       const timeA = new Date(a.completedAtIso || a.date).getTime() || 0;
       const timeB = new Date(b.completedAtIso || b.date).getTime() || 0;
       return timeB - timeA;
@@ -264,48 +233,28 @@ export async function syncFromFirestore(): Promise<void> {
       console.warn('Failed to cache attempt records in localStorage:', e);
     }
 
-    // Reconstruct / merge into FULL SAVED RESULTS ARCHIVE so ResultsHistoryView & ResultAnalytics immediately display them
-    const localFullResults = getSavedTestResults();
-    const fullResultMap = new Map<string, SavedTestResult>();
-    localFullResults.forEach((r) => { if (r && r.id) fullResultMap.set(r.id, r); });
-
-    finalAttempts.forEach((att) => {
-      const existingKey = Array.from(fullResultMap.keys()).find((k) => {
-        const r = fullResultMap.get(k);
-        return r && (r.setId === att.testId || r.setTitle === att.testTitle) && (r.dateFormatted === att.date || r.completedAtIso === att.completedAtIso);
-      });
-
-      if (!existingKey) {
-        const synthesizedResult: SavedTestResult = {
-          id: att.id || `result_${Date.now()}_${Math.random()}`,
-          setId: att.testId,
-          setTitle: att.testTitle,
-          totalQuestions: att.totalQuestions || 20,
-          attemptedCount: (att.correctCount || 0) + (att.incorrectCount || 0),
-          correctCount: att.correctCount || 0,
-          incorrectCount: att.incorrectCount || 0,
-          safeSkipCount: att.safeSkipCount || 0,
-          score: att.score || 0,
-          totalMarks: att.totalMarks || (att.totalQuestions || 20),
-          blankPenaltyCount: att.blankPenaltyCount || 0,
-          totalTimeSpentSeconds: att.totalTimeSpentSeconds || 60,
-          accuracy: att.accuracy || 0,
-          responses: att.responses || {},
-          completedAt: att.date || new Date().toLocaleDateString('hi-IN'),
-          dateFormatted: att.date || new Date().toLocaleDateString('hi-IN'),
-          completedAtIso: att.completedAtIso || new Date().toISOString(),
-          topicBreakdown: att.topicBreakdown,
-          questions: att.questions || []
-        };
-        fullResultMap.set(synthesizedResult.id, synthesizedResult);
-      }
-    });
-
-    const finalFullResults = Array.from(fullResultMap.values()).sort((a, b) => {
-      const timeA = new Date(a.completedAtIso || 0).getTime();
-      const timeB = new Date(b.completedAtIso || 0).getTime();
-      return timeB - timeA;
-    });
+    // Reconstruct into FULL SAVED RESULTS ARCHIVE
+    const finalFullResults: SavedTestResult[] = finalAttempts.map((att) => ({
+      id: att.id || `result_${Date.now()}_${Math.random()}`,
+      setId: att.testId,
+      setTitle: att.testTitle,
+      totalQuestions: att.totalQuestions || 20,
+      attemptedCount: (att.correctCount || 0) + (att.incorrectCount || 0),
+      correctCount: att.correctCount || 0,
+      incorrectCount: att.incorrectCount || 0,
+      safeSkipCount: att.safeSkipCount || 0,
+      score: att.score || 0,
+      totalMarks: att.totalMarks || (att.totalQuestions || 20),
+      blankPenaltyCount: att.blankPenaltyCount || 0,
+      totalTimeSpentSeconds: att.totalTimeSpentSeconds || 60,
+      accuracy: att.accuracy || 0,
+      responses: att.responses || {},
+      completedAt: att.date || new Date().toLocaleDateString('hi-IN'),
+      dateFormatted: att.date || new Date().toLocaleDateString('hi-IN'),
+      completedAtIso: att.completedAtIso || new Date().toISOString(),
+      topicBreakdown: att.topicBreakdown,
+      questions: att.questions || []
+    }));
 
     try {
       localStorage.setItem('bpsc_full_results_archive', JSON.stringify(finalFullResults.slice(0, 50)));
@@ -443,30 +392,7 @@ export function setupRealtimeSync(onDataChange: () => void): () => void {
         cloudAttempts.push({ ...data, id: attemptId } as TestAttemptRecord);
       });
 
-      const localAttempts = getAttemptRecords();
-      const attemptMap = new Map<string, TestAttemptRecord>();
-
-      cloudAttempts.forEach((a) => {
-        if (a && a.id) attemptMap.set(a.id, a);
-      });
-
-      localAttempts.forEach((a) => {
-        if (a && a.id) {
-          const existing = attemptMap.get(a.id);
-          if (!existing) {
-            attemptMap.set(a.id, a);
-          } else {
-            attemptMap.set(a.id, {
-              ...existing,
-              ...a,
-              responses: a.responses || existing.responses,
-              questions: a.questions || existing.questions
-            });
-          }
-        }
-      });
-
-      const finalAttempts = Array.from(attemptMap.values()).sort((a, b) => {
+      const finalAttempts = cloudAttempts.sort((a, b) => {
         const timeA = new Date(a.completedAtIso || a.date).getTime() || 0;
         const timeB = new Date(b.completedAtIso || b.date).getTime() || 0;
         return timeB - timeA;
@@ -478,48 +404,28 @@ export function setupRealtimeSync(onDataChange: () => void): () => void {
         console.warn('Failed to cache attempt records in localStorage:', e);
       }
 
-      // Reconstruct / merge into FULL SAVED RESULTS ARCHIVE
-      const localFullResults = getSavedTestResults();
-      const fullResultMap = new Map<string, SavedTestResult>();
-      localFullResults.forEach((r) => { if (r && r.id) fullResultMap.set(r.id, r); });
-
-      finalAttempts.forEach((att) => {
-        const existingKey = Array.from(fullResultMap.keys()).find((k) => {
-          const r = fullResultMap.get(k);
-          return r && (r.setId === att.testId || r.setTitle === att.testTitle) && (r.dateFormatted === att.date || r.completedAtIso === att.completedAtIso);
-        });
-
-        if (!existingKey) {
-          const synthesizedResult: SavedTestResult = {
-            id: att.id || `result_${Date.now()}_${Math.random()}`,
-            setId: att.testId,
-            setTitle: att.testTitle,
-            totalQuestions: att.totalQuestions || 20,
-            attemptedCount: (att.correctCount || 0) + (att.incorrectCount || 0),
-            correctCount: att.correctCount || 0,
-            incorrectCount: att.incorrectCount || 0,
-            safeSkipCount: att.safeSkipCount || 0,
-            score: att.score || 0,
-            totalMarks: att.totalMarks || (att.totalQuestions || 20),
-            blankPenaltyCount: att.blankPenaltyCount || 0,
-            totalTimeSpentSeconds: att.totalTimeSpentSeconds || 60,
-            accuracy: att.accuracy || 0,
-            responses: att.responses || {},
-            completedAt: att.date || new Date().toLocaleDateString('hi-IN'),
-            dateFormatted: att.date || new Date().toLocaleDateString('hi-IN'),
-            completedAtIso: att.completedAtIso || new Date().toISOString(),
-            topicBreakdown: att.topicBreakdown,
-            questions: att.questions || []
-          };
-          fullResultMap.set(synthesizedResult.id, synthesizedResult);
-        }
-      });
-
-      const finalFullResults = Array.from(fullResultMap.values()).sort((a, b) => {
-        const timeA = new Date(a.completedAtIso || 0).getTime();
-        const timeB = new Date(b.completedAtIso || 0).getTime();
-        return timeB - timeA;
-      });
+      // Reconstruct into FULL SAVED RESULTS ARCHIVE
+      const finalFullResults: SavedTestResult[] = finalAttempts.map((att) => ({
+        id: att.id || `result_${Date.now()}_${Math.random()}`,
+        setId: att.testId,
+        setTitle: att.testTitle,
+        totalQuestions: att.totalQuestions || 20,
+        attemptedCount: (att.correctCount || 0) + (att.incorrectCount || 0),
+        correctCount: att.correctCount || 0,
+        incorrectCount: att.incorrectCount || 0,
+        safeSkipCount: att.safeSkipCount || 0,
+        score: att.score || 0,
+        totalMarks: att.totalMarks || (att.totalQuestions || 20),
+        blankPenaltyCount: att.blankPenaltyCount || 0,
+        totalTimeSpentSeconds: att.totalTimeSpentSeconds || 60,
+        accuracy: att.accuracy || 0,
+        responses: att.responses || {},
+        completedAt: att.date || new Date().toLocaleDateString('hi-IN'),
+        dateFormatted: att.date || new Date().toLocaleDateString('hi-IN'),
+        completedAtIso: att.completedAtIso || new Date().toISOString(),
+        topicBreakdown: att.topicBreakdown,
+        questions: att.questions || []
+      }));
 
       try {
         localStorage.setItem('bpsc_full_results_archive', JSON.stringify(finalFullResults.slice(0, 50)));
@@ -861,9 +767,41 @@ export async function saveAttemptRecordToCloud(record: TestAttemptRecord): Promi
 export async function deleteAttemptRecordFromCloud(attemptId: string): Promise<void> {
   if (!attemptId) return;
   try {
-    await deleteDoc(doc(db, 'attempt_records', attemptId));
+    // 1. Delete document directly
+    await deleteDoc(doc(db, 'attempt_records', attemptId)).catch((err) => {
+      console.warn(`Direct delete for ${attemptId} failed:`, err);
+    });
+
+    // 2. Scan and delete any document where doc.id or data.id matches
+    const snap = await getDocs(collection(db, 'attempt_records')).catch(() => null);
+    if (snap && !snap.empty) {
+      for (const d of snap.docs) {
+        const data = d.data();
+        if (d.id === attemptId || data.id === attemptId || (data as any).resultId === attemptId) {
+          await deleteDoc(d.ref).catch((err) => console.warn('Matched attempt delete error:', err));
+        }
+      }
+    }
+    console.log(`[CloudSync] Deleted attempt ${attemptId} from Firestore`);
   } catch (err) {
     console.warn(`Cloud delete attempt record failed (${attemptId}):`, err);
+  }
+}
+
+/**
+ * Clear all attempt records from cloud Firestore
+ */
+export async function clearAllAttemptRecordsFromCloud(): Promise<void> {
+  try {
+    const snap = await getDocs(collection(db, 'attempt_records')).catch(() => null);
+    if (snap && !snap.empty) {
+      for (const d of snap.docs) {
+        await deleteDoc(d.ref).catch((err) => console.warn('Failed to delete attempt doc:', d.id, err));
+      }
+    }
+    console.log('[CloudSync] All attempt records cleared from Firestore');
+  } catch (err) {
+    console.warn('Failed to clear attempt records from cloud:', err);
   }
 }
 
@@ -999,6 +937,10 @@ if (typeof window !== 'undefined') {
     if (e.detail) {
       deleteAttemptRecordFromCloud(e.detail).catch((err) => console.warn('Cloud sync error (delete attempt):', err));
     }
+  }) as EventListener);
+
+  window.addEventListener('bpsc_history_all_cleared', (() => {
+    clearAllAttemptRecordsFromCloud().catch((err) => console.warn('Cloud sync error (clear all attempts):', err));
   }) as EventListener);
 
   window.addEventListener('storage', (e) => {

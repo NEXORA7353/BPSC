@@ -23,9 +23,10 @@ import {
   saveAttemptRecord,
   saveFullTestResult,
   getAllQuestionBank,
-  calculateTopicBreakdown
+  calculateTopicBreakdown,
+  purgeOlderAttemptRecords
 } from './utils/questionBankStorage';
-import { syncFromFirestore, setupRealtimeSync } from './services/firebaseSyncService';
+import { syncFromFirestore, setupRealtimeSync, saveAttemptRecordToCloud } from './services/firebaseSyncService';
 import { usePortalLanguage } from './utils/language';
 
 interface BeforeInstallPromptEvent extends Event {
@@ -177,6 +178,9 @@ export default function App() {
 
     window.addEventListener('bpsc_cloud_data_updated', handleUpdate);
 
+    // Purge any older attempts from previous days on startup
+    purgeOlderAttemptRecords();
+
     syncFromFirestore()
       .then(() => {
         handleUpdate();
@@ -287,11 +291,16 @@ export default function App() {
 
     saveFullTestResult({
       ...result,
-      id: `result_${Date.now()}`,
+      id: attemptId,
       dateFormatted,
       completedAtIso,
       topicBreakdown,
       questions: result.questions || (currentSet && currentSet.questions) || []
+    });
+
+    // Write attempt directly to Firebase Firestore
+    saveAttemptRecordToCloud(attemptRecord).catch((err) => {
+      console.warn('Direct attempt cloud sync warning:', err);
     });
   };
 

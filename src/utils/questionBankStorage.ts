@@ -15,6 +15,7 @@ import { profitLossQuestions } from '../data/profitLossQuestions';
 import { coordinateGeometryQuestions } from '../data/coordinateGeometryQuestions';
 import { mensurationQuestions } from '../data/mensurationQuestions';
 import { mockTestSets as defaultMockSets } from '../data/mockSets';
+import { getTestChapterId } from './testFolderUtils';
 
 const STORAGE_KEYS = {
   CUSTOM_QUESTIONS: 'bpsc_custom_questions',
@@ -792,6 +793,52 @@ export function getAllAvailableTests(): MockTestSet[] {
     liveCloudTestsCache.forEach((t) => { if (t && t.id) testMap.set(t.id, sanitizeTestSet(t)); });
   }
 
+  // Include auto chapter tests for all topics in Question Bank if no test exists for that topic yet
+  const bankQuestions = getAllQuestionBank();
+  if (Array.isArray(bankQuestions) && bankQuestions.length > 0) {
+    const byTopic = new Map<string, Question[]>();
+    bankQuestions.forEach((q) => {
+      if (q && q.topic) {
+        const tKey = q.topic.trim().toLowerCase();
+        const list = byTopic.get(tKey) || [];
+        list.push(q);
+        byTopic.set(tKey, list);
+      }
+    });
+
+    const registeredTopics = getAllRegisteredTopics();
+    const regMap = new Map<string, RegisteredTopic>();
+    registeredTopics.forEach((t) => regMap.set(t.key.toLowerCase(), t));
+
+    byTopic.forEach((questions, topicKey) => {
+      const autoId = `auto_topic_test_${topicKey}`;
+      if (deletedIds.has(autoId)) return;
+
+      const hasExistingTest = Array.from(testMap.values()).some((t) => {
+        if (!t || !t.id) return false;
+        return getTestChapterId(t, registeredTopics) === topicKey;
+      });
+
+      if (!hasExistingTest && questions.length > 0) {
+        const reg = regMap.get(topicKey);
+        const labelEn = reg?.labelEnglish || cleanTitleToEnglish(topicKey.replace(/[-_]/g, ' '));
+        const labelHi = reg?.labelHindi || questions[0]?.topicNameHindi || labelEn;
+        testMap.set(autoId, {
+          id: autoId,
+          title: `BPSC TRE 4.0: ${labelEn} Chapter Practice`,
+          subtitle: `${labelHi} · Real Exam Practice (${questions.length} Questions)`,
+          targetExam: 'BPSC TRE 4.0',
+          category: 'tri_topic',
+          categoryTitle: labelEn,
+          topicBadges: [labelEn],
+          totalQuestions: questions.length,
+          totalTimeMinutes: Math.max(10, Math.ceil(questions.length * 1)),
+          questions: questions
+        });
+      }
+    });
+  }
+
   return Array.from(testMap.values())
     .filter((t) => {
       if (!t || !t.id) return false;
@@ -1071,6 +1118,78 @@ export function createReattemptMissedQuestionsTest(parentTest: MockTestSet, miss
 }
 
 // --- FULL TEST RESULTS & ATTEMPTS DATABASE ---
+/**
+ * Checks whether an attempt record or test result was completed TODAY
+ */
+export function isTodayAttempt(att: any): boolean {
+  if (!att) return false;
+  const today = new Date();
+  const todayYear = today.getFullYear();
+  const todayMonth = today.getMonth();
+  const todayDate = today.getDate();
+
+  // 1. Check ISO timestamp
+  const iso = att.completedAtIso || att.createdAt;
+  if (iso) {
+    const d = new Date(iso);
+    if (!isNaN(d.getTime())) {
+      return (
+        d.getFullYear() === todayYear &&
+        d.getMonth() === todayMonth &&
+        d.getDate() === todayDate
+      );
+    }
+  }
+
+  // 2. Check formatted date string
+  const dateStr = att.date || att.dateFormatted || att.completedAt;
+  if (dateStr && typeof dateStr === 'string') {
+    const todayLocalHi = today.toLocaleDateString('hi-IN');
+    const todayLocalEn = today.toLocaleDateString('en-US');
+    const todayEnShort = today.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    if (
+      dateStr.includes(todayLocalHi) ||
+      dateStr.includes(todayLocalEn) ||
+      dateStr.includes(todayEnShort)
+    ) {
+      return true;
+    }
+    const parsed = Date.parse(dateStr);
+    if (!isNaN(parsed)) {
+      const d = new Date(parsed);
+      return (
+        d.getFullYear() === todayYear &&
+        d.getMonth() === todayMonth &&
+        d.getDate() === todayDate
+      );
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Purges any attempt records in localStorage that are from older dates,
+ * leaving only today's attempts active.
+ */
+export function purgeOlderAttemptRecords(): void {
+  try {
+    const currentAttempts = getAttemptRecords();
+    const todayAttempts = currentAttempts.filter(isTodayAttempt);
+    if (todayAttempts.length !== currentAttempts.length) {
+      localStorage.setItem(STORAGE_KEYS.ATTEMPT_HISTORY, JSON.stringify(todayAttempts));
+    }
+
+    const currentResults = getSavedTestResults();
+    const todayResults = currentResults.filter(isTodayAttempt);
+    if (todayResults.length !== currentResults.length) {
+      localStorage.setItem(STORAGE_KEYS.FULL_SAVED_RESULTS, JSON.stringify(todayResults));
+    }
+  } catch (err) {
+    console.warn('Error purging older attempt records:', err);
+  }
+}
+
 export function getSavedTestResults(): SavedTestResult[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.FULL_SAVED_RESULTS);
@@ -1084,7 +1203,9 @@ export function getSavedTestResults(): SavedTestResult[] {
 export function saveFullTestResult(result: SavedTestResult): void {
   try {
     const existing = getSavedTestResults();
-    const updated = [result, ...existing.slice(0, 49)];
+    // Prevent duplicate entries for same test result
+    const filtered = existing.filter((r) => r.id !== result.id);
+    const updated = [result, ...filtered.slice(0, 49)];
     localStorage.setItem(STORAGE_KEYS.FULL_SAVED_RESULTS, JSON.stringify(updated));
   } catch (err) {
     console.error('Failed to save full test result', err);
@@ -1098,17 +1219,24 @@ export function deleteSavedTestResult(resultId: string): void {
     const filteredResults = existingResults.filter((r) => r.id !== resultId);
     localStorage.setItem(STORAGE_KEYS.FULL_SAVED_RESULTS, JSON.stringify(filteredResults));
 
-    // Also remove corresponding record from attempt history if matching
-    if (targetResult) {
-      const attempts = getAttemptRecords().filter(
-        (a) => !(a.testId === targetResult.setId && a.date === targetResult.dateFormatted)
-      );
-      localStorage.setItem(STORAGE_KEYS.ATTEMPT_HISTORY, JSON.stringify(attempts));
+    // Also remove corresponding record from attempt history
+    const allAttempts = getAttemptRecords();
+    let deletedAttemptId = resultId;
+    const matchingAttempt = allAttempts.find(
+      (a) => a.id === resultId || (targetResult && a.testId === targetResult.setId && a.date === targetResult.dateFormatted)
+    );
+    if (matchingAttempt && matchingAttempt.id) {
+      deletedAttemptId = matchingAttempt.id;
     }
+    const filteredAttempts = allAttempts.filter(
+      (a) => a.id !== deletedAttemptId && !(targetResult && a.testId === targetResult.setId && a.date === targetResult.dateFormatted)
+    );
+    localStorage.setItem(STORAGE_KEYS.ATTEMPT_HISTORY, JSON.stringify(filteredAttempts));
 
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('bpsc_history_deleted', { detail: resultId }));
+      window.dispatchEvent(new CustomEvent('bpsc_history_deleted', { detail: deletedAttemptId }));
       window.dispatchEvent(new CustomEvent('bpsc_cloud_data_updated'));
+      window.dispatchEvent(new CustomEvent('bpsc_history_updated'));
     }
   } catch (err) {
     console.error('Failed to delete saved result', err);
@@ -1133,10 +1261,12 @@ export function saveAttemptRecord(record: TestAttemptRecord): void {
       studentName: record.studentName || 'Priya Patel'
     };
     const existing = getAttemptRecords();
-    const updated = [enrichedRecord, ...existing.slice(0, 49)];
+    const filtered = existing.filter((a) => a.id !== enrichedRecord.id);
+    const updated = [enrichedRecord, ...filtered.slice(0, 49)];
     localStorage.setItem(STORAGE_KEYS.ATTEMPT_HISTORY, JSON.stringify(updated));
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('bpsc_attempt_saved', { detail: enrichedRecord }));
+      window.dispatchEvent(new CustomEvent('bpsc_history_updated'));
     }
   } catch (err) {
     console.error('Failed to save attempt record', err);
@@ -1147,11 +1277,23 @@ export function deleteAttemptRecord(index: number): void {
   try {
     const attempts = getAttemptRecords();
     if (index >= 0 && index < attempts.length) {
+      const removed = attempts[index];
       attempts.splice(index, 1);
       localStorage.setItem(STORAGE_KEYS.ATTEMPT_HISTORY, JSON.stringify(attempts));
+
+      // Also remove from full saved results
+      if (removed) {
+        const fullResults = getSavedTestResults();
+        const filteredFull = fullResults.filter(
+          (r) => r.id !== removed.id && !(r.setId === removed.testId && r.dateFormatted === removed.date)
+        );
+        localStorage.setItem(STORAGE_KEYS.FULL_SAVED_RESULTS, JSON.stringify(filteredFull));
+      }
+
       if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('bpsc_history_deleted'));
+        window.dispatchEvent(new CustomEvent('bpsc_history_deleted', { detail: removed?.id }));
         window.dispatchEvent(new CustomEvent('bpsc_cloud_data_updated'));
+        window.dispatchEvent(new CustomEvent('bpsc_history_updated'));
       }
     }
   } catch (err) {
@@ -1164,8 +1306,9 @@ export function clearAllHistoryRecords(): void {
     localStorage.removeItem(STORAGE_KEYS.FULL_SAVED_RESULTS);
     localStorage.removeItem(STORAGE_KEYS.ATTEMPT_HISTORY);
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('bpsc_history_deleted'));
+      window.dispatchEvent(new CustomEvent('bpsc_history_all_cleared'));
       window.dispatchEvent(new CustomEvent('bpsc_cloud_data_updated'));
+      window.dispatchEvent(new CustomEvent('bpsc_history_updated'));
     }
   } catch (err) {
     console.error('Failed to clear history records', err);

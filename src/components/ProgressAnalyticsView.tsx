@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Trophy,
   BarChart3,
@@ -20,7 +20,8 @@ import {
   getAttemptRecords,
   getAllRegisteredTopics,
   getAllQuestionBank,
-  saveAttemptRecord
+  isTodayAttempt,
+  clearAllHistoryRecords
 } from '../utils/questionBankStorage';
 import { BackButton } from './BackButton';
 
@@ -39,33 +40,52 @@ export function ProgressAnalyticsView({
   const registeredTopics = useMemo(() => getAllRegisteredTopics(), []);
   const allBankQuestions = useMemo(() => getAllQuestionBank(), []);
 
-  const totalAttempts = attempts.length;
+  useEffect(() => {
+    const handleUpdate = () => {
+      setAttempts(getAttemptRecords());
+    };
+    window.addEventListener('bpsc_attempt_saved', handleUpdate);
+    window.addEventListener('bpsc_history_updated', handleUpdate);
+    window.addEventListener('bpsc_history_deleted', handleUpdate);
+    window.addEventListener('bpsc_history_all_cleared', handleUpdate);
+    window.addEventListener('bpsc_cloud_data_updated', handleUpdate);
+    return () => {
+      window.removeEventListener('bpsc_attempt_saved', handleUpdate);
+      window.removeEventListener('bpsc_history_updated', handleUpdate);
+      window.removeEventListener('bpsc_history_deleted', handleUpdate);
+      window.removeEventListener('bpsc_history_all_cleared', handleUpdate);
+      window.removeEventListener('bpsc_cloud_data_updated', handleUpdate);
+    };
+  }, []);
+
+  // Filter only today's attempts for Progress Trend Dashboard
+  const todayAttempts = useMemo(() => {
+    return attempts.filter(isTodayAttempt);
+  }, [attempts]);
+
+  const totalAttempts = todayAttempts.length;
 
   const avgScore = useMemo(() => {
     if (totalAttempts === 0) return 0;
-    const sum = attempts.reduce((acc, curr) => acc + curr.score, 0);
+    const sum = todayAttempts.reduce((acc, curr) => acc + curr.score, 0);
     return Math.round((sum / totalAttempts) * 100) / 100;
-  }, [attempts, totalAttempts]);
+  }, [todayAttempts, totalAttempts]);
 
   const avgAccuracy = useMemo(() => {
     if (totalAttempts === 0) return 0;
-    const sum = attempts.reduce((acc, curr) => acc + curr.accuracy, 0);
+    const sum = todayAttempts.reduce((acc, curr) => acc + curr.accuracy, 0);
     return Math.round(sum / totalAttempts);
-  }, [attempts, totalAttempts]);
+  }, [todayAttempts, totalAttempts]);
 
   const bestScore = useMemo(() => {
     if (totalAttempts === 0) return 0;
-    return Math.max(...attempts.map((a) => a.score));
-  }, [attempts, totalAttempts]);
+    return Math.max(...todayAttempts.map((a) => a.score));
+  }, [todayAttempts, totalAttempts]);
 
   const handleClearHistory = () => {
-    if (window.confirm('Clear all historical attempt record logs? (Custom tests & question bank will remain intact)')) {
-      try {
-        localStorage.removeItem('bpsc_attempt_records');
-        setAttempts([]);
-      } catch (err) {
-        console.error('Failed to clear attempt records', err);
-      }
+    if (window.confirm('Delete all test attempt history from cloud and local storage?')) {
+      clearAllHistoryRecords();
+      setAttempts([]);
     }
   };
 
@@ -159,11 +179,11 @@ export function ProgressAnalyticsView({
             <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
               <span>Mock Test Attempt History Timeline</span>
               <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-white/5 text-amber-600 dark:text-amber-300 border border-slate-200 dark:border-white/10">
-                {attempts.length} Records
+                {todayAttempts.length} Today's Records
               </span>
             </h2>
 
-            {attempts.length > 0 && (
+            {todayAttempts.length > 0 && (
               <button
                 onClick={handleClearHistory}
                 className="text-xs font-bold text-rose-500 hover:text-rose-600 flex items-center gap-1 hover:underline"
@@ -174,25 +194,25 @@ export function ProgressAnalyticsView({
             )}
           </div>
 
-          {attempts.length === 0 ? (
+          {todayAttempts.length === 0 ? (
             <div className="glass-panel p-12 text-center rounded-3xl space-y-3">
               <BookOpen className="w-10 h-10 text-slate-400 mx-auto" />
-              <h3 className="font-bold text-base text-slate-800 dark:text-slate-200">No attempts logged yet</h3>
+              <h3 className="font-bold text-base text-slate-800 dark:text-slate-200">No attempts logged for today yet</h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-                Take any mock test or rapid drill to start tracking your performance trend history here.
+                Take any mock test or rapid drill today to see your score and progress trend analytics here.
               </p>
             </div>
           ) : (
             <div className="space-y-3">
-              {attempts.map((rec, idx) => (
+              {todayAttempts.map((rec, idx) => (
                 <div
-                  key={idx}
+                  key={rec.id || idx}
                   className="glass-panel p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-amber-500/40 transition-all"
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="w-6 h-6 rounded-md bg-amber-500/20 text-amber-600 dark:text-amber-300 font-mono font-bold text-xs flex items-center justify-center">
-                        #{attempts.length - idx}
+                        #{todayAttempts.length - idx}
                       </span>
                       <span className="font-bold text-sm text-slate-900 dark:text-white">
                         {rec.testTitle}
