@@ -48,11 +48,15 @@ const HOURLY_MOTIVATION_MESSAGES = [
     body: 'BPSC TRE 4.0 परीक्षा नजदीक है। क्या आपने पिछले 1 घंटे में गणित के सवाल हल किए? तुरंत 15 मिनट का क्विक मॉक टेस्ट हल करें! 📝'
   },
   {
-    title: '🚨 [सावधानी और गति]: Calculation Speed बढ़ाएं!',
+    title: '⚠️ [कड़क अनुशासन]: आलस्य छोड़ो, शिक्षक बनना है!',
+    body: 'ऐसे सुस्ती और बहानेबाजी से BPSC शिक्षक नहीं बन पाओगे! लाखों बच्चे रात-दिन गणित हल कर रहे हैं। तुरंत पोर्टल खोलो और टेस्ट दो! 🚨'
+  },
+  {
+    title: '🚨 [नेगेटिव मार्किंग अलार्म]: -0.33 का डर रखो!',
     body: 'गणित में तुक्का लगाना सख्त मना है (-0.33 नेगेटिव मार्किंग)। पेन और रफ शीट उठाएं और 10 प्रश्नों की स्पीड ड्रिल अभी पूरी करें! ⚡'
   },
   {
-    title: '🔥 [दैनिक लक्ष्य]: निरंतर अभ्यास से ही चयन होगा!',
+    title: '🔥 [दैनिक लक्ष्य]: निरंतर अभ्यास से ही मेरिट बनेगी!',
     body: 'लाखों अभ्यर्थी तैयारी में जुटे हैं। आज का दिन बिना 30 प्रश्न हल किए समाप्त न होने दें! मेरिट लिस्ट में जगह पक्की करें। 🎯'
   },
   {
@@ -60,12 +64,20 @@ const HOURLY_MOTIVATION_MESSAGES = [
     body: 'ज्यामिति, बीजगणित और अंकगणित के महत्वपूर्ण सूत्रों का रिविजन करें और मॉक टेस्ट देकर अपनी एक्यूरेसी 80%+ तक पहुंचाएं! 💡'
   },
   {
-    title: '⚡ [परीक्षा तैयारी]: अनुशासन ही सफलता की कुंजी है!',
-    body: 'शिक्षक भर्ती में सफलता अनुशासन से मिलती है। आलस्य त्यागें, पोर्टल खोलें और अभी एक नया प्रैक्टिस टेस्ट हल करें! 🏆'
+    title: '⚡ [PW / टेस्टबुक चैलेंज]: 100% एक्यूरेसी टारगेट!',
+    body: 'क्या तुम बिना एक भी गलत उत्तर दिए 10 सवाल हल कर सकते हो? स्पीड ड्रिल खोलो और अपनी ताकत साबित करो! 🏆'
   },
   {
     title: '⏱️ [स्पीड ड्रिल]: टाइम मैनेजमेंट सुधारें!',
     body: 'वास्तविक परीक्षा में प्रति प्रश्न केवल 1 मिनट का समय मिलता है। टाइमर के साथ मॉक टेस्ट देकर अपनी प्रश्न हल करने की गति बढ़ाएं! 📊'
+  },
+  {
+    title: '🌙 [रात का टारगेट चेक]: क्या आज का कोटा पूरा हुआ?',
+    body: 'बिना गणित के 30 सवाल हल किए सोना मना है! एक क्विक 15-मिनट टेस्ट दो और अपना स्कोर देखकर ही सोएं। 📝'
+  },
+  {
+    title: '☀️ [सुबह का संकल्प]: पहले 30 मिनट गणित को दें!',
+    body: 'सुप्रभात! परीक्षा में एक-एक नंबर की लड़ाई है। आज का पहला 20 प्रश्नों का मॉक टेस्ट अभी शुरू करें! ⚡'
   }
 ];
 
@@ -368,11 +380,57 @@ export async function triggerPoorResultRealityCheck(params: {
   if (!isPoor) return;
 
   const scorePct = Math.round((params.score / (params.totalMarks || 1)) * 100);
-  const title = '🚨 [सावधान: रिजल्ट असंतोषजनक]';
-  const body = `इस प्रदर्शन के साथ BPSC TRE 4.0 Qualify करना असंभव है! आपका स्कोर सिर्फ ${params.score.toFixed(2)}/${params.totalMarks} (${scorePct}%) है और ${params.incorrectCount} प्रश्न गलत हुए हैं (-0.33 नेगेटिव मार्किंग)। तुरंत अपनी गलतियों का विश्लेषण करें और कमजोर अध्यायों का रिविजन करें! ⚠️`;
+  const title = '🚨 [कड़क चेतावनी: रिजल्ट असंतोषजनक]';
+  const body = `ऐसे सुस्ती और लापरवाही से BPSC शिक्षक नहीं बन पाओगे! लाखों बच्चे रात-दिन गणित के फार्मूले घोट रहे हैं और तुम्हारा स्कोर सिर्फ ${params.score.toFixed(2)}/${params.totalMarks} (${scorePct}%) आया है और ${params.incorrectCount} प्रश्न गलत हुए हैं (-0.33 नेगेटिव मार्किंग)। जब तक 80%+ एक्यूरेसी न आए, टेबल मत छोड़ो! तुरंत गलतियों का री-अटेम्प्ट टेस्ट दो! ⚠️`;
   const url = params.testId
-    ? `${window.location.origin}/?reviewTestId=${encodeURIComponent(params.testId)}`
+    ? `${window.location.origin}/?view=results&reviewTestId=${encodeURIComponent(params.testId)}`
     : window.location.origin;
+
+  await dispatchPortalNotification({
+    title,
+    body,
+    category: 'reality_check',
+    severity: 'urgent',
+    url
+  });
+}
+
+/**
+ * Triggers Celebration & Motivation Alert when student scores well (>=75% accuracy)
+ */
+export async function triggerHighScoreCelebrationAlert(params: {
+  testTitle: string;
+  score: number;
+  totalMarks: number;
+  accuracy: number;
+  testId?: string;
+}): Promise<void> {
+  const scorePct = Math.round(params.accuracy || ((params.score / (params.totalMarks || 1)) * 100));
+  if (scorePct < 75) return;
+
+  const title = '🔥 [गजब का प्रदर्शन]: 85%+ एक्यूरेसी!';
+  const body = `शानदार! तुमने "${params.testTitle}" में ${params.score.toFixed(2)}/${params.totalMarks} (${scorePct}%) अंक लाकर टॉपर्स जैसी तैयारी दिखाई है! 🏆 इस मोमेंटम को टूटने मत देना, तुरंत अगला चैप्टर टेस्ट हल करके बढ़त बनाए रखो! ⚡`;
+  const url = params.testId
+    ? `${window.location.origin}/?view=results&reviewTestId=${encodeURIComponent(params.testId)}`
+    : `${window.location.origin}/?view=bank`;
+
+  await dispatchPortalNotification({
+    title,
+    body,
+    category: 'hourly_motivation',
+    severity: 'info',
+    url
+  });
+}
+
+/**
+ * Triggers Strict Discipline Wakeup Alert on demand or after prolonged inactivity
+ */
+export async function triggerStrictDisciplineWakeupAlert(studentName?: string): Promise<void> {
+  const name = studentName || 'अभ्यर्थी';
+  const title = '⚠️ [कड़क डांट]: समय बर्बाद मत करो!';
+  const body = `${name}, ऐसे सुस्ती से BPSC शिक्षक नहीं बन पाओगे! लाखों बच्चे रात-दिन एक कर रहे हैं और तुम समय गंवा रहे हो! तुरंत पोर्टल खोलो और टेस्ट हल करो! 🚨`;
+  const url = `${window.location.origin}/?view=bank`;
 
   await dispatchPortalNotification({
     title,
@@ -394,7 +452,7 @@ export async function triggerNewTestMobileNotification(test: {
 }): Promise<void> {
   const title = `📢 नया मॉक टेस्ट उपलब्ध: ${test.title} 📝`;
   const body = `BPSC TRE 4.0 के लिए ${test.totalQuestions} प्रश्नों का नया टेस्ट (${test.totalTimeMinutes} मिनट) लाइव है। तुरंत हल करें और अपनी तैयारी जांचें! 🎯`;
-  const url = `${window.location.origin}/?testId=${encodeURIComponent(test.id)}`;
+  const url = `${window.location.origin}/?view=test&testId=${encodeURIComponent(test.id)}&start=true`;
 
   await dispatchPortalNotification({
     title,
@@ -418,7 +476,7 @@ export async function triggerDailyInactivityMobileNotification(studentName?: str
     body,
     category: 'daily_inactivity',
     severity: 'urgent',
-    url: window.location.origin
+    url: `${window.location.origin}/?view=bank`
   });
 }
 

@@ -35,8 +35,10 @@ import { NotificationPermissionPrompt } from './components/NotificationPermissio
 import {
   startNotificationWatcher,
   stopNotificationWatcher,
-  triggerPoorResultRealityCheck
+  triggerPoorResultRealityCheck,
+  triggerHighScoreCelebrationAlert
 } from './utils/mobileNotificationService';
+import { parseUrlRoute, updateBrowserUrl } from './utils/urlRouting';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: Array<string>;
@@ -63,9 +65,10 @@ export default function App() {
   const [language, setLanguage] = usePortalLanguage();
   const [availableSets, setAvailableSets] = useState<MockTestSet[]>(() => getAllAvailableTests() || []);
   const [totalQuestionsCount, setTotalQuestionsCount] = useState<number>(() => getAllQuestionBank().length);
-  const [currentSetId, setCurrentSetId] = useState<string>(() => availableSets[0]?.id || '');
-  const [activeView, setActiveView] = useState<AppView>('intro');
-  const [viewHistory, setViewHistory] = useState<AppView[]>(['intro']);
+  const initialRoute = parseUrlRoute();
+  const [currentSetId, setCurrentSetId] = useState<string>(() => initialRoute.testId || availableSets[0]?.id || '');
+  const [activeView, setActiveView] = useState<AppView>(() => initialRoute.view);
+  const [viewHistory, setViewHistory] = useState<AppView[]>([initialRoute.view]);
   const [testResult, setTestResult] = useState<TestResult | null>(null);
 
   useEffect(() => {
@@ -100,23 +103,103 @@ export default function App() {
   // Handle direct navigation from email notifications & mobile push links: ?testId=... or ?reviewTestId=...
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    const targetTestId = params.get('testId') || params.get('test');
-    const targetReviewId = params.get('reviewTestId') || params.get('review');
+    const route = parseUrlRoute();
 
-    if (targetTestId && availableSets.length > 0) {
-      const found = availableSets.find((s) => s.id === targetTestId);
+    if (route.enableNotif) {
+      setIsNotificationCenterOpen(true);
+    }
+
+    if (route.testId && availableSets.length > 0) {
+      const found = availableSets.find((s) => s.id === route.testId);
       if (found) {
         setCurrentSetId(found.id);
-        setActiveView('intro');
+        if (route.view === 'testing') {
+          setActiveView('testing');
+        } else {
+          setActiveView('intro');
+        }
       }
-    } else if (targetReviewId && availableSets.length > 0) {
+    } else if (route.reviewTestId && availableSets.length > 0) {
       const historyResults = getSavedTestResults();
-      const match = historyResults.find((r) => r.setId === targetReviewId || r.id === targetReviewId);
+      const match = historyResults.find((r) => r.setId === route.reviewTestId || r.id === route.reviewTestId);
       if (match) {
         const matchingSet = availableSets.find((s) => s.id === match.setId) || availableSets[0];
         handleReviewHistoryResult(match, matchingSet);
       }
+    } else if (route.view && route.view !== 'intro') {
+      setActiveView(route.view);
+    }
+  }, [availableSets]);
+
+  // Handle browser Back / Forward navigation (PopState)
+  useEffect(() => {
+    const handlePopState = () => {
+      const route = parseUrlRoute();
+      setActiveView(route.view);
+      if (route.testId) {
+        setCurrentSetId(route.testId);
+      }
+      if (route.reviewTestId) {
+        const historyResults = getSavedTestResults();
+        const match = historyResults.find((r) => r.setId === route.reviewTestId || r.id === route.reviewTestId);
+        if (match) {
+          const matchingSet = availableSets.find((s) => s.id === match.setId) || availableSets[0];
+          handleReviewHistoryResult(match, matchingSet);
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [availableSets]);
+
+  // Handle incoming deep link clicks from Service Worker
+  useEffect(() => {
+    if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+      const handleSwMessage = (event: MessageEvent) => {
+        if (event.data && event.data.type === 'BPSC_NOTIFICATION_CLICK') {
+          const targetUrl = event.data.url;
+          if (targetUrl) {
+            try {
+              const parsed = new URL(targetUrl, window.location.origin);
+              if (parsed.searchParams.get('enableNotif') === 'true') {
+                setIsNotificationCenterOpen(true);
+              }
+              const testId = parsed.searchParams.get('testId');
+              const reviewTestId = parsed.searchParams.get('reviewTestId');
+              const view = parsed.searchParams.get('view');
+              if (reviewTestId) {
+                const historyResults = getSavedTestResults();
+                const match = historyResults.find((r) => r.setId === reviewTestId || r.id === reviewTestId);
+                if (match) {
+                  const matchingSet = availableSets.find((s) => s.id === match.setId) || availableSets[0];
+                  handleReviewHistoryResult(match, matchingSet);
+                  return;
+                }
+              }
+              if (testId) {
+                const found = availableSets.find((s) => s.id === testId);
+                if (found) {
+                  setCurrentSetId(found.id);
+                  if (parsed.searchParams.get('start') === 'true' || view === 'test') {
+                    setActiveView('testing');
+                  } else {
+                    setActiveView('intro');
+                  }
+                  return;
+                }
+              }
+              if (view === 'bank') setActiveView('bank');
+              else if (view === 'create') setActiveView('create-test');
+              else if (view === 'import') setActiveView('bulk-import');
+              else if (view === 'history') setActiveView('history');
+              else if (view === 'progress') setActiveView('progress');
+            } catch {}
+          }
+        }
+      };
+      navigator.serviceWorker.addEventListener('message', handleSwMessage);
+      return () => navigator.serviceWorker.removeEventListener('message', handleSwMessage);
     }
   }, [availableSets]);
 
@@ -188,8 +271,13 @@ export default function App() {
       return [...prev, nextView];
     });
     setActiveView(nextView);
+    updateBrowserUrl({
+      view: nextView,
+      testId: currentSetId,
+      reviewTestId: testResult?.setId
+    });
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
+  }, [currentSetId, testResult]);
 
   const handleGoBack = useCallback(() => {
     setViewHistory((prev) => {
@@ -198,15 +286,20 @@ export default function App() {
         updated.pop();
         const prevView = updated[updated.length - 1] || 'intro';
         setActiveView(prevView);
+        updateBrowserUrl({
+          view: prevView,
+          testId: currentSetId
+        });
         window.scrollTo({ top: 0, behavior: 'smooth' });
         return updated;
       } else {
         setActiveView('intro');
+        updateBrowserUrl({ view: 'intro' });
         window.scrollTo({ top: 0, behavior: 'smooth' });
         return ['intro'];
       }
     });
-  }, []);
+  }, [currentSetId]);
 
   // Sync with Firestore Cloud Database
   useEffect(() => {
@@ -277,13 +370,22 @@ export default function App() {
     setCurrentSetId(setId);
     navigateToView('intro');
     setTestResult(null);
+    updateBrowserUrl({
+      view: 'intro',
+      testId: setId
+    });
   };
 
   const handleStartTest = (setId?: string) => {
-    if (setId) {
-      setCurrentSetId(setId);
+    const targetId = setId || currentSetId;
+    if (targetId) {
+      setCurrentSetId(targetId);
     }
     navigateToView('testing');
+    updateBrowserUrl({
+      view: 'testing',
+      testId: targetId
+    });
   };
 
   const handleSubmitTest = (result: TestResult) => {
@@ -299,6 +401,12 @@ export default function App() {
     });
     const completedAtIso = new Date().toISOString();
     const attemptId = `${result.setId}_${Date.now()}`;
+
+    updateBrowserUrl({
+      view: 'results',
+      reviewTestId: result.setId,
+      resultId: attemptId
+    });
 
     // Compute topic breakdown from current test questions
     const testQuestions = (currentSet && currentSet.questions) || [];
@@ -351,6 +459,15 @@ export default function App() {
       incorrectCount: result.incorrectCount,
       testId: result.setId
     }).catch(() => null);
+
+    // Trigger Celebration Alert if student scored well
+    triggerHighScoreCelebrationAlert({
+      testTitle: result.setTitle,
+      score: result.score,
+      totalMarks: result.totalMarks,
+      accuracy: result.accuracy,
+      testId: result.setId
+    }).catch(() => null);
   };
 
   const handleReattempt = () => {
@@ -384,6 +501,10 @@ export default function App() {
     setCurrentSetId(testSet.id);
     setTestResult(result);
     navigateToView('results');
+    updateBrowserUrl({
+      view: 'results',
+      reviewTestId: testSet.id
+    });
   };
 
   const handleOpenBulkImportWithTopic = (topicKey?: string) => {

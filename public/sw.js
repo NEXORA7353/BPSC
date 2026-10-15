@@ -124,7 +124,11 @@ self.addEventListener('notificationclick', (event) => {
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       // Focus open client if available
       for (const client of clientList) {
-        if (client.url && 'focus' in client) {
+        if ('focus' in client) {
+          client.postMessage({
+            type: 'BPSC_NOTIFICATION_CLICK',
+            url: targetUrl
+          });
           if (targetUrl !== '/' && client.navigate) {
             client.navigate(targetUrl);
           }

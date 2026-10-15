@@ -38,10 +38,25 @@ export const NotificationToastBanner: React.FC<NotificationToastBannerProps> = (
 
   const isUrgent = activeNotification.severity === 'urgent';
 
+  const handleToastClick = (e: React.MouseEvent) => {
+    // If target is the close button or link, let it handle directly
+    if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('a')) {
+      return;
+    }
+    if (activeNotification.url) {
+      setActiveNotification(null);
+      window.location.href = activeNotification.url;
+    } else if (onOpenNotificationCenter) {
+      setActiveNotification(null);
+      onOpenNotificationCenter();
+    }
+  };
+
   return (
     <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[94%] max-w-lg animate-in slide-in-from-top-4 duration-300">
       <div
-        className={`p-4 rounded-2xl shadow-2xl border backdrop-blur-md flex items-start gap-3.5 ${
+        onClick={handleToastClick}
+        className={`p-4 rounded-2xl shadow-2xl border backdrop-blur-md flex items-start gap-3.5 cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all ${
           isUrgent
             ? 'bg-red-950/95 border-red-500/50 text-red-100 shadow-red-950/60'
             : 'bg-slate-900/95 border-amber-500/40 text-slate-100 shadow-slate-950/60'
@@ -70,15 +85,21 @@ export const NotificationToastBanner: React.FC<NotificationToastBannerProps> = (
             {activeNotification.url && (
               <a
                 href={activeNotification.url}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveNotification(null);
+                }}
                 className="font-bold underline text-amber-400 hover:text-amber-300 flex items-center gap-1"
               >
-                <span>👉 तुरंत देखें</span>
+                <span>👉 सीधे खोलें (Open)</span>
                 <ArrowRight className="w-3 h-3" />
               </a>
             )}
             {onOpenNotificationCenter && (
               <button
-                onClick={() => {
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
                   setActiveNotification(null);
                   onOpenNotificationCenter();
                 }}
@@ -91,7 +112,11 @@ export const NotificationToastBanner: React.FC<NotificationToastBannerProps> = (
         </div>
 
         <button
-          onClick={() => setActiveNotification(null)}
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setActiveNotification(null);
+          }}
           className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer shrink-0"
         >
           <X className="w-4 h-4" />

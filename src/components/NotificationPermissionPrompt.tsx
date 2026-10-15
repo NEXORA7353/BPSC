@@ -54,13 +54,21 @@ export const NotificationPermissionPrompt: React.FC<NotificationPermissionPrompt
         return;
       }
 
-      // Check snooze timestamp
+      const params = new URLSearchParams(window.location.search);
+      const forceOpen = params.get('enableNotif') === 'true' || params.get('notif') === 'open';
+
+      // Check snooze timestamp unless forced via URL
       const snoozedUntilStr = localStorage.getItem(SNOOZE_STORAGE_KEY);
-      if (snoozedUntilStr) {
+      if (!forceOpen && snoozedUntilStr) {
         const snoozedUntil = parseInt(snoozedUntilStr, 10);
         if (!isNaN(snoozedUntil) && Date.now() < snoozedUntil) {
           return;
         }
+      }
+
+      if (forceOpen) {
+        setIsOpen(true);
+        return;
       }
 
       // Open prompt after 1.5s delay so page initial layout renders smoothly

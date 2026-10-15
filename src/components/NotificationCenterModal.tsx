@@ -26,6 +26,8 @@ import {
   requestMobileNotificationPermission,
   triggerHourlyMotivation,
   dispatchPortalNotification,
+  triggerStrictDisciplineWakeupAlert,
+  triggerHighScoreCelebrationAlert,
   PortalNotificationItem,
   NotificationSettings
 } from '../utils/mobileNotificationService';
@@ -131,6 +133,30 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
     setIsTestingAlert(true);
     try {
       await triggerHourlyMotivation(true);
+    } finally {
+      setTimeout(() => setIsTestingAlert(false), 600);
+    }
+  };
+
+  const handleTriggerStrictRealityCheckNow = async () => {
+    setIsTestingAlert(true);
+    try {
+      const profile = getUserProfile();
+      await triggerStrictDisciplineWakeupAlert(profile.displayName || 'प्रिया पटेल');
+    } finally {
+      setTimeout(() => setIsTestingAlert(false), 600);
+    }
+  };
+
+  const handleTriggerCelebrationNow = async () => {
+    setIsTestingAlert(true);
+    try {
+      await triggerHighScoreCelebrationAlert({
+        testTitle: 'BPSC TRE 4.0: Mathematics Mock Test',
+        score: 28.5,
+        totalMarks: 30,
+        accuracy: 95
+      });
     } finally {
       setTimeout(() => setIsTestingAlert(false), 600);
     }
@@ -378,6 +404,24 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
             >
               <Clock className="w-3.5 h-3.5 text-indigo-400" />
               <span>मोटिवेशनल अलर्ट भेजें</span>
+            </button>
+
+            <button
+              onClick={handleTriggerStrictRealityCheckNow}
+              disabled={isTestingAlert}
+              className="py-2.5 px-3 rounded-xl bg-rose-950/60 hover:bg-rose-900/60 border border-rose-500/30 text-rose-200 font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+            >
+              <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
+              <span>कड़क डांट (Reality Check)</span>
+            </button>
+
+            <button
+              onClick={handleTriggerCelebrationNow}
+              disabled={isTestingAlert}
+              className="py-2.5 px-3 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-500/30 text-emerald-200 font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+            >
+              <Flame className="w-3.5 h-3.5 text-emerald-400" />
+              <span>हाई स्कोर (शाबाशी) अलर्ट</span>
             </button>
           </div>
 
