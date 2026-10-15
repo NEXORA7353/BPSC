@@ -733,7 +733,38 @@ export function getSavedCustomTests(): MockTestSet[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.CUSTOM_TESTS);
     const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed.map(sanitizeTestSet) : [];
+    if (!Array.isArray(parsed)) return [];
+
+    // 1. Filter out corrupt or empty tests (strictly >0 questions required)
+    const valid = parsed.filter(
+      (t) =>
+        t &&
+        t.id &&
+        Array.isArray(t.questions) &&
+        t.questions.length > 0 &&
+        (t.totalQuestions === undefined || t.totalQuestions > 0)
+    );
+
+    // 2. Strict Deduplication: eliminate identical cloned tests
+    const seenSignatures = new Set<string>();
+    const deduplicated: MockTestSet[] = [];
+
+    for (const test of valid) {
+      const firstQId = test.questions[0]?.id || '';
+      const lastQId = test.questions[test.questions.length - 1]?.id || '';
+      const signature = `${normalizeTestTitle(test.title)}_${test.questions.length}_${firstQId}_${lastQId}`;
+      if (!seenSignatures.has(signature)) {
+        seenSignatures.add(signature);
+        deduplicated.push(sanitizeTestSet(test));
+      }
+    }
+
+    // 3. Auto-purge: If empty ghost tests or duplicates existed, re-save immediately to free storage
+    if (deduplicated.length !== parsed.length) {
+      safeLocalStorageSet(STORAGE_KEYS.CUSTOM_TESTS, JSON.stringify(deduplicated));
+    }
+
+    return deduplicated;
   } catch {
     return [];
   }
@@ -741,6 +772,11 @@ export function getSavedCustomTests(): MockTestSet[] {
 
 export function saveCustomTest(testSet: MockTestSet): void {
   try {
+    if (!testSet || !Array.isArray(testSet.questions) || testSet.questions.length === 0) {
+      console.warn('Rejected saving empty test set with 0 questions');
+      return;
+    }
+
     const safeSet = sanitizeTestSet({
       ...testSet,
       createdAt: testSet.createdAt || new Date().toISOString()
@@ -899,14 +935,24 @@ export function getAllAvailableTests(): MockTestSet[] {
     });
   }
 
-  return Array.from(testMap.values())
-    .filter((t) => {
-      if (!t || !t.id) return false;
-      if (deletedIds.has(t.id)) return false;
-      return true;
-    })
-    .map(sanitizeTestSet)
-    .sort((a, b) => getTestTimestamp(b) - getTestTimestamp(a));
+  const seenSignatures = new Set<string>();
+  const validList: MockTestSet[] = [];
+
+  for (const t of testMap.values()) {
+    if (!t || !t.id) continue;
+    if (deletedIds.has(t.id)) continue;
+    if (!Array.isArray(t.questions) || t.questions.length === 0) continue;
+
+    const firstQId = t.questions[0]?.id || '';
+    const lastQId = t.questions[t.questions.length - 1]?.id || '';
+    const signature = `${normalizeTestTitle(t.title)}_${t.questions.length}_${firstQId}_${lastQId}`;
+    if (!seenSignatures.has(signature)) {
+      seenSignatures.add(signature);
+      validList.push(sanitizeTestSet(t));
+    }
+  }
+
+  return validList.sort((a, b) => getTestTimestamp(b) - getTestTimestamp(a));
 }
 
 export function getTestsForTopic(
@@ -1051,7 +1097,7 @@ export function getUsedQuestionsInfo(): {
   return { usedIds, usedTextSet, questionUsageMap };
 }
 
-export function createCustomMockTest(config: CustomTestConfig): MockTestSet {
+export function createCustomMockTest(config: CustomTestConfig, autoSave: boolean = false): MockTestSet {
   const allQuestions = getAllQuestionBank();
   let selected: Question[] = [];
 
@@ -1147,7 +1193,9 @@ export function createCustomMockTest(config: CustomTestConfig): MockTestSet {
     createdAt: new Date().toISOString()
   };
 
-  saveCustomTest(newTest);
+  if (autoSave && newTest.questions.length > 0) {
+    saveCustomTest(newTest);
+  }
   return newTest;
 }
 
@@ -1162,19 +1210,21 @@ export function createReattemptMissedQuestionsTest(parentTest: MockTestSet, miss
     id: testId,
     title: cleanTitle,
     subtitle: `Targeted practice for ${questions.length} incorrect & skipped questions`,
-    targetExam: parentTest.targetExam,
+    targetExam: 'BPSC TRE 4.0 Mathematics (Smart Re-attempt)',
     category: 'custom',
-    categoryTitle: 'Targeted Re-attempt Tests',
-    topicBadges: ['Mistakes Review', 'Targeted Re-attempt'],
+    categoryTitle: 'Weak Spot Re-attempts',
+    topicBadges: ['Weak Spots', 'Targeted Re-test'],
     totalQuestions: questions.length,
     totalTimeMinutes: Math.max(5, questions.length),
-    questions,
+    questions: questions,
     negativeMarkingValue: parentTest.negativeMarkingValue ?? 0.33,
     isCustom: true,
     createdAt: new Date().toISOString()
   };
 
-  saveCustomTest(newTest);
+  if (newTest.questions.length > 0) {
+    saveCustomTest(newTest);
+  }
   return newTest;
 }
 

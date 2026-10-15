@@ -841,15 +841,32 @@ export function getTestAttempt(
 ): TestAttemptRecord | null {
   if (!attempts || attempts.length === 0 || !test) return null;
   
+  // 1. Exact ID match (Primary & most accurate)
   const byId = attempts.find((a) => a.testId === test.id);
   if (byId) return byId;
 
-  const normTitle = normalizeTestTitle(test.title);
-  if (normTitle) {
-    const byTitle = attempts.find(
-      (a) => a.testTitle && normalizeTestTitle(a.testTitle) === normTitle
-    );
-    if (byTitle) return byTitle;
+  // 2. Strict Fallback for standard preset tests ONLY (e.g., 'mock_set_01')
+  // CRITICAL: NEVER match custom tests or generic default titles by title,
+  // otherwise every newly created custom test shows an unrelated attempt's score!
+  const isCustomOrGenerated = Boolean(
+    test.isCustom ||
+    test.id.startsWith('custom_') ||
+    test.id.startsWith('reattempt_') ||
+    test.id.startsWith('auto_topic_test_')
+  );
+
+  if (!isCustomOrGenerated) {
+    const normTitle = normalizeTestTitle(test.title);
+    const genericNorm = normalizeTestTitle('BPSC TRE 4.0: Mathematics Mock Test');
+    if (normTitle && normTitle !== genericNorm) {
+      const byTitle = attempts.find(
+        (a) =>
+          a.testTitle &&
+          normalizeTestTitle(a.testTitle) === normTitle &&
+          (!a.totalQuestions || !test.totalQuestions || a.totalQuestions === test.totalQuestions)
+      );
+      if (byTitle) return byTitle;
+    }
   }
 
   return null;

@@ -152,12 +152,18 @@ export async function syncFromFirestore(): Promise<void> {
       const data = d.data();
       const testId = data?.id || d.id;
       const testObj = { ...data, id: testId } as MockTestSet;
-      cloudTests.push(testObj);
-      cloudTestIdSet.add(testId);
+      if (Array.isArray(testObj.questions) && testObj.questions.length > 0) {
+        cloudTests.push(testObj);
+        cloudTestIdSet.add(testId);
+      } else {
+        // Clean up empty ghost tests from Firestore
+        deleteDoc(doc(db, 'custom_tests', testId)).catch(() => null);
+      }
     });
 
     const isDeletedTest = (t: MockTestSet) => {
       if (!t || !t.id) return true;
+      if (!Array.isArray(t.questions) || t.questions.length === 0) return true;
       if (deletedTestSet.has(t.id)) return true;
       return false;
     };
@@ -179,9 +185,8 @@ export async function syncFromFirestore(): Promise<void> {
     setLiveCloudTests(finalTests);
 
     // Bidirectional sync: Push local custom tests that are missing in Firestore
-    // so both bpsc.dpdns.org and bpsc-chi.vercel.app have the exact same mock tests
     localTests.forEach((t) => {
-      if (t && t.id && !cloudTestIdSet.has(t.id) && !isDeletedTest(t)) {
+      if (t && t.id && Array.isArray(t.questions) && t.questions.length > 0 && !cloudTestIdSet.has(t.id) && !isDeletedTest(t)) {
         saveTestSetToCloud(t).catch((err) => console.warn('Sync test to cloud error:', err));
       }
     });
@@ -630,7 +635,7 @@ export async function deleteBatchQuestionsFromCloud(questionIds: string[]): Prom
  * Save custom test set to Firestore
  */
 export async function saveTestSetToCloud(testSet: MockTestSet): Promise<void> {
-  if (!testSet || !testSet.id) return;
+  if (!testSet || !testSet.id || !Array.isArray(testSet.questions) || testSet.questions.length === 0) return;
   const path = `custom_tests/${testSet.id}`;
   try {
     const cleanTest = cleanPayload({

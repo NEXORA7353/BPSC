@@ -31,6 +31,7 @@ import { syncFromFirestore, setupRealtimeSync, saveAttemptRecordToCloud } from '
 import { usePortalLanguage } from './utils/language';
 import { NotificationCenterModal } from './components/NotificationCenterModal';
 import { NotificationToastBanner } from './components/NotificationToastBanner';
+import { NotificationPermissionPrompt } from './components/NotificationPermissionPrompt';
 import {
   startNotificationWatcher,
   stopNotificationWatcher,
@@ -481,6 +482,9 @@ export default function App() {
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950 transition-colors duration-150 relative max-w-full overflow-x-hidden">
       {/* Floating In-App Notification Toast Banner */}
       <NotificationToastBanner onOpenNotificationCenter={() => setIsNotificationCenterOpen(true)} />
+
+      {/* Mobile & Laptop Notification Prompt on App Open */}
+      <NotificationPermissionPrompt onOpenNotificationCenter={() => setIsNotificationCenterOpen(true)} />
 
       {/* Sidebar Navigation Component */}
       <Sidebar

@@ -515,7 +515,7 @@ export function CustomTestModal({
       targetExam: 'BPSC TRE 4.0 Mathematics (Custom Studio)',
       preferUnused
     };
-    const generated = createCustomMockTest(config);
+    const generated = createCustomMockTest(config, false);
     setPreviewQuestions(generated.questions);
     return generated.questions;
   };
@@ -610,6 +610,11 @@ export function CustomTestModal({
 
   // Create Mock Test
   const handleCreateTestSet = (autoStart: boolean = false) => {
+    if (previewQuestions.length === 0 && totalQuestionsCount === 0) {
+      alert('कृपया टेस्ट बनाने के लिए कम से कम 1 प्रश्न या चैप्टर चुनें!');
+      return;
+    }
+
     const finalTime = timeMode === 'auto' ? Math.max(5, totalQuestionsCount) : customTimeMinutes;
 
     let newTestSet: MockTestSet;
@@ -653,7 +658,7 @@ export function CustomTestModal({
         targetExam: 'BPSC TRE 4.0 Mathematics (Custom Studio)',
         preferUnused: preferUnused
       };
-      newTestSet = createCustomMockTest(config);
+      newTestSet = createCustomMockTest(config, true);
     }
 
     if (autoStart) {
@@ -711,7 +716,7 @@ export function CustomTestModal({
         targetExam: 'BPSC TRE 4.0 Mathematics (Custom Studio)',
         preferUnused: preferUnused
       };
-      newTestSet = createCustomMockTest(config);
+      newTestSet = createCustomMockTest(config, false);
     }
 
     printQuestionPaperWithOmr(newTestSet);
