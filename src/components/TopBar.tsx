@@ -197,7 +197,7 @@ export function TopBar({
             title="Mobile Notifications & Hourly Discipline Engine"
           >
             <Bell className="w-4 h-4 text-amber-500 shrink-0" />
-            <span className="hidden lg:inline">Alerts</span>
+            <span className="hidden lg:inline">अलर्ट 🔔</span>
             <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
           </button>
 

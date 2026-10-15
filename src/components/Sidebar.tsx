@@ -255,10 +255,10 @@ export function Sidebar({
             >
               <div className="flex items-center gap-3">
                 <Bell className="w-4 h-4 text-amber-400" />
-                <span>Mobile Alerts & Discipline</span>
+                <span>मोबाइल अलर्ट व अनुशासन 🔔</span>
               </div>
               <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded font-mono font-bold">
-                Live
+                लाइव
               </span>
             </button>
           </div>

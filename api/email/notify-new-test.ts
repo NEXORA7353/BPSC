@@ -39,7 +39,7 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
 
   try {
     const body = parseRequestBody(req);
-    const { testId, testData, appBaseUrl, sendToParent = true } = body;
+    const { testId, testData, appBaseUrl, sendToParent = true, force = false } = body;
 
     if (!testId || typeof testId !== 'string') {
       return sendJson(res, 400, { error: 'Missing or invalid testId' });
@@ -63,36 +63,42 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
       return sendJson(res, 400, { error: 'Test is not published. Draft tests do not send emails.' });
     }
 
-    // 4. Atomically reserve notification
-    const notificationId = `publish_${testId}`;
+    // 4. Atomically reserve notification (or use timestamped ID if force is true)
+    const notificationId = force ? `publish_${testId}_${Date.now()}` : `publish_${testId}`;
     const studentEmail = test.studentEmail || DEFAULT_STUDENT_EMAIL;
     const parentEmail = test.parentEmail || DEFAULT_PARENT_EMAIL;
     const studentName = test.studentName || DEFAULT_STUDENT_NAME;
 
     let isReserved = false;
-    try {
-      if (isFirebaseAdminConfigured()) {
-        isReserved = await reserveNotificationAtomically(notificationId, {
-          type: 'new_test',
-          recipients: sendToParent ? [studentEmail, parentEmail] : [studentEmail],
-          testId
-        });
-      } else {
-        isReserved = true;
-      }
-    } catch (dbErr: any) {
-      console.warn('[notify-new-test] Reservation error:', dbErr?.message || dbErr);
-      if (dbErr?.code === 6 || dbErr?.message?.includes('ALREADY_EXISTS') || dbErr?.message?.includes('already exists')) {
-        isReserved = false;
-      } else {
-        isReserved = true;
+    if (force) {
+      isReserved = true;
+    } else {
+      try {
+        if (isFirebaseAdminConfigured()) {
+          isReserved = await reserveNotificationAtomically(notificationId, {
+            type: 'new_test',
+            recipients: sendToParent ? [studentEmail, parentEmail] : [studentEmail],
+            testId
+          });
+        } else {
+          isReserved = true;
+        }
+      } catch (dbErr: any) {
+        console.warn('[notify-new-test] Reservation error:', dbErr?.message || dbErr);
+        if (dbErr?.code === 6 || dbErr?.message?.includes('ALREADY_EXISTS') || dbErr?.message?.includes('already exists')) {
+          isReserved = false;
+        } else {
+          isReserved = true;
+        }
       }
     }
 
     if (!isReserved) {
       return sendJson(res, 200, {
+        success: true,
+        alreadySent: true,
         status: 'already_sent',
-        message: 'Publish notification email already sent for this test.'
+        message: 'इस टेस्ट का नोटिफिकेशन ईमेल पहले ही भेजा जा चुका है। पुनः भेजने के लिए "पुनः भेजें (Force Resend)" चुनें।'
       });
     }
 

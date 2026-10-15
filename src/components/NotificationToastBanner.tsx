@@ -60,7 +60,7 @@ export const NotificationToastBanner: React.FC<NotificationToastBannerProps> = (
             <h5 className="font-black text-xs sm:text-sm tracking-tight truncate text-white">
               {activeNotification.title}
             </h5>
-            <span className="text-[10px] text-slate-400 shrink-0">Just now</span>
+            <span className="text-[10px] text-slate-400 shrink-0">अभी-अभी</span>
           </div>
           <p className="text-xs text-slate-300 leading-relaxed line-clamp-2">
             {activeNotification.body}
@@ -72,7 +72,7 @@ export const NotificationToastBanner: React.FC<NotificationToastBannerProps> = (
                 href={activeNotification.url}
                 className="font-bold underline text-amber-400 hover:text-amber-300 flex items-center gap-1"
               >
-                <span>View Action</span>
+                <span>👉 तुरंत देखें</span>
                 <ArrowRight className="w-3 h-3" />
               </a>
             )}
@@ -84,7 +84,7 @@ export const NotificationToastBanner: React.FC<NotificationToastBannerProps> = (
                 }}
                 className="text-[11px] text-slate-400 hover:text-white"
               >
-                Notification Center
+                🔔 सभी अलर्ट देखें
               </button>
             )}
           </div>

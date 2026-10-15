@@ -13,7 +13,9 @@ import {
   Mail,
   ShieldAlert,
   Sparkles,
-  ExternalLink
+  ExternalLink,
+  Flame,
+  Check
 } from 'lucide-react';
 import {
   getNotificationSettings,
@@ -47,7 +49,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
   });
   const [isTestingAlert, setIsTestingAlert] = useState(false);
   const [isSendingInactivity, setIsSendingInactivity] = useState(false);
-  const [inactivityResultMsg, setInactivityResultMsg] = useState<string | null>(null);
+  const [inactivityResultMsg, setInactivityResultMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     const handleHistoryUpdate = () => {
@@ -114,8 +116,8 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
     setIsTestingAlert(true);
     try {
       await dispatchPortalNotification({
-        title: '[TEST NOTIFICATION]: Mobile Alert System Active',
-        body: 'BPSC TRE 4.0 Mobile Notification Engine is fully functional with sound and vibration feedback.',
+        title: '🔔 [परीक्षण अलर्ट]: मोबाइल नोटिफिकेशन सिस्टम सक्रिय है!',
+        body: 'BPSC TRE 4.0 मोबाइल नोटिफिकेशन इंजन ऑडियो टोन और कंपन के साथ पूरी तरह कार्य कर रहा है। 🎯',
         category: 'system',
         severity: 'info',
         url: window.location.origin
@@ -139,32 +141,62 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
     setInactivityResultMsg(null);
     try {
       const profile = getUserProfile();
-      const res = await fetch('/api/cron/daily-inactivity?manual=true&force=true', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-manual-trigger': 'true'
-        },
-        body: JSON.stringify({
-          studentEmail: profile.email || 'patel000priya000@gmail.com',
-          parentEmail: profile.parentEmail || 'arjittreadingcompany@gmail.com',
-          studentName: profile.displayName || 'PrIyA PaTeL',
-          forceSend: true,
-          appBaseUrl: window.location.origin
-        })
-      });
+      const payload = {
+        studentEmail: profile.email || 'patel000priya000@gmail.com',
+        parentEmail: profile.parentEmail || 'arjittreadingcompany@gmail.com',
+        studentName: profile.displayName || 'प्रिया पटेल',
+        forceSend: true,
+        appBaseUrl: window.location.origin
+      };
 
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data.success) {
-        setInactivityResultMsg('Inactivity alert email dispatched to Student and Parent successfully!');
+      let res: Response | null = null;
+      let data: any = null;
+
+      try {
+        res = await fetch('/api/cron/daily-inactivity?manual=true&force=true', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-manual-trigger': 'true'
+          },
+          body: JSON.stringify(payload)
+        });
+        data = await res.json().catch(() => null);
+      } catch (e) {
+        console.warn('Local endpoint failed, attempting production URL:', e);
+      }
+
+      if (!res || !res.ok || !data) {
+        res = await fetch('https://bpsc.dpdns.org/api/cron/daily-inactivity?manual=true&force=true', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-manual-trigger': 'true'
+          },
+          body: JSON.stringify(payload)
+        });
+        data = await res.json().catch(() => ({}));
+      }
+
+      if (res && res.ok && data?.success) {
+        setInactivityResultMsg({
+          type: 'success',
+          text: '🚀 दैनिक इनएक्टिविटी अलर्ट ई-मेल छात्र व अभिभावक दोनों को सफलतापूर्वक भेजा गया!'
+        });
       } else {
-        setInactivityResultMsg(`Email notice: ${data.message || data.error || 'Server processed request'}`);
+        setInactivityResultMsg({
+          type: 'error',
+          text: data?.message || data?.error || 'ईमेल भेजने में सर्वर त्रुटि हुई।'
+        });
       }
     } catch (err: any) {
-      setInactivityResultMsg(`Trigger error: ${err?.message || err}`);
+      setInactivityResultMsg({
+        type: 'error',
+        text: `त्रुटि: ${err?.message || err}`
+      });
     } finally {
       setIsSendingInactivity(false);
-      setTimeout(() => setInactivityResultMsg(null), 5000);
+      setTimeout(() => setInactivityResultMsg(null), 7000);
     }
   };
 
@@ -174,12 +206,15 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-800 pb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center font-black">
-              <Bell className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center font-black text-xl">
+              🔔
             </div>
             <div>
-              <h3 className="text-lg font-black text-white">Mobile Notification & Discipline Engine</h3>
-              <p className="text-xs text-slate-400">हर घंटे मोटिवेशन, रिजल्ट रियलिटी चेक व इनएक्टिविटी अलर्ट</p>
+              <h3 className="text-lg font-black text-white flex items-center gap-2">
+                <span>मोबाइल नोटिफिकेशन व अनुशासन केंद्र</span>
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30">हिंदी</span>
+              </h3>
+              <p className="text-xs text-slate-400">⏰ हर घंटे मोटिवेशन, 🚨 रिजल्ट रियलिटी चेक व 👨‍👩‍👧 अभिभावक अलर्ट</p>
             </div>
           </div>
           <button
@@ -196,15 +231,15 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
             <div className="space-y-1">
               <div className="font-bold text-amber-300 flex items-center gap-1.5">
                 <Smartphone className="w-4 h-4" />
-                <span>Mobile Lockscreen Notifications Inactive</span>
+                <span>📱 मोबाइल लॉकस्क्रीन नोटिफिकेशन निष्क्रिय है</span>
               </div>
               <p className="text-slate-300">
-                ब्राउज़र नोटिफिकेशन अनुमति चालू करें ताकि फोन की स्क्रीन लॉक होने पर भी हर घंटे अलर्ट मिले।
+                ब्राउज़र नोटिफिकेशन अनुमति चालू करें ताकि फोन की स्क्रीन लॉक होने पर भी आपको समय पर अभ्यास अलर्ट मिले।
               </p>
             </div>
             <button
               onClick={handleTogglePush}
-              className="px-4 py-2 rounded-xl bg-amber-400 text-slate-950 font-black shrink-0 hover:bg-amber-300 transition-colors cursor-pointer"
+              className="px-4 py-2 rounded-xl bg-amber-400 text-slate-950 font-black shrink-0 hover:bg-amber-300 transition-colors cursor-pointer shadow-md"
             >
               अनुमति दें (Enable)
             </button>
@@ -213,17 +248,19 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
 
         {/* Feature Toggles Card */}
         <div className="space-y-3">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Notification Settings</h4>
+          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+            <span>⚙️ नोटिफिकेशन सेटिंग्स (Controls)</span>
+          </h4>
 
           {/* Hourly Motivation */}
           <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 flex items-center justify-between gap-3">
             <div className="space-y-0.5">
               <div className="flex items-center gap-2 font-bold text-sm text-white">
                 <Clock className="w-4 h-4 text-amber-400" />
-                <span>Hourly Motivation & Discipline Alerts</span>
+                <span>⏰ प्रति घंटा मोटिवेशन व अनुशासन अलर्ट</span>
               </div>
               <p className="text-xs text-slate-400">
-                नियमित अंतराल पर अभ्यास स्मरण व गणित फॉर्मूला रिवीजन अलर्ट।
+                नियमित अंतराल पर अभ्यास स्मरण, फॉर्मूला रिविजन और स्पीड ड्रिल अलर्ट।
               </p>
             </div>
             <button
@@ -243,7 +280,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
           {/* Interval Selector */}
           {settings.hourlyMotivationEnabled && (
             <div className="p-3.5 rounded-2xl bg-slate-950/40 border border-slate-800/80 flex items-center justify-between gap-2 text-xs">
-              <span className="text-slate-300 font-medium">Alert Frequency (अलर्ट अंतराल):</span>
+              <span className="text-slate-300 font-medium">⏱️ अलर्ट आवृत्ति (Interval):</span>
               <div className="flex items-center gap-1.5">
                 {[1, 2, 3, 4].map((hrs) => (
                   <button
@@ -255,7 +292,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                         : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                     }`}
                   >
-                    {hrs} Hr
+                    हर {hrs} घंटे
                   </button>
                 ))}
               </div>
@@ -267,10 +304,10 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
             <div className="space-y-0.5">
               <div className="flex items-center gap-2 font-bold text-sm text-red-400">
                 <ShieldAlert className="w-4 h-4 text-red-400" />
-                <span>Strict Reality Check (खराब परिणाम पर चेतावनी)</span>
+                <span>🚨 सख्त रिजल्ट चेतावनी (Reality Check Alert)</span>
               </div>
               <p className="text-xs text-slate-400">
-                यदि एक्यूरेसी 50% से कम हो तो तुरंत सख्त अलर्ट: "इस तरह BPSC qualify नहीं होगा"।
+                यदि स्कोर या एक्यूरेसी 50% से कम हो तो तुरंत सख्त चेतावनी: "इस तरह BPSC qualify नहीं होगा!"
               </p>
             </div>
             <button
@@ -298,7 +335,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
               }`}
             >
               {settings.soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-              <span>{settings.soundEnabled ? 'Alert Tone: ON' : 'Alert Tone: OFF'}</span>
+              <span>{settings.soundEnabled ? '🔊 ध्वनि: चालू (ON)' : '🔇 ध्वनि: बंद (OFF)'}</span>
             </button>
 
             <button
@@ -310,17 +347,17 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
               }`}
             >
               <Smartphone className="w-4 h-4" />
-              <span>{settings.vibrationEnabled ? 'Vibration: ON' : 'Vibration: OFF'}</span>
+              <span>{settings.vibrationEnabled ? '📳 कंपन: चालू (ON)' : '📳 कंपन: बंद (OFF)'}</span>
             </button>
           </div>
         </div>
 
-        {/* Test Actions */}
+        {/* Live Test Actions */}
         <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 to-indigo-500/10 border border-amber-500/20 space-y-3">
           <div className="flex items-center justify-between">
             <div className="font-bold text-xs text-amber-300 flex items-center gap-1.5">
               <Sparkles className="w-4 h-4" />
-              <span>Live Test Actions (सिस्टम सत्यापन)</span>
+              <span>⚡ लाइव टेस्ट व सत्यापन (Test Triggers)</span>
             </div>
           </div>
 
@@ -331,7 +368,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
               className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
             >
               <Bell className="w-3.5 h-3.5 text-amber-400" />
-              <span>Test Mobile Audio/Push</span>
+              <span>🔔 मोबाइल ऑडियो/पुश टेस्ट</span>
             </button>
 
             <button
@@ -340,7 +377,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
               className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
             >
               <Clock className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Dispatch Hourly Motivation</span>
+              <span>⏰ मोटिवेशनल अलर्ट भेजें</span>
             </button>
           </div>
 
@@ -353,14 +390,20 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
             <Mail className="w-3.5 h-3.5 text-amber-400" />
             <span>
               {isSendingInactivity
-                ? 'Sending Inactivity Alert...'
-                : 'Send Daily Inactivity Alert Email to Student & Parent Now'}
+                ? 'ईमेल भेजा जा रहा है...'
+                : '👨‍👩‍👧 छात्र व अभिभावक को इनएक्टिविटी अलर्ट ईमेल भेजें'}
             </span>
           </button>
 
           {inactivityResultMsg && (
-            <div className="p-2.5 rounded-xl bg-slate-900 border border-amber-400/30 text-[11px] font-bold text-amber-300 text-center animate-in fade-in">
-              {inactivityResultMsg}
+            <div
+              className={`p-3 rounded-xl text-xs font-bold text-center animate-in fade-in ${
+                inactivityResultMsg.type === 'success'
+                  ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-300'
+                  : 'bg-red-500/15 border border-red-500/30 text-red-300'
+              }`}
+            >
+              {inactivityResultMsg.text}
             </div>
           )}
         </div>
@@ -368,8 +411,8 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
         {/* Notification History Log */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Recent Alerts Log ({history.length})
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+              <span>📋 हालिया अलर्ट इतिहास ({history.length})</span>
             </h4>
             {history.length > 0 && (
               <button
@@ -377,14 +420,14 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                 className="text-[11px] text-slate-400 hover:text-red-400 flex items-center gap-1 cursor-pointer"
               >
                 <Trash2 className="w-3 h-3" />
-                <span>Clear</span>
+                <span>इतिहास हटाएं (Clear)</span>
               </button>
             )}
           </div>
 
           {history.length === 0 ? (
             <div className="p-6 text-center rounded-2xl bg-slate-950/40 border border-slate-800/80 text-xs text-slate-500">
-              No recent notifications logged yet. Trigger a test notification above.
+              कोई हालिया नोटिफिकेशन नहीं है। ऊपर दिए गए बटन से परीक्षण नोटिफिकेशन भेजें।
             </div>
           ) : (
             <div className="space-y-2 max-h-56 overflow-y-auto pr-1">

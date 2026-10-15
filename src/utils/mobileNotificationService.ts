@@ -42,28 +42,28 @@ const DEFAULT_SETTINGS: NotificationSettings = {
 
 const HOURLY_MOTIVATION_MESSAGES = [
   {
-    title: '[BPSC ANUSHASAN]: Pratyek Ghanta Mahatvapurna Hai',
-    body: 'BPSC TRE 4.0 ganit pariksha kareeb hai. Pichle 1 ghante mein kitne prashna hal kiye? Abhi 15-minute quick mock test attempt karein.'
+    title: '⏰ [समय का सदुपयोग]: प्रत्येक घंटा महत्वपूर्ण है!',
+    body: 'BPSC TRE 4.0 परीक्षा नजदीक है। क्या आपने पिछले 1 घंटे में गणित के सवाल हल किए? तुरंत 15 मिनट का क्विक मॉक टेस्ट हल करें! 📝'
   },
   {
-    title: '[SAMAY KI KIMAT]: Calculation Speed Badhayein',
-    body: 'Ganit mein tukka lagana mana hai (-0.33 negative marking). Pen-paper uthayein aur 10 prashno ka abhyas drill turant karein.'
+    title: '🚨 [सावधानी और गति]: Calculation Speed बढ़ाएं!',
+    body: 'गणित में तुक्का लगाना सख्त मना है (-0.33 नेगेटिव मार्किंग)। पेन और रफ शीट उठाएं और 10 प्रश्नों की स्पीड ड्रिल अभी पूरी करें! ⚡'
   },
   {
-    title: '[LAKSHYA SMARAN]: Rozana Abhyas Se Hi Selection Hoga',
-    body: 'Lakho candidates pariksha de rahe hain. Pratyek din aur pratyek ghante ka sahi upyog aapko merit list mein laayega. Practice shuru karein.'
+    title: '🔥 [दैनिक लक्ष्य]: निरंतर अभ्यास से ही चयन होगा!',
+    body: 'लाखों अभ्यर्थी तैयारी में जुटे हैं। आज का दिन बिना 30 प्रश्न हल किए समाप्त न होने दें! मेरिट लिस्ट में जगह पक्की करें। 🎯'
   },
   {
-    title: '[SAVDHAN]: Kamzor Chapters Ka Revision Karein',
-    body: 'Geometry, Algebra aur Arithmetic ke formulas ka revision karein aur mock test dekar apni accuracy 80%+ karein.'
+    title: '📚 [कमजोर चैप्टर पर प्रहार]: रिविजन का समय!',
+    body: 'ज्यामिति, बीजगणित और अंकगणित के महत्वपूर्ण सूत्रों का रिविजन करें और मॉक टेस्ट देकर अपनी एक्यूरेसी 80%+ तक पहुंचाएं! 💡'
   },
   {
-    title: '[PARIKSHA READY]: Aaj Ka Target Pura Hua?',
-    body: 'Shikshak bharti qualify karne ke liye anushasan zaroori hai. Aalsya tyagein aur portal par naya mock test shuru karein.'
+    title: '⚡ [परीक्षा तैयारी]: अनुशासन ही सफलता की कुंजी है!',
+    body: 'शिक्षक भर्ती में सफलता अनुशासन से मिलती है। आलस्य त्यागें, पोर्टल खोलें और अभी एक नया प्रैक्टिस टेस्ट हल करें! 🏆'
   },
   {
-    title: '[SPEED DRILL]: Time Management Sudharein',
-    body: 'Real exam mein har sawaal ke liye lagbhag 1 minute milta hai. Portal par timer ke sath test dekar apni gati badhayein.'
+    title: '⏱️ [स्पीड ड्रिल]: टाइम मैनेजमेंट सुधारें!',
+    body: 'वास्तविक परीक्षा में प्रति प्रश्न केवल 1 मिनट का समय मिलता है। टाइमर के साथ मॉक टेस्ट देकर अपनी प्रश्न हल करने की गति बढ़ाएं! 📊'
   }
 ];
 
@@ -352,7 +352,7 @@ export async function triggerHourlyMotivation(force = false): Promise<boolean> {
 }
 
 /**
- * Triggers the stern Reality Check Alert on a poor test attempt.
+ * Triggers the stern Reality Check Alert on a poor test attempt in Hindi with emojis.
  */
 export async function triggerPoorResultRealityCheck(params: {
   testTitle: string;
@@ -365,8 +365,9 @@ export async function triggerPoorResultRealityCheck(params: {
   const isPoor = params.accuracy < 50 || (params.score / (params.totalMarks || 1)) < 0.45;
   if (!isPoor) return;
 
-  const title = '[SAVDHAN: RESULT ASANTOSHJANK]';
-  const body = `Is pradarshan ke sath BPSC TRE 4.0 qualify karna asambhav hai! ${params.incorrectCount} prashna galat hue hain (-0.33 negative marking). Turant apni galtiyon ka vishleshan karein aur chapter revision karein.`;
+  const scorePct = Math.round((params.score / (params.totalMarks || 1)) * 100);
+  const title = '🚨 [सावधान: रिजल्ट असंतोषजनक]';
+  const body = `इस प्रदर्शन के साथ BPSC TRE 4.0 Qualify करना असंभव है! आपका स्कोर सिर्फ ${params.score.toFixed(2)}/${params.totalMarks} (${scorePct}%) है और ${params.incorrectCount} प्रश्न गलत हुए हैं (-0.33 नेगेटिव मार्किंग)। तुरंत अपनी गलतियों का विश्लेषण करें और कमजोर अध्यायों का रिविजन करें! ⚠️`;
   const url = params.testId
     ? `${window.location.origin}/?reviewTestId=${encodeURIComponent(params.testId)}`
     : window.location.origin;
@@ -377,6 +378,45 @@ export async function triggerPoorResultRealityCheck(params: {
     category: 'reality_check',
     severity: 'urgent',
     url
+  });
+}
+
+/**
+ * Triggers a new test notification in Hindi for push and in-app alerts.
+ */
+export async function triggerNewTestMobileNotification(test: {
+  id: string;
+  title: string;
+  totalQuestions: number;
+  totalTimeMinutes: number;
+}): Promise<void> {
+  const title = `📢 नया मॉक टेस्ट उपलब्ध: ${test.title} 📝`;
+  const body = `BPSC TRE 4.0 के लिए ${test.totalQuestions} प्रश्नों का नया टेस्ट (${test.totalTimeMinutes} मिनट) लाइव है। तुरंत हल करें और अपनी तैयारी जांचें! 🎯`;
+  const url = `${window.location.origin}/?testId=${encodeURIComponent(test.id)}`;
+
+  await dispatchPortalNotification({
+    title,
+    body,
+    category: 'new_test',
+    severity: 'info',
+    url
+  });
+}
+
+/**
+ * Triggers daily inactivity alert in Hindi when student hasn't practiced.
+ */
+export async function triggerDailyInactivityMobileNotification(studentName?: string): Promise<void> {
+  const name = studentName || 'प्रिया';
+  const title = `🚨 [अनुशासन स्मरण]: आज कोई टेस्ट नहीं दिया गया! 📚`;
+  const body = `${name}, आज पूरा दिन बीत चुका है! BPSC TRE 4.0 परीक्षा नजदीक है, बिना दैनिक अभ्यास के कट-ऑफ पार करना संभव नहीं है। अभी 15 प्रश्न हल करें! 🔥`;
+
+  await dispatchPortalNotification({
+    title,
+    body,
+    category: 'daily_inactivity',
+    severity: 'urgent',
+    url: window.location.origin
   });
 }
 

@@ -738,19 +738,35 @@ export async function saveAttemptRecordToCloud(record: TestAttemptRecord): Promi
     });
     await setDoc(doc(db, 'attempt_records', recordId), cleanRecord);
 
-    // Non-blocking trigger to send result email to student & parent
+    // Non-blocking trigger to send result email to student & parent with dual-tier fallback
     try {
+      const emailPayload = {
+        attemptId: recordId,
+        attemptData: cleanRecord,
+        appBaseUrl: typeof window !== 'undefined' ? window.location.origin : undefined
+      };
+
       fetch('/api/email/send-result', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          attemptId: recordId,
-          attemptData: cleanRecord,
-          appBaseUrl: typeof window !== 'undefined' ? window.location.origin : undefined
+        body: JSON.stringify(emailPayload)
+      })
+        .then((r) => {
+          if (!r.ok) {
+            fetch('https://bpsc.dpdns.org/api/email/send-result', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(emailPayload)
+            }).catch(() => null);
+          }
         })
-      }).catch((emailErr) => {
-        console.warn('[send-result] Background trigger warning:', emailErr);
-      });
+        .catch(() => {
+          fetch('https://bpsc.dpdns.org/api/email/send-result', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(emailPayload)
+          }).catch(() => null);
+        });
     } catch {
       // ignore
     }

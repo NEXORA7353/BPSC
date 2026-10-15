@@ -41,7 +41,7 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
 
   try {
     const body = parseRequestBody(req);
-    const { attemptId, attemptData, appBaseUrl } = body;
+    const { attemptId, attemptData, appBaseUrl, force = false } = body;
 
     if (!attemptId || typeof attemptId !== 'string') {
       return sendJson(res, 400, { error: 'Missing or invalid attemptId' });
@@ -70,36 +70,42 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
     }
 
     // 3. Atomically reserve notification
-    const notificationId = `result_${attemptId}`;
+    const notificationId = force ? `result_${attemptId}_${Date.now()}` : `result_${attemptId}`;
     const studentEmail = attempt.studentEmail || DEFAULT_STUDENT_EMAIL;
     const parentEmail = attempt.parentEmail || DEFAULT_PARENT_EMAIL;
     const studentName = attempt.studentName || DEFAULT_STUDENT_NAME;
 
     let isReserved = false;
-    try {
-      if (isFirebaseAdminConfigured()) {
-        isReserved = await reserveNotificationAtomically(notificationId, {
-          type: 'test_result',
-          recipients: [studentEmail, parentEmail],
-          attemptId,
-          testId: attempt.testId
-        });
-      } else {
-        isReserved = true;
-      }
-    } catch (dbErr: any) {
-      console.warn('[send-result] Reservation error:', dbErr?.message || dbErr);
-      if (dbErr?.code === 6 || dbErr?.message?.includes('ALREADY_EXISTS') || dbErr?.message?.includes('already exists')) {
-        isReserved = false;
-      } else {
-        isReserved = true;
+    if (force) {
+      isReserved = true;
+    } else {
+      try {
+        if (isFirebaseAdminConfigured()) {
+          isReserved = await reserveNotificationAtomically(notificationId, {
+            type: 'test_result',
+            recipients: [studentEmail, parentEmail],
+            attemptId,
+            testId: attempt.testId
+          });
+        } else {
+          isReserved = true;
+        }
+      } catch (dbErr: any) {
+        console.warn('[send-result] Reservation error:', dbErr?.message || dbErr);
+        if (dbErr?.code === 6 || dbErr?.message?.includes('ALREADY_EXISTS') || dbErr?.message?.includes('already exists')) {
+          isReserved = false;
+        } else {
+          isReserved = true;
+        }
       }
     }
 
     if (!isReserved) {
       return sendJson(res, 200, {
+        success: true,
+        alreadySent: true,
         status: 'already_sent',
-        message: 'Result email already dispatched for this attempt.'
+        message: 'इस परीक्षा परिणाम का ईमेल पहले ही भेजा जा चुका है।'
       });
     }
 

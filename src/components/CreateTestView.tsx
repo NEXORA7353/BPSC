@@ -50,6 +50,7 @@ import { parseBulkQuestionText } from '../utils/questionParser';
 import { generateStandaloneHtml } from '../utils/exportHtml';
 import { printQuestionPaperWithOmr } from '../utils/exportPdfOmr';
 import { saveTestSetToCloud } from '../services/firebaseSyncService';
+import { triggerNewTestMobileNotification } from '../utils/mobileNotificationService';
 import { MathText } from './MathText';
 import { BackButton } from './BackButton';
 
@@ -448,20 +449,48 @@ export function CreateTestView({
         console.warn('Direct cloud test save warning:', err);
       }
 
-      // 3. Attempt email notification in background (never blocks test creation)
+      // 3. Trigger mobile notification in Hindi
       try {
+        triggerNewTestMobileNotification({
+          id: testSet.id,
+          title: testSet.title,
+          totalQuestions: testSet.totalQuestions,
+          totalTimeMinutes: testSet.totalTimeMinutes
+        }).catch(() => null);
+      } catch (notifErr) {
+        console.warn('Mobile push trigger warning:', notifErr);
+      }
+
+      // 4. Attempt email notification in background with dual-tier fallback
+      try {
+        const emailPayload = {
+          testId: testSet.id,
+          testData: testSet,
+          appBaseUrl: typeof window !== 'undefined' ? window.location.origin : undefined,
+          sendToParent: true
+        };
+
         fetch('/api/email/notify-new-test', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            testId: testSet.id,
-            testData: testSet,
-            appBaseUrl: typeof window !== 'undefined' ? window.location.origin : undefined,
-            sendToParent: true
+          body: JSON.stringify(emailPayload)
+        })
+          .then((r) => {
+            if (!r.ok) {
+              fetch('https://bpsc.dpdns.org/api/email/notify-new-test', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(emailPayload)
+              }).catch(() => null);
+            }
           })
-        }).catch((err) => {
-          console.warn('[notify-new-test] Background trigger warning:', err);
-        });
+          .catch(() => {
+            fetch('https://bpsc.dpdns.org/api/email/notify-new-test', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(emailPayload)
+            }).catch(() => null);
+          });
       } catch (emailErr) {
         console.warn('[notify-new-test] Trigger error:', emailErr);
       }
