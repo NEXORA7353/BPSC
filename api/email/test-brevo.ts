@@ -11,6 +11,29 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
     return sendJson(res, 405, { error: 'Method Not Allowed' });
   }
 
+  const apiKey = process.env.BREVO_API_KEY;
+  const isCheck = req.query?.check === 'true' || req.query?.logs === 'true';
+
+  if (isCheck && apiKey) {
+    try {
+      const headers = { 'accept': 'application/json', 'api-key': apiKey };
+      const [sendersRes, logsRes, eventsRes] = await Promise.all([
+        fetch('https://api.brevo.com/v3/senders', { headers }).then(r => r.json()).catch(e => ({ error: e.message })),
+        fetch('https://api.brevo.com/v3/smtp/emails?email=patel000priya000@gmail.com&limit=10&sort=desc', { headers }).then(r => r.json()).catch(e => ({ error: e.message })),
+        fetch('https://api.brevo.com/v3/smtp/statistics/events?email=patel000priya000@gmail.com&limit=10&sort=desc', { headers }).then(r => r.json()).catch(e => ({ error: e.message }))
+      ]);
+
+      return sendJson(res, 200, {
+        diagnostic: true,
+        senders: sendersRes,
+        logs: logsRes,
+        events: eventsRes
+      });
+    } catch (err: any) {
+      return sendJson(res, 500, { error: err.message });
+    }
+  }
+
   const timestamp = Date.now();
 
   try {

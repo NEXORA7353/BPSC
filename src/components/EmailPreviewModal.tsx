@@ -29,8 +29,8 @@ export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://bpsc.dpdns.org';
   const directTestUrl = `${baseUrl}/?testId=${encodeURIComponent(testSet.id)}`;
 
-  const studentSubject = `📢 [BPSC TRE 4.0] नया गणित मॉक टेस्ट उपलब्ध: ${testSet.title} 📝`;
-  const parentSubject = `👨‍👩‍👧 [अभिभावक सूचना] ${candidateName} के लिए नया गणित टेस्ट प्रकाशित 📚`;
+  const studentSubject = `[BPSC TRE 4.0] New Mock Test Available: ${testSet.title}`;
+  const parentSubject = `[BPSC TRE 4.0] New Mathematics Practice Test for ${candidateName}`;
 
   const handleCopyLink = async () => {
     try {
@@ -121,8 +121,8 @@ export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-800 pb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center font-black text-lg">
-              ✉️
+            <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center font-black">
+              <Mail className="w-5 h-5 text-amber-400" />
             </div>
             <div>
               <h3 className="text-lg font-black text-white flex items-center gap-2">
@@ -144,7 +144,7 @@ export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({
         <div className="p-4 rounded-2xl bg-slate-950 border border-amber-500/30 space-y-2">
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-              <span>🔗 सीधा परीक्षा प्रवेश लिंक (Direct Test Link)</span>
+              <span>सीधा परीक्षा प्रवेश लिंक (Direct Test Link)</span>
             </span>
             <button
               onClick={handleCopyLink}
@@ -157,9 +157,8 @@ export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({
           <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono text-slate-300 break-all select-all">
             {directTestUrl}
           </div>
-          <p className="text-[11px] text-slate-400 flex items-center gap-1">
-            <span>💡</span>
-            <span>ई-मेल में यह सीधा लिंक शामिल रहता है। छात्र इस पर क्लिक करते ही बिना किसी रीडायरेक्ट के सीधे इसी टेस्ट में पहुंच जाएंगे।</span>
+          <p className="text-[11px] text-slate-400">
+            ई-मेल में यह सीधा लिंक शामिल रहता है। छात्र इस पर क्लिक करते ही बिना किसी रीडायरेक्ट के सीधे इसी टेस्ट में पहुंच जाएंगे।
           </p>
         </div>
 
@@ -174,7 +173,7 @@ export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({
             }`}
           >
             <User className="w-3.5 h-3.5" />
-            <span>👤 छात्र ई-मेल प्रिव्यू (Student Email)</span>
+            <span>छात्र ई-मेल प्रिव्यू (Student Email)</span>
           </button>
           <button
             onClick={() => setActiveTab('parent')}
@@ -185,7 +184,7 @@ export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({
             }`}
           >
             <Users className="w-3.5 h-3.5" />
-            <span>👨‍👩‍👧 अभिभावक ई-मेल प्रिव्यू (Parent Email)</span>
+            <span>अभिभावक ई-मेल प्रिव्यू (Parent Email)</span>
           </button>
         </div>
 

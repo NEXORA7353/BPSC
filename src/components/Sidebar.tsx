@@ -253,13 +253,7 @@ export function Sidebar({
               }}
               className="w-full p-2.5 rounded-xl font-bold text-xs flex items-center justify-between text-slate-300 hover:bg-white/5 hover:text-white transition-all cursor-pointer"
             >
-              <div className="flex items-center gap-3">
-                <Bell className="w-4 h-4 text-amber-400" />
-                <span>मोबाइल अलर्ट व अनुशासन 🔔</span>
-              </div>
-              <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded font-mono font-bold">
-                लाइव
-              </span>
+
             </button>
           </div>
 

@@ -41,7 +41,8 @@ import {
   getAttemptRecords,
   isTodayAttempt,
   getAllQuestionBank,
-  getAllRegisteredTopics
+  getAllRegisteredTopics,
+  getTestTimestamp
 } from '../utils/questionBankStorage';
 import { printQuestionPaperWithOmr } from '../utils/exportPdfOmr';
 import {
@@ -155,20 +156,22 @@ export function TestIntroView({
     return safeSets.filter((t) => Boolean(getTestAttempt(t, todayAttemptRecords))).length;
   }, [safeSets, todayAttemptRecords]);
 
-  // Flat list filtered for "All Tests" tab or search
+  // Flat list filtered for "All Tests" tab or search (Strictly sorted newest first)
   const filteredAllSets = useMemo(() => {
-    return safeSets.filter((s) => {
-      if (!s) return false;
-      if (activeFilter === 'custom' && !s.isCustom) return false;
-      if (activeFilter === 'standard' && s.isCustom) return false;
-      if (!searchTerm.trim()) return true;
-      const query = searchTerm.toLowerCase().trim();
-      return (
-        s.title.toLowerCase().includes(query) ||
-        (s.subtitle && s.subtitle.toLowerCase().includes(query)) ||
-        (s.topicBadges && s.topicBadges.some((b) => b.toLowerCase().includes(query)))
-      );
-    });
+    return safeSets
+      .filter((s) => {
+        if (!s) return false;
+        if (activeFilter === 'custom' && !s.isCustom) return false;
+        if (activeFilter === 'standard' && s.isCustom) return false;
+        if (!searchTerm.trim()) return true;
+        const query = searchTerm.toLowerCase().trim();
+        return (
+          s.title.toLowerCase().includes(query) ||
+          (s.subtitle && s.subtitle.toLowerCase().includes(query)) ||
+          (s.topicBadges && s.topicBadges.some((b) => b.toLowerCase().includes(query)))
+        );
+      })
+      .sort((a, b) => getTestTimestamp(b) - getTestTimestamp(a));
   }, [safeSets, activeFilter, searchTerm]);
 
   const currentTitle = currentSet?.title ?? 'Mock Test';

@@ -1,23 +1,4 @@
-import { MockTestSet, TestAttemptRecord, RegisteredTopic, Question } from '../types';
-import { normalizeTestTitle, cleanTitleToEnglish } from './questionBankStorage';
 
-export interface ChapterFolderDef {
-  id: string;
-  nameEnglish: string;
-  nameHindi: string;
-  categoryKey: string;
-  description: string;
-  color: {
-    bgLight: string;
-    bgDark: string;
-    border: string;
-    text: string;
-    badge: string;
-    iconBg: string;
-    gradient: string;
-  };
-  iconType: string;
-}
 
 // Preset themes and descriptions for all core BPSC syllabus topics
 export const TOPIC_FOLDER_PRESETS: Record<string, Partial<ChapterFolderDef>> = {
@@ -811,8 +792,9 @@ export function getTestChapterId(
  * Extract human-readable creation date & time from a test in English
  */
 export function formatTestDateTime(test: MockTestSet): { formatted: string; isApprox: boolean } {
-  if (test.createdAt) {
-    const d = new Date(test.createdAt);
+  const ts = getTestTimestamp(test);
+  if (ts > 0) {
+    const d = new Date(ts);
     if (!isNaN(d.getTime())) {
       const datePart = d.toLocaleDateString('en-US', {
         month: 'short',
@@ -828,26 +810,7 @@ export function formatTestDateTime(test: MockTestSet): { formatted: string; isAp
     }
   }
 
-  const match = test.id.match(/(\d{12,14})/);
-  if (match) {
-    const ts = parseInt(match[1], 10);
-    const d = new Date(ts);
-    if (!isNaN(d.getTime()) && d.getFullYear() >= 2024 && d.getFullYear() <= 2030) {
-      const datePart = d.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-      });
-      const timePart = d.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-      });
-      return { formatted: `${datePart} · ${timePart}`, isApprox: false };
-    }
-  }
-
-  return { formatted: 'Oct 8, 2026 · 11:00 PM', isApprox: true };
+  return { formatted: 'Standard Test', isApprox: true };
 }
 
 /**
@@ -987,9 +950,11 @@ export function groupTestsIntoChapters(
 
     const definition = getTopicFolderDef(chapterId, registeredTopics);
 
+    const sortedTests = [...chapterTests].sort((a, b) => getTestTimestamp(b) - getTestTimestamp(a));
+
     result.push({
       definition,
-      tests: chapterTests,
+      tests: sortedTests,
       totalQuestions,
       totalTimeMinutes,
       attemptedCount

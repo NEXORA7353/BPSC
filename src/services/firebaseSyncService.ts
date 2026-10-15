@@ -32,7 +32,8 @@ import {
   saveAttemptRecord as saveLocalAttemptRecord,
   getSavedTestResults,
   saveFullTestResult as saveLocalFullTestResult,
-  normalizeTestTitle
+  normalizeTestTitle,
+  safeLocalStorageSet
 } from '../utils/questionBankStorage';
 import { getUserSyncId, getUserProfile } from '../utils/userProfile';
 
@@ -176,11 +177,6 @@ export async function syncFromFirestore(): Promise<void> {
 
     const finalTests = Array.from(testMap.values());
     setLiveCloudTests(finalTests);
-    try {
-      localStorage.setItem('bpsc_custom_test_sets', JSON.stringify(finalTests));
-    } catch (e) {
-      console.warn('Failed to cache custom tests in localStorage:', e);
-    }
 
     // Bidirectional sync: Push local custom tests that are missing in Firestore
     // so both bpsc.dpdns.org and bpsc-chi.vercel.app have the exact same mock tests
@@ -205,7 +201,7 @@ export async function syncFromFirestore(): Promise<void> {
       const topicMap = new Map<string, RegisteredTopic>();
       localTopics.forEach((t) => topicMap.set(t.key, t));
       cloudTopics.forEach((t) => topicMap.set(t.key, t));
-      localStorage.setItem('bpsc_registered_topics', JSON.stringify(Array.from(topicMap.values())));
+      safeLocalStorageSet('bpsc_registered_topics', JSON.stringify(Array.from(topicMap.values())));
     }
 
     // 5. Fetch Attempt Records & History from Firestore
@@ -227,11 +223,7 @@ export async function syncFromFirestore(): Promise<void> {
       return timeB - timeA;
     });
 
-    try {
-      localStorage.setItem('bpsc_attempt_records', JSON.stringify(finalAttempts.slice(0, 50)));
-    } catch (e) {
-      console.warn('Failed to cache attempt records in localStorage:', e);
-    }
+    safeLocalStorageSet('bpsc_attempt_records', JSON.stringify(finalAttempts.slice(0, 25)));
 
     // Reconstruct into FULL SAVED RESULTS ARCHIVE
     const finalFullResults: SavedTestResult[] = finalAttempts.map((att) => ({
@@ -256,11 +248,7 @@ export async function syncFromFirestore(): Promise<void> {
       questions: att.questions || []
     }));
 
-    try {
-      localStorage.setItem('bpsc_full_results_archive', JSON.stringify(finalFullResults.slice(0, 50)));
-    } catch (e) {
-      console.warn('Failed to cache full results archive in localStorage:', e);
-    }
+    safeLocalStorageSet('bpsc_full_results_archive', JSON.stringify(finalFullResults.slice(0, 10)));
 
     syncState = {
       isConnected: true,
@@ -361,11 +349,6 @@ export function setupRealtimeSync(onDataChange: () => void): () => void {
 
       const finalTests = Array.from(testMap.values());
       setLiveCloudTests(finalTests);
-      try {
-        localStorage.setItem('bpsc_custom_test_sets', JSON.stringify(finalTests));
-      } catch (e) {
-        console.warn('Failed to cache custom tests in localStorage:', e);
-      }
       syncState = {
         ...syncState,
         cloudTestCount: finalTests.length,
@@ -398,11 +381,7 @@ export function setupRealtimeSync(onDataChange: () => void): () => void {
         return timeB - timeA;
       });
 
-      try {
-        localStorage.setItem('bpsc_attempt_records', JSON.stringify(finalAttempts.slice(0, 50)));
-      } catch (e) {
-        console.warn('Failed to cache attempt records in localStorage:', e);
-      }
+      safeLocalStorageSet('bpsc_attempt_records', JSON.stringify(finalAttempts.slice(0, 25)));
 
       // Reconstruct into FULL SAVED RESULTS ARCHIVE
       const finalFullResults: SavedTestResult[] = finalAttempts.map((att) => ({
@@ -427,11 +406,7 @@ export function setupRealtimeSync(onDataChange: () => void): () => void {
         questions: att.questions || []
       }));
 
-      try {
-        localStorage.setItem('bpsc_full_results_archive', JSON.stringify(finalFullResults.slice(0, 50)));
-      } catch (e) {
-        console.warn('Failed to cache full results archive in localStorage:', e);
-      }
+      safeLocalStorageSet('bpsc_full_results_archive', JSON.stringify(finalFullResults.slice(0, 10)));
 
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('bpsc_cloud_data_updated'));
@@ -682,20 +657,20 @@ export async function deleteTestSetFromCloud(testId: string): Promise<void> {
   if (!testId) return;
   const path = `custom_tests/${testId}`;
   try {
-    await deleteDoc(doc(db, 'custom_tests', testId));
+    await deleteDoc(doc(db, 'custom_tests', testId)).catch(() => null);
     await setDoc(doc(db, 'deleted_test_ids', testId), {
       id: testId,
       testId,
       deletedAt: new Date().toISOString(),
       deletedBy: auth.currentUser?.uid || 'user'
-    });
+    }).catch(() => null);
     syncState = {
       ...syncState,
       lastSyncedAt: new Date()
     };
     notifyState();
   } catch (err) {
-    console.warn(`Cloud delete test set failed (${path}):`, err);
+    // Silent catch
   }
 }
 

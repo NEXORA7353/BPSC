@@ -146,11 +146,7 @@ export async function sendBrevoEmail(options: SendBrevoEmailOptions): Promise<Br
     payload.tags = options.tags;
   }
 
-  if (options.idempotencyKey) {
-    payload.headers = {
-      'X-Idempotency-Key': options.idempotencyKey
-    };
-  }
+
 
   try {
     const response = await fetch('https://api.brevo.com/v3/smtp/email', {

@@ -29,6 +29,83 @@ const STORAGE_KEYS = {
   THEME: 'bpsc_app_theme'
 };
 
+/**
+ * Resilient LocalStorage setter that handles QuotaExceededError automatically.
+ * When quota is reached, it purges obsolete duplicate keys and prunes historical logs.
+ */
+export function safeLocalStorageSet(key: string, value: string): boolean {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch (err: any) {
+    console.warn(`[Storage] QuotaExceededError on "${key}", executing emergency purge.`);
+    try {
+      // 1. Delete redundant duplicate test sets key (frees 2-5 MB)
+      localStorage.removeItem('bpsc_custom_test_sets');
+
+      // 2. Clear notification history if full
+      localStorage.removeItem('bpsc_notification_history');
+
+      // 3. Prune full results archive
+      const rawRes = localStorage.getItem(STORAGE_KEYS.FULL_SAVED_RESULTS);
+      if (rawRes) {
+        try {
+          const parsed = JSON.parse(rawRes);
+          if (Array.isArray(parsed) && parsed.length > 5) {
+            localStorage.setItem(STORAGE_KEYS.FULL_SAVED_RESULTS, JSON.stringify(parsed.slice(0, 5)));
+          }
+        } catch {}
+      }
+
+      // 4. Prune attempt history
+      const rawAtt = localStorage.getItem(STORAGE_KEYS.ATTEMPT_HISTORY);
+      if (rawAtt) {
+        try {
+          const parsed = JSON.parse(rawAtt);
+          if (Array.isArray(parsed) && parsed.length > 15) {
+            localStorage.setItem(STORAGE_KEYS.ATTEMPT_HISTORY, JSON.stringify(parsed.slice(0, 15)));
+          }
+        } catch {}
+      }
+
+      // Retry setting key
+      localStorage.setItem(key, value);
+      return true;
+    } catch (innerErr) {
+      console.warn(`[Storage] Storage quota still exceeded for "${key}" after purge:`, innerErr);
+      return false;
+    }
+  }
+}
+
+// Initial purge of redundant duplicate key on startup to recover megabytes
+try {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('bpsc_custom_test_sets');
+  }
+} catch {}
+
+/**
+ * Extract timestamp from test for strict reverse chronological sorting (newest first)
+ */
+export function getTestTimestamp(test?: MockTestSet | null): number {
+  if (!test) return 0;
+  if (test.createdAt) {
+    const t = new Date(test.createdAt).getTime();
+    if (!isNaN(t) && t > 0) return t;
+  }
+  if (test.publishedAtIso) {
+    const t = new Date(test.publishedAtIso).getTime();
+    if (!isNaN(t) && t > 0) return t;
+  }
+  const match = test.id?.match(/(\d{12,14})/);
+  if (match) {
+    const ts = parseInt(match[1], 10);
+    if (!isNaN(ts) && ts > 1000000000000) return ts;
+  }
+  return 0;
+}
+
 export const DEFAULT_TOPICS: RegisteredTopic[] = [
   { key: 'number_system', labelHindi: 'संख्या पद्धति (Number System)', labelEnglish: 'Number System' },
   { key: 'lcm_hcf', labelHindi: 'लघुत्तम और महत्तम समापवर्तक (LCM & HCF)', labelEnglish: 'LCM & HCF' },
@@ -449,21 +526,13 @@ let liveCloudTestsCache: MockTestSet[] | null = null;
 export function setLiveCloudQuestions(questions: Question[]): void {
   const safeQuestions = Array.isArray(questions) ? questions.map(sanitizeQuestion) : [];
   liveCloudQuestionsCache = safeQuestions;
-  try {
-    localStorage.setItem(STORAGE_KEYS.CUSTOM_QUESTIONS, JSON.stringify(safeQuestions));
-  } catch (e) {
-    console.warn('LocalStorage save failed:', e);
-  }
+  safeLocalStorageSet(STORAGE_KEYS.CUSTOM_QUESTIONS, JSON.stringify(safeQuestions));
 }
 
 export function setLiveCloudTests(tests: MockTestSet[]): void {
   const safeTests = Array.isArray(tests) ? tests.map(sanitizeTestSet) : [];
   liveCloudTestsCache = safeTests;
-  try {
-    localStorage.setItem(STORAGE_KEYS.CUSTOM_TESTS, JSON.stringify(safeTests));
-  } catch (e) {
-    console.warn('LocalStorage save failed:', e);
-  }
+  safeLocalStorageSet(STORAGE_KEYS.CUSTOM_TESTS, JSON.stringify(safeTests));
 }
 
 export function getLiveCloudQuestionsCache(): Question[] | null {
@@ -487,11 +556,7 @@ export function getCustomQuestions(): Question[] {
 export function saveCustomQuestions(questions: Question[]): void {
   const safeQuestions = Array.isArray(questions) ? questions.map(sanitizeQuestion) : [];
   liveCloudQuestionsCache = safeQuestions;
-  try {
-    localStorage.setItem(STORAGE_KEYS.CUSTOM_QUESTIONS, JSON.stringify(safeQuestions));
-  } catch (err) {
-    console.error('Failed to save questions to localStorage', err);
-  }
+  safeLocalStorageSet(STORAGE_KEYS.CUSTOM_QUESTIONS, JSON.stringify(safeQuestions));
 }
 
 export function getDeletedQuestionIds(): string[] {
@@ -596,11 +661,7 @@ export function updateQuestionInBank(updatedQuestion: Question): void {
 
 export function deleteCustomQuestion(id: string): void {
   const custom = getCustomQuestions().filter((q) => q.id !== id);
-  try {
-    localStorage.setItem(STORAGE_KEYS.CUSTOM_QUESTIONS, JSON.stringify(custom));
-  } catch (err) {
-    console.error('Failed to save custom questions', err);
-  }
+  safeLocalStorageSet(STORAGE_KEYS.CUSTOM_QUESTIONS, JSON.stringify(custom));
 
   if (liveCloudQuestionsCache && Array.isArray(liveCloudQuestionsCache)) {
     liveCloudQuestionsCache = liveCloudQuestionsCache.filter((q) => q.id !== id);
@@ -620,11 +681,7 @@ export function deleteMultipleQuestions(ids: string[]): number {
   if (!Array.isArray(ids) || ids.length === 0) return 0;
   const idSet = new Set(ids);
   const custom = getCustomQuestions().filter((q) => !idSet.has(q.id));
-  try {
-    localStorage.setItem(STORAGE_KEYS.CUSTOM_QUESTIONS, JSON.stringify(custom));
-  } catch (err) {
-    console.error('Failed to save custom questions', err);
-  }
+  safeLocalStorageSet(STORAGE_KEYS.CUSTOM_QUESTIONS, JSON.stringify(custom));
 
   if (liveCloudQuestionsCache && Array.isArray(liveCloudQuestionsCache)) {
     liveCloudQuestionsCache = liveCloudQuestionsCache.filter((q) => !idSet.has(q.id));
@@ -684,11 +741,14 @@ export function getSavedCustomTests(): MockTestSet[] {
 
 export function saveCustomTest(testSet: MockTestSet): void {
   try {
-    const safeSet = sanitizeTestSet(testSet);
+    const safeSet = sanitizeTestSet({
+      ...testSet,
+      createdAt: testSet.createdAt || new Date().toISOString()
+    });
     const existing = getSavedCustomTests().filter((t) => t.id !== safeSet.id);
     const updated = [safeSet, ...existing];
     liveCloudTestsCache = updated;
-    localStorage.setItem(STORAGE_KEYS.CUSTOM_TESTS, JSON.stringify(updated));
+    safeLocalStorageSet(STORAGE_KEYS.CUSTOM_TESTS, JSON.stringify(updated));
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('bpsc_test_saved', { detail: safeSet }));
       window.dispatchEvent(new CustomEvent('bpsc_cloud_data_updated'));
@@ -716,7 +776,7 @@ export function getDeletedTestIds(): string[] {
       (id: string) => typeof id === 'string' && !id.startsWith('title_') && !id.startsWith('sub_')
     );
     if (cleanIds.length !== parsed.length) {
-      localStorage.setItem(STORAGE_KEYS.DELETED_TEST_IDS, JSON.stringify(cleanIds));
+      safeLocalStorageSet(STORAGE_KEYS.DELETED_TEST_IDS, JSON.stringify(cleanIds));
     }
     return cleanIds;
   } catch {
@@ -726,7 +786,7 @@ export function getDeletedTestIds(): string[] {
 
 export function saveDeletedTestIds(ids: string[]): void {
   try {
-    localStorage.setItem(STORAGE_KEYS.DELETED_TEST_IDS, JSON.stringify(Array.isArray(ids) ? ids : []));
+    safeLocalStorageSet(STORAGE_KEYS.DELETED_TEST_IDS, JSON.stringify(Array.isArray(ids) ? ids : []));
   } catch (err) {
     console.error('Failed to save deleted test ids', err);
   }
@@ -750,7 +810,7 @@ export function deleteTest(testId: string): void {
       return true;
     });
     liveCloudTestsCache = filteredCustom;
-    localStorage.setItem(STORAGE_KEYS.CUSTOM_TESTS, JSON.stringify(filteredCustom));
+    safeLocalStorageSet(STORAGE_KEYS.CUSTOM_TESTS, JSON.stringify(filteredCustom));
 
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('bpsc_test_deleted', { detail: testId }));
@@ -845,7 +905,8 @@ export function getAllAvailableTests(): MockTestSet[] {
       if (deletedIds.has(t.id)) return false;
       return true;
     })
-    .map(sanitizeTestSet);
+    .map(sanitizeTestSet)
+    .sort((a, b) => getTestTimestamp(b) - getTestTimestamp(a));
 }
 
 export function getTestsForTopic(

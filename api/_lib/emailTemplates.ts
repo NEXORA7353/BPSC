@@ -118,7 +118,7 @@ export function renderStudentNewTestEmail(test: {
   `;
 
   return {
-    subject: `📢 [BPSC TRE 4.0] नया गणित मॉक टेस्ट उपलब्ध: ${test.title} 📝`,
+    subject: `[BPSC TRE 4.0] New Mock Test Available: ${test.title}`,
     html: baseEmailWrapper('नया मॉक टेस्ट उपलब्ध', content),
     testUrl
   };
@@ -174,7 +174,7 @@ export function renderParentNewTestEmail(test: {
   `;
 
   return {
-    subject: `👨‍👩‍👧 [अभिभावक सूचना] ${candidateName} के लिए नया गणित टेस्ट प्रकाशित 📚`,
+    subject: `[BPSC TRE 4.0] New Mathematics Practice Test for ${candidateName}`,
     html: baseEmailWrapper('अभिभावक के लिए नया टेस्ट सूचना', content),
     testUrl
   };
@@ -307,10 +307,10 @@ export function renderStudentResultEmail(attempt: {
     </div>
   `;
 
-  const subjectPrefix = isPoorResult ? '🚨 [सावधान: रिजल्ट कमजोर]' : '🏆 [परीक्षा स्कोरकार्ड]';
+  const subjectPrefix = isPoorResult ? '[Scorecard Alert - Action Required]' : '[Scorecard]';
 
   return {
-    subject: `${subjectPrefix} ${attempt.testTitle} - स्कोर: ${attempt.score.toFixed(2)}/${attempt.totalMarks} (${attempt.accuracy}%)`,
+    subject: `${subjectPrefix} ${attempt.testTitle} — Score: ${attempt.score.toFixed(2)}/${attempt.totalMarks} (${attempt.accuracy}%)`,
     html: baseEmailWrapper('मॉक टेस्ट परीक्षा परिणाम', content),
     reviewUrl
   };
@@ -373,7 +373,7 @@ export function renderParentResultEmail(attempt: {
   `;
 
   return {
-    subject: `👨‍👩‍👧 [परीक्षा परिणाम] ${candidateName} ने ${attempt.testTitle} में ${attempt.score.toFixed(2)}/${attempt.totalMarks} अंक प्राप्त किए 📊`,
+    subject: `[BPSC Progress Report] ${candidateName} completed ${attempt.testTitle} — Score: ${attempt.score.toFixed(2)}/${attempt.totalMarks}`,
     html: baseEmailWrapper('अभिभावक के लिए परीक्षा परिणाम', content)
   };
 }
@@ -414,7 +414,7 @@ export function renderStudentDailyInactivityEmail(studentName?: string, baseUrlO
   `;
 
   return {
-    subject: `🚨 [अनुशासन स्मरण] आज कोई टेस्ट हल नहीं किया गया है, ${candidateName} 📚`,
+    subject: `[Urgent Reminder] Incomplete Daily Practice for ${candidateName} - BPSC TRE 4.0`,
     html: baseEmailWrapper('दैनिक अभ्यास चेतावनी', content),
     portalUrl: baseUrl
   };
@@ -453,7 +453,7 @@ export function renderParentDailyInactivityEmail(studentName?: string, baseUrlOv
   `;
 
   return {
-    subject: `👨‍👩‍👧 [अध्ययन सूचना] ${candidateName} ने आज कोई मॉक टेस्ट हल नहीं किया ⚠️`,
+    subject: `[Daily Alert] No Test Attempted Today by ${candidateName} - BPSC TRE 4.0`,
     html: baseEmailWrapper('अभिभावक दैनिक अध्ययन सूचना', content)
   };
 }
@@ -536,7 +536,7 @@ export function renderStudentWeeklyReportEmail(stats: {
   `;
 
   return {
-    subject: `📊 [साप्ताहिक रिपोर्ट] ${candidateName} की तैयारी रिपोर्ट - औसत एक्यूरेसी: ${stats.averageAccuracy}% 🎯`,
+    subject: `[Weekly Report] Performance Summary for ${candidateName} — Accuracy: ${stats.averageAccuracy}%`,
     html: baseEmailWrapper('साप्ताहिक प्रदर्शन रिपोर्ट', content)
   };
 }
@@ -581,7 +581,7 @@ export function renderParentWeeklyReportEmail(stats: {
   `;
 
   return {
-    subject: `👨‍👩‍👧 [साप्ताहिक सारांश] ${candidateName} की BPSC तैयारी समीक्षा 📊`,
+    subject: `[Weekly Digest] Weekly Mathematics Progress for ${candidateName} - BPSC TRE 4.0`,
     html: baseEmailWrapper('अभिभावक साप्ताहिक रिपोर्ट', content)
   };
 }
@@ -633,8 +633,10 @@ export function renderTestReminderEmail(
     </div>
   `;
 
+  const reminderBadge = isSoon ? '[Urgent 15m Reminder]' : '[Exam Reminder]';
+
   return {
-    subject: `[${badgeText}] ${test.title} - समय: ${istTimeStr} IST 📝`,
+    subject: `${reminderBadge} ${test.title} starts at ${istTimeStr} IST`,
     html: baseEmailWrapper('निर्धारित परीक्षा स्मरण', content),
     testUrl
   };

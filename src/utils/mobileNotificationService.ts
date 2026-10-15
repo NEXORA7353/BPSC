@@ -5,6 +5,8 @@
  * Strict Constraint: ZERO EMOJIS used in any notification title or body.
  */
 
+import { safeLocalStorageSet } from './questionBankStorage';
+
 export interface PortalNotificationItem {
   id: string;
   title: string;
@@ -110,8 +112,8 @@ export function saveNotificationToHistory(item: Omit<PortalNotificationItem, 'id
 
   try {
     const history = getNotificationHistory();
-    const updated = [newItem, ...history].slice(0, 40); // Keep last 40 notifications
-    localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(updated));
+    const updated = [newItem, ...history].slice(0, 20); // Keep last 20 notifications
+    safeLocalStorageSet(STORAGE_KEYS.HISTORY, JSON.stringify(updated));
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('bpsc_notification_history_updated', { detail: updated }));
     }
@@ -126,7 +128,7 @@ export function markNotificationAsRead(id: string): void {
   try {
     const history = getNotificationHistory();
     const updated = history.map((item) => (item.id === id ? { ...item, read: true } : item));
-    localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(updated));
+    safeLocalStorageSet(STORAGE_KEYS.HISTORY, JSON.stringify(updated));
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('bpsc_notification_history_updated', { detail: updated }));
     }

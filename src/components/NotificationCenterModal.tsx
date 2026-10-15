@@ -206,15 +206,15 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-800 pb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center font-black text-xl">
-              🔔
+            <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center font-black">
+              <Bell className="w-5 h-5 text-amber-400" />
             </div>
             <div>
               <h3 className="text-lg font-black text-white flex items-center gap-2">
                 <span>मोबाइल नोटिफिकेशन व अनुशासन केंद्र</span>
                 <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30">हिंदी</span>
               </h3>
-              <p className="text-xs text-slate-400">⏰ हर घंटे मोटिवेशन, 🚨 रिजल्ट रियलिटी चेक व 👨‍👩‍👧 अभिभावक अलर्ट</p>
+              <p className="text-xs text-slate-400">हर घंटे मोटिवेशन, रिजल्ट रियलिटी चेक व अभिभावक अलर्ट</p>
             </div>
           </div>
           <button
@@ -231,7 +231,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
             <div className="space-y-1">
               <div className="font-bold text-amber-300 flex items-center gap-1.5">
                 <Smartphone className="w-4 h-4" />
-                <span>📱 मोबाइल लॉकस्क्रीन नोटिफिकेशन निष्क्रिय है</span>
+                <span>मोबाइल लॉकस्क्रीन नोटिफिकेशन निष्क्रिय है</span>
               </div>
               <p className="text-slate-300">
                 ब्राउज़र नोटिफिकेशन अनुमति चालू करें ताकि फोन की स्क्रीन लॉक होने पर भी आपको समय पर अभ्यास अलर्ट मिले।
@@ -249,7 +249,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
         {/* Feature Toggles Card */}
         <div className="space-y-3">
           <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-            <span>⚙️ नोटिफिकेशन सेटिंग्स (Controls)</span>
+            <span>नोटिफिकेशन सेटिंग्स (Controls)</span>
           </h4>
 
           {/* Hourly Motivation */}
@@ -257,7 +257,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
             <div className="space-y-0.5">
               <div className="flex items-center gap-2 font-bold text-sm text-white">
                 <Clock className="w-4 h-4 text-amber-400" />
-                <span>⏰ प्रति घंटा मोटिवेशन व अनुशासन अलर्ट</span>
+                <span>प्रति घंटा मोटिवेशन व अनुशासन अलर्ट</span>
               </div>
               <p className="text-xs text-slate-400">
                 नियमित अंतराल पर अभ्यास स्मरण, फॉर्मूला रिविजन और स्पीड ड्रिल अलर्ट।
@@ -280,7 +280,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
           {/* Interval Selector */}
           {settings.hourlyMotivationEnabled && (
             <div className="p-3.5 rounded-2xl bg-slate-950/40 border border-slate-800/80 flex items-center justify-between gap-2 text-xs">
-              <span className="text-slate-300 font-medium">⏱️ अलर्ट आवृत्ति (Interval):</span>
+              <span className="text-slate-300 font-medium">अलर्ट आवृत्ति (Interval):</span>
               <div className="flex items-center gap-1.5">
                 {[1, 2, 3, 4].map((hrs) => (
                   <button
@@ -304,7 +304,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
             <div className="space-y-0.5">
               <div className="flex items-center gap-2 font-bold text-sm text-red-400">
                 <ShieldAlert className="w-4 h-4 text-red-400" />
-                <span>🚨 सख्त रिजल्ट चेतावनी (Reality Check Alert)</span>
+                <span>सख्त रिजल्ट चेतावनी (Reality Check Alert)</span>
               </div>
               <p className="text-xs text-slate-400">
                 यदि स्कोर या एक्यूरेसी 50% से कम हो तो तुरंत सख्त चेतावनी: "इस तरह BPSC qualify नहीं होगा!"
@@ -335,7 +335,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
               }`}
             >
               {settings.soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-              <span>{settings.soundEnabled ? '🔊 ध्वनि: चालू (ON)' : '🔇 ध्वनि: बंद (OFF)'}</span>
+              <span>{settings.soundEnabled ? 'ध्वनि: चालू (ON)' : 'ध्वनि: बंद (OFF)'}</span>
             </button>
 
             <button
@@ -347,7 +347,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
               }`}
             >
               <Smartphone className="w-4 h-4" />
-              <span>{settings.vibrationEnabled ? '📳 कंपन: चालू (ON)' : '📳 कंपन: बंद (OFF)'}</span>
+              <span>{settings.vibrationEnabled ? 'कंपन: चालू (ON)' : 'कंपन: बंद (OFF)'}</span>
             </button>
           </div>
         </div>
@@ -357,7 +357,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
           <div className="flex items-center justify-between">
             <div className="font-bold text-xs text-amber-300 flex items-center gap-1.5">
               <Sparkles className="w-4 h-4" />
-              <span>⚡ लाइव टेस्ट व सत्यापन (Test Triggers)</span>
+              <span>लाइव टेस्ट व सत्यापन (Test Triggers)</span>
             </div>
           </div>
 
@@ -368,7 +368,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
               className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
             >
               <Bell className="w-3.5 h-3.5 text-amber-400" />
-              <span>🔔 मोबाइल ऑडियो/पुश टेस्ट</span>
+              <span>मोबाइल ऑडियो/पुश टेस्ट</span>
             </button>
 
             <button
@@ -377,7 +377,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
               className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
             >
               <Clock className="w-3.5 h-3.5 text-indigo-400" />
-              <span>⏰ मोटिवेशनल अलर्ट भेजें</span>
+              <span>मोटिवेशनल अलर्ट भेजें</span>
             </button>
           </div>
 
@@ -391,7 +391,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
             <span>
               {isSendingInactivity
                 ? 'ईमेल भेजा जा रहा है...'
-                : '👨‍👩‍👧 छात्र व अभिभावक को इनएक्टिविटी अलर्ट ईमेल भेजें'}
+                : 'छात्र व अभिभावक को इनएक्टिविटी अलर्ट ईमेल भेजें'}
             </span>
           </button>
 
@@ -412,7 +412,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-              <span>📋 हालिया अलर्ट इतिहास ({history.length})</span>
+              <span>हालिया अलर्ट इतिहास ({history.length})</span>
             </h4>
             {history.length > 0 && (
               <button
