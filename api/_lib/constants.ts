@@ -18,13 +18,25 @@ export interface TopicPerformanceStat {
   accuracy: number;
 }
 
-export function getAppBaseUrl(): string {
+export function getAppBaseUrl(req?: any, fallbackOrigin?: string): string {
+  if (fallbackOrigin && typeof fallbackOrigin === 'string' && fallbackOrigin.startsWith('http')) {
+    return fallbackOrigin.replace(/\/+$/, '');
+  }
+  if (req) {
+    const originHeader = req.headers?.origin || req.headers?.['x-forwarded-origin'];
+    if (originHeader && typeof originHeader === 'string' && originHeader.startsWith('http')) {
+      return originHeader.replace(/\/+$/, '');
+    }
+    const forwardedHost = req.headers?.['x-forwarded-host'] || req.headers?.host;
+    const proto = req.headers?.['x-forwarded-proto'] || 'https';
+    if (forwardedHost && typeof forwardedHost === 'string' && !forwardedHost.includes('localhost') && !forwardedHost.includes('127.0.0.1')) {
+      return `${proto}://${forwardedHost}`.replace(/\/+$/, '');
+    }
+  }
   if (process.env.APP_URL) {
     return process.env.APP_URL.replace(/\/+$/, '');
   }
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL.replace(/\/+$/, '')}`;
-  }
+  // Primary production domain (never force vercel preview url over official portal domain)
   return 'https://bpsc.dpdns.org';
 }
 

@@ -2,9 +2,10 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import {
   DEFAULT_STUDENT_EMAIL,
   DEFAULT_PARENT_EMAIL,
-  DEFAULT_STUDENT_NAME
+  DEFAULT_STUDENT_NAME,
+  getAppBaseUrl
 } from '../_lib/constants.js';
-import { sendBrevoEmail } from '../_lib/brevo.js';
+import { sendPortalEmail } from '../_lib/mailer.js';
 import {
   getPersistedAttempt,
   reserveNotificationAtomically,
@@ -40,13 +41,16 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
 
   try {
     const body = parseRequestBody(req);
-    const { attemptId, attemptData } = body;
+    const { attemptId, attemptData, appBaseUrl } = body;
 
     if (!attemptId || typeof attemptId !== 'string') {
       return sendJson(res, 400, { error: 'Missing or invalid attemptId' });
     }
 
-    // 1. Verify persisted attempt record in Firestore (with attemptData fallback)
+    // 1. Resolve canonical base URL
+    const baseUrl = getAppBaseUrl(req, appBaseUrl);
+
+    // 2. Verify persisted attempt record in Firestore (with attemptData fallback)
     let attempt = await getPersistedAttempt(attemptId).catch(() => null);
     if (!attempt && attemptData) {
       attempt = attemptData;
@@ -65,7 +69,7 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
       });
     }
 
-    // 2. Atomically reserve notification
+    // 3. Atomically reserve notification
     const notificationId = `result_${attemptId}`;
     const studentEmail = attempt.studentEmail || DEFAULT_STUDENT_EMAIL;
     const parentEmail = attempt.parentEmail || DEFAULT_PARENT_EMAIL;
@@ -99,7 +103,7 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
       });
     }
 
-    // 3. Render verified results
+    // 4. Render verified results
     const studentMail = renderStudentResultEmail({
       testId: attempt.testId,
       testTitle: attempt.testTitle || 'Mathematics Mock Test',
@@ -113,7 +117,8 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
       blankPenaltyCount: Number(attempt.blankPenaltyCount) || 0,
       totalTimeSpentSeconds: Number(attempt.totalTimeSpentSeconds) || 0,
       topicBreakdown: attempt.topicBreakdown || undefined,
-      studentName
+      studentName,
+      baseUrl
     });
 
     const parentMail = renderParentResultEmail({
@@ -123,22 +128,24 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
       accuracy: Math.round(Number(attempt.accuracy) || 0),
       correctCount: Number(attempt.correctCount) || 0,
       incorrectCount: Number(attempt.incorrectCount) || 0,
-      studentName
+      studentName,
+      baseUrl,
+      testId: attempt.testId
     });
 
-    // 4. Send emails via Brevo with distinct idempotency keys
+    // 5. Send emails via unified sender
     const [studentResult, parentResult] = await Promise.all([
-      sendBrevoEmail({
+      sendPortalEmail({
         to: studentEmail,
         subject: studentMail.subject,
-        htmlContent: studentMail.html,
+        html: studentMail.html,
         idempotencyKey: `${notificationId}_student`,
         tags: ['bpsc-result-student']
       }),
-      sendBrevoEmail({
+      sendPortalEmail({
         to: parentEmail,
         subject: parentMail.subject,
-        htmlContent: parentMail.html,
+        html: parentMail.html,
         idempotencyKey: `${notificationId}_parent`,
         tags: ['bpsc-result-parent']
       })
@@ -151,7 +158,7 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
       }).catch(() => null);
 
       return sendJson(res, 502, {
-        error: 'Failed to send Brevo emails',
+        error: 'Failed to send result emails',
         details: {
           studentError: studentResult.error,
           parentError: parentResult.error
@@ -159,26 +166,27 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
       });
     }
 
-    const brevoId = studentResult.messageId || parentResult.messageId;
+    const mainMessageId = studentResult.messageId || parentResult.messageId;
     await finalizeNotification(notificationId, {
       status: 'delivered',
-      emailId: brevoId,
-      brevoMessageId: brevoId
+      emailId: mainMessageId,
+      brevoMessageId: mainMessageId
     }).catch(() => null);
 
     return sendJson(res, 200, {
       success: true,
       notificationId,
-      provider: 'brevo',
+      provider: studentResult.provider || parentResult.provider,
+      reviewUrl: studentMail.reviewUrl,
       studentResult: {
         success: studentResult.success,
         messageId: studentResult.messageId,
-        statusCode: studentResult.statusCode
+        provider: studentResult.provider
       },
       parentResult: {
         success: parentResult.success,
         messageId: parentResult.messageId,
-        statusCode: parentResult.statusCode
+        provider: parentResult.provider
       }
     });
   } catch (err: any) {

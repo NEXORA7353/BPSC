@@ -30,8 +30,10 @@ import {
   RefreshCw,
   ArrowUp,
   ArrowDown,
-  Eye
+  Eye,
+  Mail
 } from 'lucide-react';
+import { EmailPreviewModal } from './EmailPreviewModal';
 import { CustomTestConfig, MockTestSet, RegisteredTopic, Question } from '../types';
 import {
   getAllQuestionBank,
@@ -195,6 +197,7 @@ export function CreateTestView({
   // Generated Preview Set
   const [generatedPreviewSet, setGeneratedPreviewSet] = useState<MockTestSet | null>(null);
   const [statusNotification, setStatusNotification] = useState<string | null>(null);
+  const [isEmailPreviewOpen, setIsEmailPreviewOpen] = useState(false);
 
   // Topic Search & Registration
   const [topicSearchQuery, setTopicSearchQuery] = useState('');
@@ -452,7 +455,9 @@ export function CreateTestView({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             testId: testSet.id,
-            testData: testSet
+            testData: testSet,
+            appBaseUrl: typeof window !== 'undefined' ? window.location.origin : undefined,
+            sendToParent: true
           })
         }).catch((err) => {
           console.warn('[notify-new-test] Background trigger warning:', err);
@@ -2002,6 +2007,16 @@ export function CreateTestView({
 
                   <button
                     type="button"
+                    onClick={() => setIsEmailPreviewOpen(true)}
+                    className="px-4 py-3 rounded-2xl font-bold text-xs text-amber-900 dark:text-amber-200 bg-amber-400/20 hover:bg-amber-400/30 border border-amber-500/30 transition-all flex items-center gap-2 cursor-pointer shadow-xs"
+                    title="Preview live student & parent email notification and direct test link"
+                  >
+                    <Mail className="w-4 h-4 text-amber-500" />
+                    <span>Email & Link Preview</span>
+                  </button>
+
+                  <button
+                    type="button"
                     disabled={isPublishing}
                     onClick={handlePublishAndNotify}
                     className="px-5 py-3 rounded-2xl font-black text-xs text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/20 transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50"
@@ -2037,6 +2052,13 @@ export function CreateTestView({
           </div>
         )}
       </main>
+
+      {/* Email & Direct Link Preview Modal */}
+      <EmailPreviewModal
+        isOpen={isEmailPreviewOpen}
+        onClose={() => setIsEmailPreviewOpen(false)}
+        testSet={generatedPreviewSet || generateBlueprint()}
+      />
     </div>
   );
 }

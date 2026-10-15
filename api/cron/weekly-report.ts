@@ -7,7 +7,7 @@ import {
   getIstYearWeek,
   TopicPerformanceStat
 } from '../_lib/constants.js';
-import { sendBrevoEmail } from '../_lib/brevo.js';
+import { sendPortalEmail } from '../_lib/mailer.js';
 import {
   getStudentAttemptsInRange,
   reserveNotificationAtomically,
@@ -145,29 +145,29 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
     const studentMail = renderStudentWeeklyReportEmail(statsSummary);
     const parentMail = renderParentWeeklyReportEmail(statsSummary);
 
-    // 6. Send emails via Brevo with distinct idempotency keys
+    // 6. Send emails via unified mailer with distinct idempotency keys
     const [sRes, pRes] = await Promise.all([
-      sendBrevoEmail({
+      sendPortalEmail({
         to: studentEmail,
         subject: studentMail.subject,
-        htmlContent: studentMail.html,
+        html: studentMail.html,
         idempotencyKey: `${notificationId}_student`,
         tags: ['bpsc-weekly-student']
       }),
-      sendBrevoEmail({
+      sendPortalEmail({
         to: parentEmail,
         subject: parentMail.subject,
-        htmlContent: parentMail.html,
+        html: parentMail.html,
         idempotencyKey: `${notificationId}_parent`,
         tags: ['bpsc-weekly-parent']
       })
     ]);
 
-    const brevoId = sRes.messageId || pRes.messageId;
+    const mainMsgId = sRes.messageId || pRes.messageId;
     await finalizeNotification(notificationId, {
       status: sRes.success || pRes.success ? 'delivered' : 'failed',
-      emailId: brevoId,
-      brevoMessageId: brevoId,
+      emailId: mainMsgId,
+      brevoMessageId: mainMsgId,
       error: !sRes.success && !pRes.success ? (sRes.error || pRes.error) : undefined
     }).catch(() => null);
 

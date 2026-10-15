@@ -13,10 +13,10 @@ export function ShareModal({ isOpen, onClose, testTitle }: ShareModalProps) {
 
   if (!isOpen) return null;
 
-  // Real shared production URL
-  const productionShareUrl = 'https://bpsc-chi.vercel.app/';
+  // Canonical production portal URL
+  const productionShareUrl = 'https://bpsc.dpdns.org/';
   const currentUrl = typeof window !== 'undefined' ? window.location.href : productionShareUrl;
-  // If in localhost/dev, prioritize the permanent preview URL so shared users can actually open it!
+  // If in localhost/dev, prioritize the official portal URL so shared users can actually open it!
   const shareUrl = currentUrl.includes('localhost') || currentUrl.includes('127.0.0.1')
     ? productionShareUrl
     : currentUrl;

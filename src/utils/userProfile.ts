@@ -3,10 +3,18 @@ export interface UserProfile {
   displayName: string;
   rollNumber?: string;
   email?: string;
+  parentEmail?: string;
+  parentPhone?: string;
+  mobileNotificationEnabled?: boolean;
+  hourlyDisciplineEnabled?: boolean;
+  strictRealityCheckEnabled?: boolean;
+  notificationIntervalHours?: number;
 }
 
 export const DEFAULT_USER_SYNC_ID = 'BPSC-PRIYA-2026';
 export const DEFAULT_USER_NAME = 'PrIyA PaTeL';
+export const DEFAULT_STUDENT_EMAIL = 'patel000priya000@gmail.com';
+export const DEFAULT_PARENT_EMAIL = 'arjittreadingcompany@gmail.com';
 
 const STORAGE_KEYS = {
   USER_SYNC_ID: 'bpsc_user_sync_id',
@@ -46,7 +54,13 @@ export function getUserProfile(): UserProfile {
         syncId,
         displayName: parsed.displayName || DEFAULT_USER_NAME,
         rollNumber: parsed.rollNumber || 'BPSC-TRE4-2026',
-        email: parsed.email || 'priyapatel.bpsc@gmail.com'
+        email: parsed.email || DEFAULT_STUDENT_EMAIL,
+        parentEmail: parsed.parentEmail || DEFAULT_PARENT_EMAIL,
+        parentPhone: parsed.parentPhone || '',
+        mobileNotificationEnabled: parsed.mobileNotificationEnabled ?? true,
+        hourlyDisciplineEnabled: parsed.hourlyDisciplineEnabled ?? true,
+        strictRealityCheckEnabled: parsed.strictRealityCheckEnabled ?? true,
+        notificationIntervalHours: parsed.notificationIntervalHours || 1
       };
     }
   } catch {}
@@ -54,7 +68,13 @@ export function getUserProfile(): UserProfile {
     syncId,
     displayName: DEFAULT_USER_NAME,
     rollNumber: 'BPSC-TRE4-2026',
-    email: 'priyapatel.bpsc@gmail.com'
+    email: DEFAULT_STUDENT_EMAIL,
+    parentEmail: DEFAULT_PARENT_EMAIL,
+    parentPhone: '',
+    mobileNotificationEnabled: true,
+    hourlyDisciplineEnabled: true,
+    strictRealityCheckEnabled: true,
+    notificationIntervalHours: 1
   };
 }
 

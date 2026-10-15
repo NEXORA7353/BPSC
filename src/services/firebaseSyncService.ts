@@ -745,7 +745,8 @@ export async function saveAttemptRecordToCloud(record: TestAttemptRecord): Promi
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           attemptId: recordId,
-          attemptData: cleanRecord
+          attemptData: cleanRecord,
+          appBaseUrl: typeof window !== 'undefined' ? window.location.origin : undefined
         })
       }).catch((emailErr) => {
         console.warn('[send-result] Background trigger warning:', emailErr);

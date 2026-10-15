@@ -17,6 +17,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   const [profile, setProfile] = useState(() => getUserProfile());
   const [syncIdInput, setSyncIdInput] = useState(() => getUserSyncId());
   const [displayNameInput, setDisplayNameInput] = useState(() => profile.displayName);
+  const [studentEmailInput, setStudentEmailInput] = useState(() => profile.email || 'patel000priya000@gmail.com');
+  const [parentEmailInput, setParentEmailInput] = useState(() => profile.parentEmail || 'arjittreadingcompany@gmail.com');
   const [isCopied, setIsCopied] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncSuccessMsg, setSyncSuccessMsg] = useState<string | null>(null);
@@ -36,12 +38,14 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   const handleSave = () => {
     saveUserProfile({
       syncId: syncIdInput.trim(),
-      displayName: displayNameInput.trim()
+      displayName: displayNameInput.trim(),
+      email: studentEmailInput.trim(),
+      parentEmail: parentEmailInput.trim()
     });
     if (onProfileUpdated) {
       onProfileUpdated(displayNameInput.trim());
     }
-    setSyncSuccessMsg('Profile & Universal Sync ID saved! (सिंक आईडी सुरक्षित)');
+    setSyncSuccessMsg('Profile, Emails & Universal Sync ID saved! (सिंक आईडी व ईमेल सुरक्षित)');
     setTimeout(() => setSyncSuccessMsg(null), 3000);
   };
 
@@ -66,7 +70,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl p-6 sm:p-7 space-y-6 text-slate-100">
+      <div className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl p-6 sm:p-7 space-y-6 text-slate-100 max-h-[92vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-800 pb-4">
           <div className="flex items-center gap-3">
@@ -74,8 +78,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               <User className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-lg font-black text-white">Universal Candidate ID & Cloud Sync</h3>
-              <p className="text-xs text-slate-400">सभी डिवाइस और वेबसाइट्स पर एक जैसा डेटा व रिजल्ट</p>
+              <h3 className="text-lg font-black text-white">Universal Candidate ID & Notifications</h3>
+              <p className="text-xs text-slate-400">सभी डिवाइस सिंक, ईमेल और अलर्ट संपर्क विवरण</p>
             </div>
           </div>
           <button
@@ -93,7 +97,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             <span>Cross-Device & Multi-Website Sync Active</span>
           </div>
           <p className="text-xs text-slate-300 leading-relaxed">
-            चाहे आप <strong>bpsc.dpdns.org</strong> खोलें या <strong>bpsc-chi.vercel.app</strong> या कोई अन्य मोबाइल/लैपटॉप — इस User ID की मदद से आपके सभी <strong>Mock Sets</strong> और <strong>Test Results</strong> एक समान रहेंगे।
+            चाहे आप <strong>bpsc.dpdns.org</strong> खोलें या कोई अन्य मोबाइल/लैपटॉप — इस User ID की मदद से आपके सभी <strong>Mock Sets</strong> और <strong>Test Results</strong> एक समान रहेंगे।
           </p>
           <div className="flex items-center gap-4 pt-1 text-[11px] text-slate-400 font-medium">
             <span className="flex items-center gap-1.5"><Smartphone className="w-3.5 h-3.5 text-emerald-400" /> Phone</span>
@@ -115,6 +119,35 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white font-medium focus:outline-hidden focus:border-amber-400 text-sm"
               placeholder="e.g. PrIyA PaTeL"
             />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block font-bold text-slate-300 mb-1.5">
+                Student Email (परीक्षार्थी ईमेल)
+              </label>
+              <input
+                type="email"
+                value={studentEmailInput}
+                onChange={(e) => setStudentEmailInput(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-slate-200 text-xs focus:outline-hidden focus:border-amber-400"
+                placeholder="student@gmail.com"
+              />
+              <p className="text-[10px] text-slate-500 mt-1">नए टेस्ट व स्कोरकार्ड इसी ईमेल पर भेजे जाते हैं।</p>
+            </div>
+            <div>
+              <label className="block font-bold text-slate-300 mb-1.5">
+                Parent Email (अभिभावक ईमेल)
+              </label>
+              <input
+                type="email"
+                value={parentEmailInput}
+                onChange={(e) => setParentEmailInput(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-slate-200 text-xs focus:outline-hidden focus:border-amber-400"
+                placeholder="parent@gmail.com"
+              />
+              <p className="text-[10px] text-slate-500 mt-1">डेली इनएक्टिविटी व प्रगति रिपोर्ट इसी ईमेल पर जाएगी।</p>
+            </div>
           </div>
 
           <div>
@@ -139,7 +172,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               placeholder="e.g. BPSC-PRIYA-2026"
             />
             <p className="text-[11px] text-slate-500 mt-1">
-              दूसरे फोन या वेबसाइट पर इसी आईडी को डालकर <strong>Sync Now</strong> दबाएं।
+              दूसरे फोन या लैपटॉप पर इसी आईडी को डालकर <strong>Sync Now</strong> दबाएं।
             </p>
           </div>
         </div>

@@ -18,7 +18,8 @@ import {
   ChevronRight,
   TrendingUp,
   Zap,
-  Target
+  Target,
+  Bell
 } from 'lucide-react';
 import { ThemeMode } from '../types';
 import { LanguageToggle } from './LanguageToggle';
@@ -33,6 +34,7 @@ interface SidebarProps {
   onOpenCustomTest: () => void;
   onOpenBulkImport: () => void;
   onOpenCloudModal: () => void;
+  onOpenNotificationCenter?: () => void;
   onRestoreTests: () => void;
   onOpenAiWeakSpots: () => void;
   onOpenRapidDrills: () => void;
@@ -53,6 +55,7 @@ export function Sidebar({
   onOpenCustomTest,
   onOpenBulkImport,
   onOpenCloudModal,
+  onOpenNotificationCenter,
   onRestoreTests,
   onOpenAiWeakSpots,
   onOpenRapidDrills,
@@ -241,6 +244,22 @@ export function Sidebar({
                 <span>Progress Trend Dashboard</span>
               </div>
               <ChevronRight className="w-3.5 h-3.5 opacity-50" />
+            </button>
+
+            <button
+              onClick={() => {
+                if (onOpenNotificationCenter) onOpenNotificationCenter();
+                onClose();
+              }}
+              className="w-full p-2.5 rounded-xl font-bold text-xs flex items-center justify-between text-slate-300 hover:bg-white/5 hover:text-white transition-all cursor-pointer"
+            >
+              <div className="flex items-center gap-3">
+                <Bell className="w-4 h-4 text-amber-400" />
+                <span>Mobile Alerts & Discipline</span>
+              </div>
+              <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded font-mono font-bold">
+                Live
+              </span>
             </button>
           </div>
 

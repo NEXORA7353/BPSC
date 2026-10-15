@@ -5,7 +5,7 @@ import {
   DEFAULT_PARENT_EMAIL,
   DEFAULT_STUDENT_NAME
 } from '../_lib/constants.js';
-import { sendBrevoEmail } from '../_lib/brevo.js';
+import { sendPortalEmail } from '../_lib/mailer.js';
 import {
   getScheduledPublishedTests,
   reserveNotificationAtomically,
@@ -66,27 +66,27 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
         if (reserved) {
           const mail = renderTestReminderEmail(test, '2h', studentName);
           const [sRes, pRes] = await Promise.all([
-            sendBrevoEmail({
+            sendPortalEmail({
               to: studentEmail,
               subject: mail.subject,
-              htmlContent: mail.html,
+              html: mail.html,
               idempotencyKey: `${notifId}_student`,
               tags: ['bpsc-reminder-2h-student']
             }),
-            sendBrevoEmail({
+            sendPortalEmail({
               to: parentEmail,
               subject: mail.subject,
-              htmlContent: mail.html,
+              html: mail.html,
               idempotencyKey: `${notifId}_parent`,
               tags: ['bpsc-reminder-2h-parent']
             })
           ]);
 
-          const brevoId = sRes.messageId || pRes.messageId;
+          const mainMsgId = sRes.messageId || pRes.messageId;
           await finalizeNotification(notifId, {
             status: sRes.success || pRes.success ? 'delivered' : 'failed',
-            emailId: brevoId,
-            brevoMessageId: brevoId,
+            emailId: mainMsgId,
+            brevoMessageId: mainMsgId,
             error: !sRes.success && !pRes.success ? (sRes.error || pRes.error) : undefined
           }).catch(() => null);
           results.reminders2hSent += 1;
@@ -109,10 +109,10 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
 
         if (reserved) {
           const mail = renderTestReminderEmail(test, 'soon', studentName);
-          const sRes = await sendBrevoEmail({
+          const sRes = await sendPortalEmail({
             to: studentEmail,
             subject: mail.subject,
-            htmlContent: mail.html,
+            html: mail.html,
             idempotencyKey: `${notifId}_student`,
             tags: ['bpsc-reminder-soon-student']
           });

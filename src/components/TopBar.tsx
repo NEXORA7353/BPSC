@@ -11,9 +11,9 @@ import {
   Sparkles,
   Trophy,
   Database,
-  Smartphone,
   User,
-  PanelLeftOpen
+  PanelLeftOpen,
+  Bell
 } from 'lucide-react';
 import { MockTestSet, ThemeMode } from '../types';
 import { ThemeToggle } from './ThemeToggle';
@@ -34,6 +34,7 @@ interface TopBarProps {
   onOpenShareModal: () => void;
   onOpenResultsHistory: () => void;
   onOpenCloudModal: () => void;
+  onOpenNotificationCenter?: () => void;
   onOpenSidebar: () => void;
   onGoBack?: () => void;
   canGoBack?: boolean;
@@ -63,6 +64,7 @@ export function TopBar({
   onOpenShareModal,
   onOpenResultsHistory,
   onOpenCloudModal,
+  onOpenNotificationCenter,
   onOpenSidebar,
   onGoBack,
   canGoBack,
@@ -188,6 +190,17 @@ export function TopBar({
 
         {/* Right: User Profile & Actions */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* Notification Center Trigger */}
+          <button
+            onClick={onOpenNotificationCenter}
+            className="relative flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 text-xs font-bold text-slate-700 dark:text-slate-200 transition-all cursor-pointer shadow-xs"
+            title="Mobile Notifications & Hourly Discipline Engine"
+          >
+            <Bell className="w-4 h-4 text-amber-500 shrink-0" />
+            <span className="hidden lg:inline">Alerts</span>
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+          </button>
+
           {/* User Name Badge / Sync Profile Trigger */}
           <button
             onClick={onOpenProfileModal}

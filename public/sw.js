@@ -114,3 +114,49 @@ self.addEventListener('message', (event) => {
     self.skipWaiting();
   }
 });
+
+// Mobile Push Notification Click handler
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = event.notification.data && event.notification.data.url ? event.notification.data.url : '/';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // Focus open client if available
+      for (const client of clientList) {
+        if (client.url && 'focus' in client) {
+          if (targetUrl !== '/' && client.navigate) {
+            client.navigate(targetUrl);
+          }
+          return client.focus();
+        }
+      }
+      // Otherwise open new window
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
+    })
+  );
+});
+
+// Handle incoming background push messages
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { body: event.data ? event.data.text() : 'BPSC TRE 4.0 Mock Portal Update' };
+  }
+
+  const title = data.title || '[BPSC PARIKSHA ALERT]';
+  const options = {
+    body: data.body || 'Naya mock test ya abhyas smaran upalabdha hai.',
+    icon: '/logo.svg',
+    badge: '/favicon.svg',
+    data: {
+      url: data.url || '/'
+    }
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});

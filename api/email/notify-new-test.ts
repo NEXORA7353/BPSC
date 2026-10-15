@@ -1,9 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import {
   DEFAULT_STUDENT_EMAIL,
-  DEFAULT_STUDENT_NAME
+  DEFAULT_PARENT_EMAIL,
+  DEFAULT_STUDENT_NAME,
+  getAppBaseUrl
 } from '../_lib/constants.js';
-import { sendBrevoEmail } from '../_lib/brevo.js';
+import { sendPortalEmail } from '../_lib/mailer.js';
 import {
   getPublishedTest,
   reserveNotificationAtomically,
@@ -11,7 +13,8 @@ import {
   isFirebaseAdminConfigured
 } from '../_lib/firestoreAdmin.js';
 import {
-  renderStudentNewTestEmail
+  renderStudentNewTestEmail,
+  renderParentNewTestEmail
 } from '../_lib/emailTemplates.js';
 import { sendJson } from '../_lib/response.js';
 
@@ -36,13 +39,16 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
 
   try {
     const body = parseRequestBody(req);
-    const { testId, testData } = body;
+    const { testId, testData, appBaseUrl, sendToParent = true } = body;
 
     if (!testId || typeof testId !== 'string') {
       return sendJson(res, 400, { error: 'Missing or invalid testId' });
     }
 
-    // 1. Verify test exists in Firestore or fallback to provided testData
+    // 1. Resolve canonical base URL avoiding unwanted vercel redirects
+    const baseUrl = getAppBaseUrl(req, appBaseUrl);
+
+    // 2. Verify test exists in Firestore or fallback to provided testData
     let test = await getPublishedTest(testId).catch(() => null);
     if (!test && testData) {
       test = testData;
@@ -52,14 +58,15 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
       return sendJson(res, 404, { error: `Test ${testId} not found in Firestore` });
     }
 
-    // 2. MUST be explicitly published
+    // 3. MUST be explicitly published
     if (!test.isPublished) {
       return sendJson(res, 400, { error: 'Test is not published. Draft tests do not send emails.' });
     }
 
-    // 3. Atomically reserve notification
+    // 4. Atomically reserve notification
     const notificationId = `publish_${testId}`;
     const studentEmail = test.studentEmail || DEFAULT_STUDENT_EMAIL;
+    const parentEmail = test.parentEmail || DEFAULT_PARENT_EMAIL;
     const studentName = test.studentName || DEFAULT_STUDENT_NAME;
 
     let isReserved = false;
@@ -67,7 +74,7 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
       if (isFirebaseAdminConfigured()) {
         isReserved = await reserveNotificationAtomically(notificationId, {
           type: 'new_test',
-          recipients: [studentEmail],
+          recipients: sendToParent ? [studentEmail, parentEmail] : [studentEmail],
           testId
         });
       } else {
@@ -85,11 +92,11 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
     if (!isReserved) {
       return sendJson(res, 200, {
         status: 'already_sent',
-        message: 'Publish email already sent for this test.'
+        message: 'Publish notification email already sent for this test.'
       });
     }
 
-    // 4. Render student template (Publish notification sends exactly ONE student email)
+    // 5. Render email templates with direct URL
     const studentMail = renderStudentNewTestEmail({
       id: testId,
       title: test.title,
@@ -97,47 +104,84 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
       totalQuestions: test.totalQuestions,
       totalTimeMinutes: test.totalTimeMinutes,
       scheduledStartAt: test.scheduledStartAt,
-      studentName
+      studentName,
+      baseUrl
     });
 
-    // 5. Send single student email via Brevo with idempotency key
-    const studentResult = await sendBrevoEmail({
-      to: studentEmail,
-      subject: studentMail.subject,
-      htmlContent: studentMail.html,
-      idempotencyKey: `${notificationId}_student`,
-      tags: ['bpsc-new-test-student']
+    const parentMail = renderParentNewTestEmail({
+      id: testId,
+      title: test.title,
+      totalQuestions: test.totalQuestions,
+      totalTimeMinutes: test.totalTimeMinutes,
+      scheduledStartAt: test.scheduledStartAt,
+      studentName,
+      baseUrl
     });
 
-    if (!studentResult.success) {
+    // 6. Send emails to both Student and Parent
+    const sendPromises: [Promise<any>, Promise<any>?] = [
+      sendPortalEmail({
+        to: studentEmail,
+        subject: studentMail.subject,
+        html: studentMail.html,
+        idempotencyKey: `${notificationId}_student`,
+        tags: ['bpsc-new-test-student']
+      })
+    ];
+
+    if (sendToParent && parentEmail && parentEmail !== studentEmail) {
+      sendPromises.push(
+        sendPortalEmail({
+          to: parentEmail,
+          subject: parentMail.subject,
+          html: parentMail.html,
+          idempotencyKey: `${notificationId}_parent`,
+          tags: ['bpsc-new-test-parent']
+        })
+      );
+    }
+
+    const [studentResult, parentResult] = await Promise.all(sendPromises);
+
+    if (!studentResult.success && (!parentResult || !parentResult.success)) {
       await finalizeNotification(notificationId, {
         status: 'failed',
-        error: studentResult.error
+        error: studentResult.error || parentResult?.error
       }).catch(() => null);
 
       return sendJson(res, 502, {
-        error: 'Failed to send Brevo email to student',
+        error: 'Failed to dispatch email notifications',
         details: {
-          studentError: studentResult.error
+          studentError: studentResult.error,
+          parentError: parentResult?.error
         }
       });
     }
 
+    const mainMessageId = studentResult.messageId || parentResult?.messageId;
     await finalizeNotification(notificationId, {
       status: 'delivered',
-      emailId: studentResult.messageId,
-      brevoMessageId: studentResult.messageId
+      emailId: mainMessageId,
+      brevoMessageId: mainMessageId
     }).catch(() => null);
 
     return sendJson(res, 200, {
       success: true,
       notificationId,
-      provider: 'brevo',
+      provider: studentResult.provider || parentResult?.provider,
+      testUrl: studentMail.testUrl,
       studentResult: {
         success: studentResult.success,
         messageId: studentResult.messageId,
-        statusCode: studentResult.statusCode
-      }
+        provider: studentResult.provider
+      },
+      parentResult: parentResult
+        ? {
+            success: parentResult.success,
+            messageId: parentResult.messageId,
+            provider: parentResult.provider
+          }
+        : null
     });
   } catch (err: any) {
     console.error('[notify-new-test error]:', err?.message || err);

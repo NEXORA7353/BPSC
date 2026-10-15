@@ -22,12 +22,20 @@ import {
   setStoredTheme,
   saveAttemptRecord,
   saveFullTestResult,
+  getSavedTestResults,
   getAllQuestionBank,
   calculateTopicBreakdown,
   purgeOlderAttemptRecords
 } from './utils/questionBankStorage';
 import { syncFromFirestore, setupRealtimeSync, saveAttemptRecordToCloud } from './services/firebaseSyncService';
 import { usePortalLanguage } from './utils/language';
+import { NotificationCenterModal } from './components/NotificationCenterModal';
+import { NotificationToastBanner } from './components/NotificationToastBanner';
+import {
+  startNotificationWatcher,
+  stopNotificationWatcher,
+  triggerPoorResultRealityCheck
+} from './utils/mobileNotificationService';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: Array<string>;
@@ -80,6 +88,36 @@ export default function App() {
   const [candidateProfile, setCandidateProfile] = useState(() => getUserProfile());
   const candidateName = candidateProfile.displayName || 'PrIyA PaTeL';
   const [isUserProfileModalOpen, setIsUserProfileModalOpen] = useState(false);
+  const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
+
+  // Start Background Mobile Notification Watcher (Hourly Motivation & Reality Check)
+  useEffect(() => {
+    startNotificationWatcher();
+    return () => stopNotificationWatcher();
+  }, []);
+
+  // Handle direct navigation from email notifications & mobile push links: ?testId=... or ?reviewTestId=...
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const targetTestId = params.get('testId') || params.get('test');
+    const targetReviewId = params.get('reviewTestId') || params.get('review');
+
+    if (targetTestId && availableSets.length > 0) {
+      const found = availableSets.find((s) => s.id === targetTestId);
+      if (found) {
+        setCurrentSetId(found.id);
+        setActiveView('intro');
+      }
+    } else if (targetReviewId && availableSets.length > 0) {
+      const historyResults = getSavedTestResults();
+      const match = historyResults.find((r) => r.setId === targetReviewId || r.id === targetReviewId);
+      if (match) {
+        const matchingSet = availableSets.find((s) => s.id === match.setId) || availableSets[0];
+        handleReviewHistoryResult(match, matchingSet);
+      }
+    }
+  }, [availableSets]);
 
   useEffect(() => {
     const handleProfileUpdate = () => {
@@ -302,6 +340,16 @@ export default function App() {
     saveAttemptRecordToCloud(attemptRecord).catch((err) => {
       console.warn('Direct attempt cloud sync warning:', err);
     });
+
+    // Trigger Reality Check alert if score or accuracy is poor
+    triggerPoorResultRealityCheck({
+      testTitle: result.setTitle,
+      score: result.score,
+      totalMarks: result.totalMarks,
+      accuracy: result.accuracy,
+      incorrectCount: result.incorrectCount,
+      testId: result.setId
+    }).catch(() => null);
   };
 
   const handleReattempt = () => {
@@ -431,6 +479,9 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950 transition-colors duration-150 relative max-w-full overflow-x-hidden">
+      {/* Floating In-App Notification Toast Banner */}
+      <NotificationToastBanner onOpenNotificationCenter={() => setIsNotificationCenterOpen(true)} />
+
       {/* Sidebar Navigation Component */}
       <Sidebar
         isOpen={isSidebarOpen}
@@ -441,6 +492,7 @@ export default function App() {
         onOpenCustomTest={() => handleOpenCustomTest()}
         onOpenBulkImport={() => handleOpenBulkImportWithTopic(undefined)}
         onOpenCloudModal={() => setIsCloudModalOpen(true)}
+        onOpenNotificationCenter={() => setIsNotificationCenterOpen(true)}
         onRestoreTests={handleRestoreTests}
         onOpenAiWeakSpots={() => setIsAiWeakSpotModalOpen(true)}
         onOpenRapidDrills={() => setIsRapidDrillModalOpen(true)}
@@ -466,6 +518,7 @@ export default function App() {
         onOpenShareModal={() => setIsShareModalOpen(true)}
         onOpenResultsHistory={handleOpenResultsHistory}
         onOpenCloudModal={() => setIsCloudModalOpen(true)}
+        onOpenNotificationCenter={() => setIsNotificationCenterOpen(true)}
         onOpenSidebar={() => setIsSidebarOpen(true)}
         onGoBack={handleGoBack}
         canGoBack={canGoBack}
@@ -653,6 +706,15 @@ export default function App() {
             setCandidateProfile(getUserProfile());
             setAvailableSets(getAllAvailableTests());
           }}
+        />
+      )}
+
+      {/* Mobile Notification Center & Hourly Discipline Modal */}
+      {isNotificationCenterOpen && (
+        <NotificationCenterModal
+          isOpen={isNotificationCenterOpen}
+          onClose={() => setIsNotificationCenterOpen(false)}
+          onOpenTest={(setId) => handleStartTest(setId)}
         />
       )}
 
