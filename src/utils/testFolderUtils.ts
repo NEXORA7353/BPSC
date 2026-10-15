@@ -1,4 +1,23 @@
+import { MockTestSet, TestAttemptRecord, RegisteredTopic, Question } from '../types';
+import { normalizeTestTitle, cleanTitleToEnglish, getTestTimestamp } from './questionBankStorage';
 
+export interface ChapterFolderDef {
+  id: string;
+  nameEnglish: string;
+  nameHindi: string;
+  categoryKey: string;
+  description: string;
+  color: {
+    bgLight: string;
+    bgDark: string;
+    border: string;
+    text: string;
+    badge: string;
+    iconBg: string;
+    gradient: string;
+  };
+  iconType: string;
+}
 
 // Preset themes and descriptions for all core BPSC syllabus topics
 export const TOPIC_FOLDER_PRESETS: Record<string, Partial<ChapterFolderDef>> = {
@@ -560,7 +579,7 @@ export function getTestChapterId(
   const title = (test.title || '').toLowerCase();
   const subtitle = (test.subtitle || '').toLowerCase();
   const catTitle = (test.categoryTitle || '').toLowerCase();
-  const topicBadges = (test.topicBadges || []).map((b) => b.toLowerCase());
+  const topicBadges = (test.topicBadges || []).map((b: string) => (b || '').toLowerCase());
   const combinedText = `${title} ${subtitle} ${catTitle} ${topicBadges.join(' ')}`;
 
   if (
@@ -582,7 +601,7 @@ export function getTestChapterId(
   // 3. Dominant Question Topic Analysis
   if (Array.isArray(test.questions) && test.questions.length > 0) {
     const topicCounts = new Map<string, number>();
-    test.questions.forEach((q) => {
+    test.questions.forEach((q: Question) => {
       if (q && q.topic) {
         const tKey = q.topic.trim().toLowerCase();
         topicCounts.set(tKey, (topicCounts.get(tKey) || 0) + 1);
