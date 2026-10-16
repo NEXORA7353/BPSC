@@ -36,7 +36,8 @@ import {
   startNotificationWatcher,
   stopNotificationWatcher,
   triggerPoorResultRealityCheck,
-  triggerHighScoreCelebrationAlert
+  triggerHighScoreCelebrationAlert,
+  setupAutoNotificationPermissionPrompt
 } from './utils/mobileNotificationService';
 import { parseUrlRoute, updateBrowserUrl } from './utils/urlRouting';
 
@@ -94,9 +95,10 @@ export default function App() {
   const [isUserProfileModalOpen, setIsUserProfileModalOpen] = useState(false);
   const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
 
-  // Start Background Mobile Notification Watcher (Hourly Motivation & Reality Check)
+  // Start Background Mobile Notification Watcher & Auto-Prompt Permission on Open
   useEffect(() => {
     startNotificationWatcher();
+    setupAutoNotificationPermissionPrompt();
     return () => stopNotificationWatcher();
   }, []);
 

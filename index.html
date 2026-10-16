@@ -69,6 +69,25 @@
           });
         });
       }
+      // Immediately request notification permission when website opens
+      try {
+        if ('Notification' in window && Notification.permission === 'default') {
+          // Direct attempt on open
+          Notification.requestPermission().catch(function() {});
+          // One-time user interaction fallback for strict mobile browsers
+          var promptOnTouch = function() {
+            if (Notification.permission === 'default') {
+              Notification.requestPermission().catch(function() {});
+            }
+            window.removeEventListener('pointerdown', promptOnTouch, true);
+            window.removeEventListener('touchstart', promptOnTouch, true);
+            window.removeEventListener('click', promptOnTouch, true);
+          };
+          window.addEventListener('pointerdown', promptOnTouch, { capture: true, once: true });
+          window.addEventListener('touchstart', promptOnTouch, { capture: true, once: true });
+          window.addEventListener('click', promptOnTouch, { capture: true, once: true });
+        }
+      } catch (e) {}
     </script>
     <div id="root">
       <div style="min-height:100vh;background:#0A0F1D;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;">

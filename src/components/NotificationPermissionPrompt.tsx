@@ -28,11 +28,11 @@ export const NotificationPermissionPrompt: React.FC<NotificationPermissionPrompt
   const [isRequesting, setIsRequesting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  // Check notification status on mount
+  // Check notification status and immediately request permission on website open
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const checkStatus = () => {
+    const checkAndAutoRequest = async () => {
       if (!('Notification' in window)) {
         return;
       }
@@ -40,37 +40,45 @@ export const NotificationPermissionPrompt: React.FC<NotificationPermissionPrompt
       const currentPerm = Notification.permission;
       setPermissionState(currentPerm);
 
-      // If already granted, no need to prompt
       if (currentPerm === 'granted') {
         return;
       }
 
-      const params = new URLSearchParams(window.location.search);
-      const forceOpen = params.get('enableNotif') === 'true' || params.get('notif') === 'open';
-
-      // Check snooze timestamp unless forced via URL
-      const snoozedUntilStr = localStorage.getItem(SNOOZE_STORAGE_KEY);
-      if (!forceOpen && snoozedUntilStr) {
-        const snoozedUntil = parseInt(snoozedUntilStr, 10);
-        if (!isNaN(snoozedUntil) && Date.now() < snoozedUntil) {
-          return;
-        }
-      }
-
-      if (forceOpen) {
+      // If default (not yet decided): immediately open prompt and attempt requestPermission
+      if (currentPerm === 'default') {
         setIsOpen(true);
+        try {
+          const res = await requestMobileNotificationPermission();
+          setPermissionState(res);
+          if (res === 'granted') {
+            saveNotificationSettings({ pushEnabled: true });
+            setIsSuccess(true);
+            await dispatchPortalNotification({
+              title: '[अधिसूचना सक्रिय]: BPSC TRE 4.0 अलर्ट चालू हुए',
+              body: 'बधाई! आपके मोबाइल व लैपटॉप पर दैनिक अभ्यास अलर्ट व हर घंटे का मोटिवेशन सक्रिय हो गया है।',
+              category: 'system',
+              severity: 'info',
+              url: window.location.origin
+            });
+            setTimeout(() => {
+              setIsSuccess(false);
+              setIsOpen(false);
+            }, 1500);
+            return;
+          }
+        } catch {}
         return;
       }
 
-      // Smooth delay so page renders first
-      const timer = setTimeout(() => {
+      // If denied, check if forced open via URL parameter
+      const params = new URLSearchParams(window.location.search);
+      const forceOpen = params.get('enableNotif') === 'true' || params.get('notif') === 'open';
+      if (forceOpen) {
         setIsOpen(true);
-      }, 1200);
-
-      return () => clearTimeout(timer);
+      }
     };
 
-    checkStatus();
+    checkAndAutoRequest();
 
     const handlePermChange = () => {
       if ('Notification' in window) {
@@ -97,7 +105,6 @@ export const NotificationPermissionPrompt: React.FC<NotificationPermissionPrompt
         saveNotificationSettings({ pushEnabled: true });
         setIsSuccess(true);
 
-        // Immediate audio chime and confirmation push notification
         await dispatchPortalNotification({
           title: '[अधिसूचना सक्रिय]: BPSC TRE 4.0 अलर्ट चालू हुए',
           body: 'बधाई! आपके मोबाइल व लैपटॉप पर दैनिक अभ्यास अलर्ट व हर घंटे का मोटिवेशन सक्रिय हो गया है।',
@@ -118,12 +125,7 @@ export const NotificationPermissionPrompt: React.FC<NotificationPermissionPrompt
     }
   };
 
-  const handleSnooze = () => {
-    // Snooze for 12 hours so it doesn't repeatedly annoy the user
-    const snoozeUntil = Date.now() + 12 * 60 * 60 * 1000;
-    try {
-      localStorage.setItem(SNOOZE_STORAGE_KEY, snoozeUntil.toString());
-    } catch {}
+  const handleClose = () => {
     setIsOpen(false);
   };
 
@@ -134,9 +136,9 @@ export const NotificationPermissionPrompt: React.FC<NotificationPermissionPrompt
   return (
     <div
       id="direct-notification-prompt"
-      className="fixed bottom-3 sm:bottom-6 left-3 right-3 sm:left-auto sm:right-6 sm:w-[410px] z-50 animate-in slide-in-from-bottom-5 fade-in duration-300"
+      className="fixed bottom-3 sm:bottom-6 left-3 right-3 sm:left-auto sm:right-6 sm:w-[420px] z-50 animate-in slide-in-from-bottom-5 fade-in duration-300"
     >
-      <div className="relative bg-slate-900/95 dark:bg-slate-950/95 backdrop-blur-xl border-2 border-amber-500/50 rounded-2xl shadow-2xl shadow-black/80 p-4 sm:p-5 text-slate-100 overflow-hidden">
+      <div className="relative bg-slate-900/95 dark:bg-slate-950/95 backdrop-blur-xl border-2 border-amber-500/60 rounded-2xl shadow-2xl shadow-black/80 p-4 sm:p-5 text-slate-100 overflow-hidden">
         {/* Ambient Glow */}
         <div className="absolute -top-12 -left-12 w-32 h-32 bg-amber-500/20 rounded-full blur-2xl pointer-events-none" />
         <div className="absolute -bottom-12 -right-12 w-32 h-32 bg-orange-500/20 rounded-full blur-2xl pointer-events-none" />
@@ -161,7 +163,7 @@ export const NotificationPermissionPrompt: React.FC<NotificationPermissionPrompt
                 <h4 className="text-sm font-black text-amber-300">नोटिफिकेशन ब्राउज़र में ब्लॉक है</h4>
               </div>
               <button
-                onClick={handleSnooze}
+                onClick={handleClose}
                 aria-label="Close"
                 className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
               >
@@ -182,7 +184,7 @@ export const NotificationPermissionPrompt: React.FC<NotificationPermissionPrompt
               </button>
               <button
                 type="button"
-                onClick={handleSnooze}
+                onClick={handleClose}
                 className="py-2 px-3 rounded-xl text-slate-400 hover:text-white text-xs font-semibold cursor-pointer"
               >
                 बंद करें
@@ -199,19 +201,19 @@ export const NotificationPermissionPrompt: React.FC<NotificationPermissionPrompt
                 </div>
                 <div>
                   <h4 className="text-sm font-black text-white tracking-tight flex items-center gap-1.5">
-                    <span>नोटिफिकेशन चालू करें</span>
+                    <span>नोटिफिकेशन की अनुमति दें</span>
                     <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                      1-CLICK
+                      LIVE
                     </span>
                   </h4>
-                  <p className="text-[11px] text-amber-300/90 font-medium">
-                    मोबाइल व लैपटॉप दोनों पर सीधे अलर्ट पाएं
+                  <p className="text-[11px] text-amber-300 font-medium">
+                    वेबसाइट पर सीधे अभ्यास अलर्ट और रिजल्ट पाएं
                   </p>
                 </div>
               </div>
 
               <button
-                onClick={handleSnooze}
+                onClick={handleClose}
                 aria-label="Close"
                 className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer shrink-0"
               >
@@ -219,9 +221,9 @@ export const NotificationPermissionPrompt: React.FC<NotificationPermissionPrompt
               </button>
             </div>
 
-            {/* Quick value proposition - 1 clean sentence */}
+            {/* Quick value proposition */}
             <p className="text-xs text-slate-300 leading-snug">
-              BPSC TRE 4.0 परीक्षा अभ्यास, हर घंटे का मोटिवेशन और मॉक टेस्ट परिणाम का अलर्ट तुरंत प्राप्त करें।
+              BPSC TRE 4.0 परीक्षा अभ्यास, हर घंटे का मोटिवेशन और मॉक टेस्ट परिणाम का अलर्ट तुरंत पाने के लिए नीचे बटन पर क्लिक करके <strong>Allow</strong> करें।
             </p>
 
             {/* Direct 1-Click Action Button */}
@@ -233,12 +235,12 @@ export const NotificationPermissionPrompt: React.FC<NotificationPermissionPrompt
                 className="flex-1 py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 cursor-pointer active:scale-95 disabled:opacity-50"
               >
                 <Bell className="w-4 h-4 shrink-0" />
-                <span>{isRequesting ? 'परमिशन जांची जा रही है...' : 'तुरंत ऑन करें (1-Click Enable)'}</span>
+                <span>{isRequesting ? 'अनुमति जांची जा रही है...' : 'अनुमति दें (Allow Notification)'}</span>
               </button>
 
               <button
                 type="button"
-                onClick={handleSnooze}
+                onClick={handleClose}
                 className="py-2.5 px-3 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 text-xs font-semibold transition-colors cursor-pointer shrink-0"
               >
                 बाद में

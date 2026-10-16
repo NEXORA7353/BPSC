@@ -251,6 +251,60 @@ export async function requestMobileNotificationPermission(): Promise<Notificatio
 }
 
 /**
+ * Automatically requests notification permission as soon as the portal is opened.
+ * Executes both an immediate direct request and an instant first-interaction listener
+ * to reliably prompt on mobile (Android Chrome) and laptop browsers.
+ */
+export function setupAutoNotificationPermissionPrompt(): void {
+  if (typeof window === 'undefined' || !('Notification' in window)) {
+    return;
+  }
+
+  if (Notification.permission !== 'default') {
+    return;
+  }
+
+  const triggerPermission = async () => {
+    if (Notification.permission !== 'default') return;
+    try {
+      const perm = await Notification.requestPermission();
+      if (perm === 'granted') {
+        saveNotificationSettings({ pushEnabled: true });
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.register('/sw.js').catch(() => {});
+        }
+        await dispatchPortalNotification({
+          title: '[अधिसूचना सक्रिय]: BPSC TRE 4.0 अलर्ट चालू हुए',
+          body: 'बधाई! आपके मोबाइल व लैपटॉप पर नोटिफिकेशन सफलतापूर्वक चालू हो गए हैं।',
+          category: 'system',
+          severity: 'info',
+          url: window.location.origin
+        });
+      }
+    } catch {}
+  };
+
+  // 1. Immediate call on site open
+  triggerPermission();
+
+  // 2. Attach first-interaction trigger for mobile browsers requiring touch gesture
+  const onFirstInteraction = () => {
+    triggerPermission();
+    cleanup();
+  };
+
+  const cleanup = () => {
+    window.removeEventListener('pointerdown', onFirstInteraction, true);
+    window.removeEventListener('touchstart', onFirstInteraction, true);
+    window.removeEventListener('click', onFirstInteraction, true);
+  };
+
+  window.addEventListener('pointerdown', onFirstInteraction, { capture: true, once: true });
+  window.addEventListener('touchstart', onFirstInteraction, { capture: true, once: true });
+  window.addEventListener('click', onFirstInteraction, { capture: true, once: true });
+}
+
+/**
  * Main dispatcher to show a notification across OS, Service Worker, and In-App banner.
  */
 export async function dispatchPortalNotification(options: {
