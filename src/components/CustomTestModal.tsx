@@ -49,6 +49,8 @@ import {
 import { parseBulkQuestionText } from '../utils/questionParser';
 import { printQuestionPaperWithOmr } from '../utils/exportPdfOmr';
 import { MathText } from './MathText';
+import { triggerNewTestMobileNotification } from '../utils/mobileNotificationService';
+import { saveTestSetToCloud } from '../services/firebaseSyncService';
 
 interface CustomTestModalProps {
   isOpen: boolean;
@@ -660,6 +662,54 @@ export function CustomTestModal({
       };
       newTestSet = createCustomMockTest(config, true);
     }
+
+    // Ensure marked as published
+    newTestSet.isPublished = true;
+
+    // 1. Sync to Firebase Firestore
+    saveTestSetToCloud(newTestSet).catch(() => null);
+
+    // 2. Dispatch mobile & browser push notification in Hindi
+    try {
+      triggerNewTestMobileNotification({
+        id: newTestSet.id,
+        title: newTestSet.title,
+        totalQuestions: newTestSet.totalQuestions,
+        totalTimeMinutes: newTestSet.totalTimeMinutes
+      }).catch(() => null);
+    } catch {}
+
+    // 3. Dispatch automated email to Student and Parent
+    try {
+      const emailPayload = {
+        testId: newTestSet.id,
+        testData: newTestSet,
+        appBaseUrl: typeof window !== 'undefined' ? window.location.origin : undefined,
+        sendToParent: true
+      };
+
+      fetch('/api/email/notify-new-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(emailPayload)
+      })
+        .then((r) => {
+          if (!r.ok) {
+            fetch('https://bpsc.dpdns.org/api/email/notify-new-test', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(emailPayload)
+            }).catch(() => null);
+          }
+        })
+        .catch(() => {
+          fetch('https://bpsc.dpdns.org/api/email/notify-new-test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(emailPayload)
+          }).catch(() => null);
+        });
+    } catch {}
 
     if (autoStart) {
       onStartCustomTest(newTestSet);

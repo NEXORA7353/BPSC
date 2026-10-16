@@ -5,7 +5,7 @@
  * Strict Constraint: ZERO EMOJIS used in any notification title or body.
  */
 
-import { safeLocalStorageSet } from './questionBankStorage';
+import { safeLocalStorageSet, getAttemptRecords, isTodayAttempt } from './questionBankStorage';
 
 export interface PortalNotificationItem {
   id: string;
@@ -538,7 +538,62 @@ export async function triggerDailyInactivityMobileNotification(studentName?: str
 }
 
 /**
- * Background watcher that checks every 60 seconds if hourly motivation is due.
+ * Dispatches automatic notification for EVERY completed test attempt.
+ * Evaluates performance: strict reality check if <50%, celebratory alert if >=75%,
+ * and motivational progress report if between 50% and 75%.
+ */
+export async function triggerTestAttemptNotification(params: {
+  testTitle: string;
+  score: number;
+  totalMarks: number;
+  accuracy: number;
+  incorrectCount: number;
+  correctCount: number;
+  testId?: string;
+}): Promise<void> {
+  const scorePct = Math.round(params.accuracy || ((params.score / (params.totalMarks || 1)) * 100));
+
+  if (scorePct < 50) {
+    await triggerPoorResultRealityCheck(params);
+  } else if (scorePct >= 75) {
+    await triggerHighScoreCelebrationAlert(params);
+  } else {
+    const title = '📊 [टेस्ट परिणाम]: अभ्यास जारी रखें!';
+    const body = `आपने "${params.testTitle}" में ${params.score.toFixed(2)}/${params.totalMarks} (${scorePct}%) अंक प्राप्त किए (${params.correctCount} सही, ${params.incorrectCount} गलत)। 80%+ एक्यूरेसी के लक्ष्य हेतु अभी गलत प्रश्नों का विश्लेषण करें! ⚡`;
+    const url = params.testId
+      ? `${window.location.origin}/?view=results&reviewTestId=${encodeURIComponent(params.testId)}`
+      : `${window.location.origin}/?view=history`;
+
+    await dispatchPortalNotification({
+      title,
+      body,
+      category: 'system',
+      severity: 'info',
+      url
+    });
+  }
+}
+
+/**
+ * Checks today's practice status and dispatches appropriate smart reminder.
+ */
+export async function triggerSmartStudyReminder(): Promise<void> {
+  try {
+    const attempts = getAttemptRecords();
+    const todayAttempts = attempts.filter(isTodayAttempt);
+
+    if (todayAttempts.length === 0) {
+      await triggerDailyInactivityMobileNotification('प्रिया');
+    } else {
+      await triggerHourlyMotivation(true);
+    }
+  } catch {
+    await triggerHourlyMotivation(true);
+  }
+}
+
+/**
+ * Background watcher that checks automatically on portal boot, on return, and periodically.
  */
 let watcherInterval: number | null = null;
 
@@ -546,15 +601,39 @@ export function startNotificationWatcher(): void {
   if (typeof window === 'undefined') return;
   if (watcherInterval !== null) return;
 
-  // Check on boot after 15 seconds
+  // 1. Initial smart check after 6 seconds: If user hasn't seen a reminder in 25 minutes, show one
   setTimeout(() => {
-    triggerHourlyMotivation(false).catch(() => null);
-  }, 15000);
+    try {
+      const now = Date.now();
+      const lastTimeStr = localStorage.getItem(STORAGE_KEYS.LAST_HOURLY_TIMESTAMP);
+      const lastTime = lastTimeStr ? parseInt(lastTimeStr, 10) : 0;
+      if (now - lastTime > 25 * 60 * 1000) {
+        triggerSmartStudyReminder().catch(() => null);
+        localStorage.setItem(STORAGE_KEYS.LAST_HOURLY_TIMESTAMP, String(now));
+      }
+    } catch {}
+  }, 6000);
 
-  // Check periodically
+  // 2. Periodic periodic watcher every 60 seconds
   watcherInterval = window.setInterval(() => {
     triggerHourlyMotivation(false).catch(() => null);
   }, 60000);
+
+  // 3. Tab visibility return listener
+  const onVisibilityChange = () => {
+    if (document.visibilityState === 'visible') {
+      try {
+        const now = Date.now();
+        const lastTimeStr = localStorage.getItem(STORAGE_KEYS.LAST_HOURLY_TIMESTAMP);
+        const lastTime = lastTimeStr ? parseInt(lastTimeStr, 10) : 0;
+        if (now - lastTime > 30 * 60 * 1000) {
+          triggerSmartStudyReminder().catch(() => null);
+          localStorage.setItem(STORAGE_KEYS.LAST_HOURLY_TIMESTAMP, String(now));
+        }
+      } catch {}
+    }
+  };
+  document.addEventListener('visibilitychange', onVisibilityChange);
 }
 
 export function stopNotificationWatcher(): void {

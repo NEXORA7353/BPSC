@@ -58,9 +58,9 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
       return sendJson(res, 404, { error: `Test ${testId} not found in Firestore` });
     }
 
-    // 3. MUST be explicitly published
-    if (!test.isPublished) {
-      return sendJson(res, 400, { error: 'Test is not published. Draft tests do not send emails.' });
+    // 3. Reject only if explicitly marked as draft
+    if (test.isPublished === false || test.status === 'draft') {
+      return sendJson(res, 400, { error: 'Test is marked as draft. Draft tests do not send emails.' });
     }
 
     // 4. Atomically reserve notification (or use timestamped ID if force is true)

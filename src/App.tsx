@@ -36,6 +36,7 @@ import {
   stopNotificationWatcher,
   triggerPoorResultRealityCheck,
   triggerHighScoreCelebrationAlert,
+  triggerTestAttemptNotification,
   setupAutoNotificationPermissionPrompt
 } from './utils/mobileNotificationService';
 import { parseUrlRoute, updateBrowserUrl } from './utils/urlRouting';
@@ -467,24 +468,48 @@ export default function App() {
       console.warn('Direct attempt cloud sync warning:', err);
     });
 
-    // Trigger Reality Check alert if score or accuracy is poor
-    triggerPoorResultRealityCheck({
+    // 1. Automatic OS and in-app notification with Hindi audio & vibration for EVERY test
+    triggerTestAttemptNotification({
       testTitle: result.setTitle,
       score: result.score,
       totalMarks: result.totalMarks,
       accuracy: result.accuracy,
       incorrectCount: result.incorrectCount,
+      correctCount: result.correctCount,
       testId: result.setId
     }).catch(() => null);
 
-    // Trigger Celebration Alert if student scored well
-    triggerHighScoreCelebrationAlert({
-      testTitle: result.setTitle,
-      score: result.score,
-      totalMarks: result.totalMarks,
-      accuracy: result.accuracy,
-      testId: result.setId
-    }).catch(() => null);
+    // 2. Guaranteed direct transactional email to Student and Parent
+    try {
+      const emailPayload = {
+        attemptId,
+        attemptData: attemptRecord,
+        appBaseUrl: typeof window !== 'undefined' ? window.location.origin : undefined,
+        force: true
+      };
+
+      fetch('/api/email/send-result', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(emailPayload)
+      })
+        .then((r) => {
+          if (!r.ok) {
+            fetch('https://bpsc.dpdns.org/api/email/send-result', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(emailPayload)
+            }).catch(() => null);
+          }
+        })
+        .catch(() => {
+          fetch('https://bpsc.dpdns.org/api/email/send-result', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(emailPayload)
+          }).catch(() => null);
+        });
+    } catch {}
   };
 
   const handleReattempt = () => {
