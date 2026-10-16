@@ -70,6 +70,29 @@ export function subscribeToSyncState(listener: SyncListener): () => void {
   };
 }
 
+let isFirestoreQuotaExhausted = false;
+
+function checkQuotaError(err: any): boolean {
+  if (!err) return false;
+  const isQuota =
+    err?.code === 'resource-exhausted' ||
+    (typeof err?.message === 'string' && (err.message.includes('Quota') || err.message.includes('quota')));
+  if (isQuota) {
+    if (!isFirestoreQuotaExhausted) {
+      isFirestoreQuotaExhausted = true;
+      console.warn('[Firestore] Free daily write quota reached (Free Tier limit). Operating in 100% resilient LocalStorage mode.');
+      syncState = {
+        ...syncState,
+        isConnected: false,
+        error: 'क्लाउड कोटा सीमा (Free Tier limit) - आपका सारा डेटा लोकल स्टोरेज में 100% सुरक्षित है।'
+      };
+      notifyState();
+    }
+    return true;
+  }
+  return false;
+}
+
 function cleanPayload<T extends Record<string, any>>(obj: T): T {
   const result: any = {};
   for (const [key, value] of Object.entries(obj)) {
@@ -210,8 +233,8 @@ export async function syncFromFirestore(): Promise<void> {
     }
 
     // 5. Fetch Attempt Records & History from Firestore
-    // Firebase is the single source of truth for attempts
     const attemptsSnap = await getDocs(collection(db, 'attempt_records')).catch((err) => {
+      checkQuotaError(err);
       console.warn('attempt_records fetch warning:', err);
       return null;
     });
@@ -222,38 +245,67 @@ export async function syncFromFirestore(): Promise<void> {
       cloudAttempts.push({ ...data, id: attemptId } as TestAttemptRecord);
     });
 
-    const finalAttempts = cloudAttempts.sort((a, b) => {
+    // CRITICAL: NEVER erase local attempts! Merge local attempts with cloud attempts
+    const localAttempts = getAttemptRecords();
+    const attemptMap = new Map<string, TestAttemptRecord>();
+    localAttempts.forEach((a) => {
+      if (a && (a.id || a.testId)) attemptMap.set(a.id || a.testId, a);
+    });
+    cloudAttempts.forEach((a) => {
+      if (a && (a.id || a.testId)) attemptMap.set(a.id || a.testId, a);
+    });
+
+    const finalAttempts = Array.from(attemptMap.values()).sort((a, b) => {
       const timeA = new Date(a.completedAtIso || a.date).getTime() || 0;
       const timeB = new Date(b.completedAtIso || b.date).getTime() || 0;
       return timeB - timeA;
     });
 
-    safeLocalStorageSet('bpsc_attempt_records', JSON.stringify(finalAttempts.slice(0, 25)));
+    if (finalAttempts.length > 0) {
+      safeLocalStorageSet('bpsc_attempt_records', JSON.stringify(finalAttempts.slice(0, 50)));
 
-    // Reconstruct into FULL SAVED RESULTS ARCHIVE
-    const finalFullResults: SavedTestResult[] = finalAttempts.map((att) => ({
-      id: att.id || `result_${Date.now()}_${Math.random()}`,
-      setId: att.testId,
-      setTitle: att.testTitle,
-      totalQuestions: att.totalQuestions || 20,
-      attemptedCount: (att.correctCount || 0) + (att.incorrectCount || 0),
-      correctCount: att.correctCount || 0,
-      incorrectCount: att.incorrectCount || 0,
-      safeSkipCount: att.safeSkipCount || 0,
-      score: att.score || 0,
-      totalMarks: att.totalMarks || (att.totalQuestions || 20),
-      blankPenaltyCount: att.blankPenaltyCount || 0,
-      totalTimeSpentSeconds: att.totalTimeSpentSeconds || 60,
-      accuracy: att.accuracy || 0,
-      responses: att.responses || {},
-      completedAt: att.date || new Date().toLocaleDateString('hi-IN'),
-      dateFormatted: att.date || new Date().toLocaleDateString('hi-IN'),
-      completedAtIso: att.completedAtIso || new Date().toISOString(),
-      topicBreakdown: att.topicBreakdown,
-      questions: att.questions || []
-    }));
+      // Reconstruct into FULL SAVED RESULTS ARCHIVE without overwriting existing details
+      const existingFull = getSavedTestResults();
+      const fullMap = new Map<string, SavedTestResult>();
+      existingFull.forEach((r) => {
+        if (r && r.id) fullMap.set(r.id, r);
+      });
 
-    safeLocalStorageSet('bpsc_full_results_archive', JSON.stringify(finalFullResults.slice(0, 10)));
+      finalAttempts.forEach((att) => {
+        const id = att.id || `result_${att.testId}_${Date.now()}`;
+        if (!fullMap.has(id)) {
+          fullMap.set(id, {
+            id,
+            setId: att.testId,
+            setTitle: att.testTitle,
+            totalQuestions: att.totalQuestions || 20,
+            attemptedCount: (att.correctCount || 0) + (att.incorrectCount || 0),
+            correctCount: att.correctCount || 0,
+            incorrectCount: att.incorrectCount || 0,
+            safeSkipCount: att.safeSkipCount || 0,
+            score: att.score || 0,
+            totalMarks: att.totalMarks || (att.totalQuestions || 20),
+            blankPenaltyCount: att.blankPenaltyCount || 0,
+            totalTimeSpentSeconds: att.totalTimeSpentSeconds || 60,
+            accuracy: att.accuracy || 0,
+            responses: att.responses || {},
+            completedAt: att.date || new Date().toLocaleDateString('hi-IN'),
+            dateFormatted: att.date || new Date().toLocaleDateString('hi-IN'),
+            completedAtIso: att.completedAtIso || new Date().toISOString(),
+            topicBreakdown: att.topicBreakdown,
+            questions: att.questions || []
+          });
+        }
+      });
+
+      const finalFullResults = Array.from(fullMap.values()).sort((a, b) => {
+        const timeA = new Date(a.completedAtIso || a.dateFormatted || a.completedAt).getTime() || 0;
+        const timeB = new Date(b.completedAtIso || b.dateFormatted || b.completedAt).getTime() || 0;
+        return timeB - timeA;
+      });
+
+      safeLocalStorageSet('bpsc_full_results_archive', JSON.stringify(finalFullResults.slice(0, 30)));
+    }
 
     syncState = {
       isConnected: true,
@@ -380,38 +432,65 @@ export function setupRealtimeSync(onDataChange: () => void): () => void {
         cloudAttempts.push({ ...data, id: attemptId } as TestAttemptRecord);
       });
 
-      const finalAttempts = cloudAttempts.sort((a, b) => {
+      const localAttempts = getAttemptRecords();
+      const attemptMap = new Map<string, TestAttemptRecord>();
+      localAttempts.forEach((a) => {
+        if (a && (a.id || a.testId)) attemptMap.set(a.id || a.testId, a);
+      });
+      cloudAttempts.forEach((a) => {
+        if (a && (a.id || a.testId)) attemptMap.set(a.id || a.testId, a);
+      });
+
+      const finalAttempts = Array.from(attemptMap.values()).sort((a, b) => {
         const timeA = new Date(a.completedAtIso || a.date).getTime() || 0;
         const timeB = new Date(b.completedAtIso || b.date).getTime() || 0;
         return timeB - timeA;
       });
 
-      safeLocalStorageSet('bpsc_attempt_records', JSON.stringify(finalAttempts.slice(0, 25)));
+      if (finalAttempts.length > 0) {
+        safeLocalStorageSet('bpsc_attempt_records', JSON.stringify(finalAttempts.slice(0, 50)));
 
-      // Reconstruct into FULL SAVED RESULTS ARCHIVE
-      const finalFullResults: SavedTestResult[] = finalAttempts.map((att) => ({
-        id: att.id || `result_${Date.now()}_${Math.random()}`,
-        setId: att.testId,
-        setTitle: att.testTitle,
-        totalQuestions: att.totalQuestions || 20,
-        attemptedCount: (att.correctCount || 0) + (att.incorrectCount || 0),
-        correctCount: att.correctCount || 0,
-        incorrectCount: att.incorrectCount || 0,
-        safeSkipCount: att.safeSkipCount || 0,
-        score: att.score || 0,
-        totalMarks: att.totalMarks || (att.totalQuestions || 20),
-        blankPenaltyCount: att.blankPenaltyCount || 0,
-        totalTimeSpentSeconds: att.totalTimeSpentSeconds || 60,
-        accuracy: att.accuracy || 0,
-        responses: att.responses || {},
-        completedAt: att.date || new Date().toLocaleDateString('hi-IN'),
-        dateFormatted: att.date || new Date().toLocaleDateString('hi-IN'),
-        completedAtIso: att.completedAtIso || new Date().toISOString(),
-        topicBreakdown: att.topicBreakdown,
-        questions: att.questions || []
-      }));
+        const existingFull = getSavedTestResults();
+        const fullMap = new Map<string, SavedTestResult>();
+        existingFull.forEach((r) => {
+          if (r && r.id) fullMap.set(r.id, r);
+        });
 
-      safeLocalStorageSet('bpsc_full_results_archive', JSON.stringify(finalFullResults.slice(0, 10)));
+        finalAttempts.forEach((att) => {
+          const id = att.id || `result_${att.testId}_${Date.now()}`;
+          if (!fullMap.has(id)) {
+            fullMap.set(id, {
+              id,
+              setId: att.testId,
+              setTitle: att.testTitle,
+              totalQuestions: att.totalQuestions || 20,
+              attemptedCount: (att.correctCount || 0) + (att.incorrectCount || 0),
+              correctCount: att.correctCount || 0,
+              incorrectCount: att.incorrectCount || 0,
+              safeSkipCount: att.safeSkipCount || 0,
+              score: att.score || 0,
+              totalMarks: att.totalMarks || (att.totalQuestions || 20),
+              blankPenaltyCount: att.blankPenaltyCount || 0,
+              totalTimeSpentSeconds: att.totalTimeSpentSeconds || 60,
+              accuracy: att.accuracy || 0,
+              responses: att.responses || {},
+              completedAt: att.date || new Date().toLocaleDateString('hi-IN'),
+              dateFormatted: att.date || new Date().toLocaleDateString('hi-IN'),
+              completedAtIso: att.completedAtIso || new Date().toISOString(),
+              topicBreakdown: att.topicBreakdown,
+              questions: att.questions || []
+            });
+          }
+        });
+
+        const finalFullResults = Array.from(fullMap.values()).sort((a, b) => {
+          const timeA = new Date(a.completedAtIso || a.dateFormatted || a.completedAt).getTime() || 0;
+          const timeB = new Date(b.completedAtIso || b.dateFormatted || b.completedAt).getTime() || 0;
+          return timeB - timeA;
+        });
+
+        safeLocalStorageSet('bpsc_full_results_archive', JSON.stringify(finalFullResults.slice(0, 30)));
+      }
 
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('bpsc_cloud_data_updated'));
@@ -420,6 +499,7 @@ export function setupRealtimeSync(onDataChange: () => void): () => void {
       onDataChange();
     },
     (err) => {
+      checkQuotaError(err);
       console.warn('Realtime sync attempt_records listener:', err);
     }
   );
@@ -514,6 +594,7 @@ export function setupRealtimeSync(onDataChange: () => void): () => void {
  * Save a question to Firestore cloud database
  */
 export async function saveQuestionToCloud(question: Question): Promise<void> {
+  if (isFirestoreQuotaExhausted) return;
   const path = `questions/${question.id}`;
   try {
     const cleanQuestion = cleanPayload({
@@ -528,7 +609,8 @@ export async function saveQuestionToCloud(question: Question): Promise<void> {
       lastSyncedAt: new Date()
     };
     notifyState();
-  } catch (err) {
+  } catch (err: any) {
+    checkQuotaError(err);
     console.warn(`Cloud write question failed (${path}):`, err);
   }
 }
@@ -537,7 +619,7 @@ export async function saveQuestionToCloud(question: Question): Promise<void> {
  * Save multiple questions in a batch to Firestore
  */
 export async function saveBatchQuestionsToCloud(questions: Question[]): Promise<void> {
-  if (questions.length === 0) return;
+  if (questions.length === 0 || isFirestoreQuotaExhausted) return;
   try {
     // Firestore batch limit is 500 operations
     const chunks = [];
@@ -564,7 +646,8 @@ export async function saveBatchQuestionsToCloud(questions: Question[]): Promise<
       lastSyncedAt: new Date()
     };
     notifyState();
-  } catch (err) {
+  } catch (err: any) {
+    checkQuotaError(err);
     console.warn('Cloud write batch questions failed:', err);
   }
 }
@@ -635,7 +718,7 @@ export async function deleteBatchQuestionsFromCloud(questionIds: string[]): Prom
  * Save custom test set to Firestore
  */
 export async function saveTestSetToCloud(testSet: MockTestSet): Promise<void> {
-  if (!testSet || !testSet.id || !Array.isArray(testSet.questions) || testSet.questions.length === 0) return;
+  if (!testSet || !testSet.id || !Array.isArray(testSet.questions) || testSet.questions.length === 0 || isFirestoreQuotaExhausted) return;
   const path = `custom_tests/${testSet.id}`;
   try {
     const cleanTest = cleanPayload({
@@ -650,7 +733,8 @@ export async function saveTestSetToCloud(testSet: MockTestSet): Promise<void> {
       lastSyncedAt: new Date()
     };
     notifyState();
-  } catch (err) {
+  } catch (err: any) {
+    checkQuotaError(err);
     console.warn(`Cloud write test set failed (${path}):`, err);
   }
 }
@@ -659,7 +743,7 @@ export async function saveTestSetToCloud(testSet: MockTestSet): Promise<void> {
  * Delete custom test from Firestore
  */
 export async function deleteTestSetFromCloud(testId: string): Promise<void> {
-  if (!testId) return;
+  if (!testId || isFirestoreQuotaExhausted) return;
   const path = `custom_tests/${testId}`;
   try {
     await deleteDoc(doc(db, 'custom_tests', testId)).catch(() => null);
@@ -683,8 +767,7 @@ export async function deleteTestSetFromCloud(testId: string): Promise<void> {
  * Save topic to Firestore
  */
 export async function saveTopicToCloud(topic: RegisteredTopic): Promise<void> {
-  if (!topic || !topic.key || !/[a-z0-9]/i.test(topic.key) || topic.key === '_____') {
-    console.warn('Skipping saveTopicToCloud for invalid topic key:', topic);
+  if (!topic || !topic.key || !/[a-z0-9]/i.test(topic.key) || topic.key === '_____' || isFirestoreQuotaExhausted) {
     return;
   }
   const path = `topics/${topic.key}`;
@@ -694,7 +777,8 @@ export async function saveTopicToCloud(topic: RegisteredTopic): Promise<void> {
       createdAt: new Date().toISOString()
     });
     await setDoc(doc(db, 'topics', topic.key), cleanTopic);
-  } catch (err) {
+  } catch (err: any) {
+    checkQuotaError(err);
     console.warn(`Cloud write topic failed (${path}):`, err);
   }
 }
@@ -716,7 +800,12 @@ export async function saveAttemptRecordToCloud(record: TestAttemptRecord): Promi
       completedAtIso: record.completedAtIso || new Date().toISOString(),
       createdAt: new Date().toISOString()
     });
-    await setDoc(doc(db, 'attempt_records', recordId), cleanRecord);
+
+    if (!isFirestoreQuotaExhausted) {
+      await setDoc(doc(db, 'attempt_records', recordId), cleanRecord).catch((err) => {
+        checkQuotaError(err);
+      });
+    }
 
     // Non-blocking trigger to send result email to student & parent with dual-tier fallback
     try {

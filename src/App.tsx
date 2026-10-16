@@ -13,7 +13,7 @@ import { QuestionBankView } from './components/QuestionBankView';
 import { ResultsHistoryView } from './components/ResultsHistoryView';
 import { CloudSyncModal } from './components/CloudSyncModal';
 import { generateStandaloneHtml } from './utils/exportHtml';
-import { Smartphone, Download, X } from 'lucide-react';
+import { Smartphone, Download, X, Trophy } from 'lucide-react';
 import {
   getAllAvailableTests,
   deleteTest,
@@ -24,8 +24,7 @@ import {
   saveFullTestResult,
   getSavedTestResults,
   getAllQuestionBank,
-  calculateTopicBreakdown,
-  purgeOlderAttemptRecords
+  calculateTopicBreakdown
 } from './utils/questionBankStorage';
 import { syncFromFirestore, setupRealtimeSync, saveAttemptRecordToCloud } from './services/firebaseSyncService';
 import { usePortalLanguage } from './utils/language';
@@ -128,6 +127,15 @@ export default function App() {
         const matchingSet = availableSets.find((s) => s.id === match.setId) || availableSets[0];
         handleReviewHistoryResult(match, matchingSet);
       }
+    } else if (route.view === 'results') {
+      const historyResults = getSavedTestResults();
+      if (historyResults.length > 0 && availableSets.length > 0) {
+        const latest = historyResults[0];
+        const matchingSet = availableSets.find((s) => s.id === latest.setId) || availableSets[0];
+        handleReviewHistoryResult(latest, matchingSet);
+      } else {
+        setActiveView('results');
+      }
     } else if (route.view && route.view !== 'intro') {
       setActiveView(route.view);
     }
@@ -137,7 +145,6 @@ export default function App() {
   useEffect(() => {
     const handlePopState = () => {
       const route = parseUrlRoute();
-      setActiveView(route.view);
       if (route.testId) {
         setCurrentSetId(route.testId);
       }
@@ -147,8 +154,19 @@ export default function App() {
         if (match) {
           const matchingSet = availableSets.find((s) => s.id === match.setId) || availableSets[0];
           handleReviewHistoryResult(match, matchingSet);
+          return;
         }
       }
+      if (route.view === 'results') {
+        const historyResults = getSavedTestResults();
+        if (historyResults.length > 0 && availableSets.length > 0) {
+          const latest = historyResults[0];
+          const matchingSet = availableSets.find((s) => s.id === latest.setId) || availableSets[0];
+          handleReviewHistoryResult(latest, matchingSet);
+          return;
+        }
+      }
+      setActiveView(route.view);
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -311,9 +329,6 @@ export default function App() {
     };
 
     window.addEventListener('bpsc_cloud_data_updated', handleUpdate);
-
-    // Purge any older attempts from previous days on startup
-    purgeOlderAttemptRecords();
 
     syncFromFirestore()
       .then(() => {
@@ -745,18 +760,44 @@ export default function App() {
           />
         )}
 
-        {activeView === 'results' && testResult && (
-          <ResultAnalytics
-            result={testResult}
-            testSet={currentSet}
-            onReattempt={handleReattempt}
-            onReattemptMissed={handleReattemptMissed}
-            onNextSet={handleNextSet}
-            onGoHome={handleGoHome}
-            onDownloadHtml={handleDownloadHtml}
-            onOpenShareModal={() => setIsShareModalOpen(true)}
-            userName={candidateName}
-          />
+        {activeView === 'results' && (
+          testResult ? (
+            <ResultAnalytics
+              result={testResult}
+              testSet={currentSet}
+              onReattempt={handleReattempt}
+              onReattemptMissed={handleReattemptMissed}
+              onNextSet={handleNextSet}
+              onGoHome={handleGoHome}
+              onDownloadHtml={handleDownloadHtml}
+              onOpenShareModal={() => setIsShareModalOpen(true)}
+              userName={candidateName}
+            />
+          ) : (
+            <div className="max-w-xl mx-auto py-16 px-4 text-center space-y-4">
+              <div className="w-16 h-16 rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center justify-center mx-auto">
+                <Trophy className="w-8 h-8" />
+              </div>
+              <h2 className="text-xl font-black text-slate-900 dark:text-white">कोई हालिया टेस्ट परिणाम नहीं मिला</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                आपने अभी तक कोई टेस्ट सबमिट नहीं किया है या पिछला परिणाम हिस्ट्री में सुरक्षित है।
+              </p>
+              <div className="flex items-center justify-center gap-3 pt-2">
+                <button
+                  onClick={() => handleStartTest()}
+                  className="px-5 py-2.5 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs hover:bg-amber-400 shadow-md cursor-pointer"
+                >
+                  नया टेस्ट शुरू करें
+                </button>
+                <button
+                  onClick={handleOpenResultsHistory}
+                  className="px-5 py-2.5 rounded-xl bg-slate-200 dark:bg-white/10 text-slate-800 dark:text-white font-bold text-xs hover:bg-slate-300 dark:hover:bg-white/20 transition-all cursor-pointer"
+                >
+                  हिस्ट्री देखें
+                </button>
+              </div>
+            </div>
+          )
         )}
       </main>
 

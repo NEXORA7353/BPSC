@@ -1280,24 +1280,27 @@ export function isTodayAttempt(att: any): boolean {
 }
 
 /**
- * Purges any attempt records in localStorage that are from older dates,
- * leaving only today's attempts active.
+ * Retains all student attempt records across dates.
+ * Only prunes oldest records if total records exceed 50 to maintain LocalStorage health.
  */
 export function purgeOlderAttemptRecords(): void {
   try {
-    const currentAttempts = getAttemptRecords();
-    const todayAttempts = currentAttempts.filter(isTodayAttempt);
-    if (todayAttempts.length !== currentAttempts.length) {
-      localStorage.setItem(STORAGE_KEYS.ATTEMPT_HISTORY, JSON.stringify(todayAttempts));
+    const rawAtt = localStorage.getItem(STORAGE_KEYS.ATTEMPT_HISTORY);
+    if (rawAtt) {
+      const parsed = JSON.parse(rawAtt);
+      if (Array.isArray(parsed) && parsed.length > 50) {
+        localStorage.setItem(STORAGE_KEYS.ATTEMPT_HISTORY, JSON.stringify(parsed.slice(0, 50)));
+      }
     }
-
-    const currentResults = getSavedTestResults();
-    const todayResults = currentResults.filter(isTodayAttempt);
-    if (todayResults.length !== currentResults.length) {
-      localStorage.setItem(STORAGE_KEYS.FULL_SAVED_RESULTS, JSON.stringify(todayResults));
+    const rawRes = localStorage.getItem(STORAGE_KEYS.FULL_SAVED_RESULTS);
+    if (rawRes) {
+      const parsed = JSON.parse(rawRes);
+      if (Array.isArray(parsed) && parsed.length > 30) {
+        localStorage.setItem(STORAGE_KEYS.FULL_SAVED_RESULTS, JSON.stringify(parsed.slice(0, 30)));
+      }
     }
   } catch (err) {
-    console.warn('Error purging older attempt records:', err);
+    console.warn('Attempt pruning warning:', err);
   }
 }
 
@@ -1305,10 +1308,43 @@ export function getSavedTestResults(): SavedTestResult[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.FULL_SAVED_RESULTS);
     const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return parsed;
+    }
+  } catch {}
+
+  // Dual Fallback: reconstruct from ATTEMPT_HISTORY if full saved results was wiped
+  try {
+    const rawAtt = localStorage.getItem(STORAGE_KEYS.ATTEMPT_HISTORY);
+    const attempts: TestAttemptRecord[] = rawAtt ? JSON.parse(rawAtt) : [];
+    if (Array.isArray(attempts) && attempts.length > 0) {
+      const reconstructed: SavedTestResult[] = attempts.map((att) => ({
+        id: att.id || `result_${att.testId}_${Date.now()}`,
+        setId: att.testId,
+        setTitle: att.testTitle,
+        totalQuestions: att.totalQuestions || 20,
+        attemptedCount: (att.correctCount || 0) + (att.incorrectCount || 0),
+        correctCount: att.correctCount || 0,
+        incorrectCount: att.incorrectCount || 0,
+        safeSkipCount: att.safeSkipCount || 0,
+        score: att.score || 0,
+        totalMarks: att.totalMarks || (att.totalQuestions || 20),
+        blankPenaltyCount: att.blankPenaltyCount || 0,
+        totalTimeSpentSeconds: att.totalTimeSpentSeconds || 60,
+        accuracy: att.accuracy || 0,
+        responses: att.responses || {},
+        completedAt: att.date || new Date().toLocaleDateString('hi-IN'),
+        dateFormatted: att.date || new Date().toLocaleDateString('hi-IN'),
+        completedAtIso: att.completedAtIso || new Date().toISOString(),
+        topicBreakdown: att.topicBreakdown,
+        questions: att.questions || []
+      }));
+      safeLocalStorageSet(STORAGE_KEYS.FULL_SAVED_RESULTS, JSON.stringify(reconstructed));
+      return reconstructed;
+    }
+  } catch {}
+
+  return [];
 }
 
 export function saveFullTestResult(result: SavedTestResult): void {
@@ -1358,10 +1394,40 @@ export function getAttemptRecords(): TestAttemptRecord[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.ATTEMPT_HISTORY);
     const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return parsed;
+    }
+  } catch {}
+
+  // Dual Fallback: reconstruct from full results archive if attempt history was cleared
+  try {
+    const rawRes = localStorage.getItem(STORAGE_KEYS.FULL_SAVED_RESULTS);
+    const results: SavedTestResult[] = rawRes ? JSON.parse(rawRes) : [];
+    if (Array.isArray(results) && results.length > 0) {
+      const attempts: TestAttemptRecord[] = results.map((r) => ({
+        id: r.id,
+        testId: r.setId,
+        testTitle: r.setTitle,
+        score: r.score,
+        totalMarks: r.totalMarks,
+        accuracy: r.accuracy,
+        correctCount: r.correctCount,
+        incorrectCount: r.incorrectCount,
+        safeSkipCount: r.safeSkipCount,
+        date: r.dateFormatted || r.completedAt,
+        completedAtIso: r.completedAtIso,
+        studentName: 'Priya Patel',
+        totalQuestions: r.totalQuestions,
+        responses: r.responses,
+        topicBreakdown: r.topicBreakdown,
+        questions: r.questions
+      }));
+      safeLocalStorageSet(STORAGE_KEYS.ATTEMPT_HISTORY, JSON.stringify(attempts));
+      return attempts;
+    }
+  } catch {}
+
+  return [];
 }
 
 export function saveAttemptRecord(record: TestAttemptRecord): void {
