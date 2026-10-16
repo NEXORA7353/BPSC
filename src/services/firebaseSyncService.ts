@@ -70,24 +70,13 @@ export function subscribeToSyncState(listener: SyncListener): () => void {
   };
 }
 
-let isFirestoreQuotaExhausted = false;
-
 function checkQuotaError(err: any): boolean {
   if (!err) return false;
   const isQuota =
     err?.code === 'resource-exhausted' ||
     (typeof err?.message === 'string' && (err.message.includes('Quota') || err.message.includes('quota')));
   if (isQuota) {
-    if (!isFirestoreQuotaExhausted) {
-      isFirestoreQuotaExhausted = true;
-      console.warn('[Firestore] Free daily write quota reached (Free Tier limit). Operating in 100% resilient LocalStorage mode.');
-      syncState = {
-        ...syncState,
-        isConnected: false,
-        error: 'क्लाउड कोटा सीमा (Free Tier limit) - आपका सारा डेटा लोकल स्टोरेज में 100% सुरक्षित है।'
-      };
-      notifyState();
-    }
+    console.warn('[Firestore] Quota notice from cloud database:', err?.message || err);
     return true;
   }
   return false;
@@ -594,7 +583,7 @@ export function setupRealtimeSync(onDataChange: () => void): () => void {
  * Save a question to Firestore cloud database
  */
 export async function saveQuestionToCloud(question: Question): Promise<void> {
-  if (isFirestoreQuotaExhausted) return;
+  if (!question || !question.id) return;
   const path = `questions/${question.id}`;
   try {
     const cleanQuestion = cleanPayload({
@@ -619,7 +608,7 @@ export async function saveQuestionToCloud(question: Question): Promise<void> {
  * Save multiple questions in a batch to Firestore
  */
 export async function saveBatchQuestionsToCloud(questions: Question[]): Promise<void> {
-  if (questions.length === 0 || isFirestoreQuotaExhausted) return;
+  if (!Array.isArray(questions) || questions.length === 0) return;
   try {
     // Firestore batch limit is 500 operations
     const chunks = [];
@@ -718,7 +707,7 @@ export async function deleteBatchQuestionsFromCloud(questionIds: string[]): Prom
  * Save custom test set to Firestore
  */
 export async function saveTestSetToCloud(testSet: MockTestSet): Promise<void> {
-  if (!testSet || !testSet.id || !Array.isArray(testSet.questions) || testSet.questions.length === 0 || isFirestoreQuotaExhausted) return;
+  if (!testSet || !testSet.id || !Array.isArray(testSet.questions) || testSet.questions.length === 0) return;
   const path = `custom_tests/${testSet.id}`;
   try {
     const cleanTest = cleanPayload({
@@ -743,7 +732,7 @@ export async function saveTestSetToCloud(testSet: MockTestSet): Promise<void> {
  * Delete custom test from Firestore
  */
 export async function deleteTestSetFromCloud(testId: string): Promise<void> {
-  if (!testId || isFirestoreQuotaExhausted) return;
+  if (!testId) return;
   const path = `custom_tests/${testId}`;
   try {
     await deleteDoc(doc(db, 'custom_tests', testId)).catch(() => null);
@@ -767,7 +756,7 @@ export async function deleteTestSetFromCloud(testId: string): Promise<void> {
  * Save topic to Firestore
  */
 export async function saveTopicToCloud(topic: RegisteredTopic): Promise<void> {
-  if (!topic || !topic.key || !/[a-z0-9]/i.test(topic.key) || topic.key === '_____' || isFirestoreQuotaExhausted) {
+  if (!topic || !topic.key || !/[a-z0-9]/i.test(topic.key) || topic.key === '_____') {
     return;
   }
   const path = `topics/${topic.key}`;
@@ -801,11 +790,9 @@ export async function saveAttemptRecordToCloud(record: TestAttemptRecord): Promi
       createdAt: new Date().toISOString()
     });
 
-    if (!isFirestoreQuotaExhausted) {
-      await setDoc(doc(db, 'attempt_records', recordId), cleanRecord).catch((err) => {
-        checkQuotaError(err);
-      });
-    }
+    await setDoc(doc(db, 'attempt_records', recordId), cleanRecord).catch((err) => {
+      checkQuotaError(err);
+    });
 
     // Non-blocking trigger to send result email to student & parent with dual-tier fallback
     try {

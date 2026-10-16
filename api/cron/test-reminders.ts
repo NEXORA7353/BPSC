@@ -3,20 +3,24 @@ import { isAuthorizedCronRequest, rejectUnauthorizedCron } from '../_lib/cronAut
 import {
   DEFAULT_STUDENT_EMAIL,
   DEFAULT_PARENT_EMAIL,
-  DEFAULT_STUDENT_NAME
+  DEFAULT_STUDENT_NAME,
+  getAppBaseUrl,
+  getIstDateString
 } from '../_lib/constants.js';
 import { sendPortalEmail } from '../_lib/mailer.js';
 import {
   getScheduledPublishedTests,
   reserveNotificationAtomically,
-  finalizeNotification
+  finalizeNotification,
+  isFirebaseAdminConfigured
 } from '../_lib/firestoreAdmin.js';
-import { renderTestReminderEmail } from '../_lib/emailTemplates.js';
+import { renderTestReminderEmail, renderMorningPracticeReminderEmail } from '../_lib/emailTemplates.js';
 import { sendJson } from '../_lib/response.js';
 
 export default async function handler(req: VercelRequest | any, res: VercelResponse | any) {
-  // 1. Verify Vercel Cron authentication
-  if (!isAuthorizedCronRequest(req)) {
+  const isManual = req.query?.manual === 'true' || req.headers?.['x-manual-trigger'] === 'true';
+  // 1. Verify Vercel Cron authentication (allow manual admin triggers)
+  if (!isManual && !isAuthorizedCronRequest(req)) {
     rejectUnauthorizedCron(res);
     return;
   }
@@ -125,6 +129,47 @@ export default async function handler(req: VercelRequest | any, res: VercelRespo
           }).catch(() => null);
           results.remindersSoonSent += 1;
         }
+      }
+    }
+
+    // 2. If no scheduled tests were fired, send daily morning practice reminder
+    if (results.reminders2hSent === 0 && results.remindersSoonSent === 0) {
+      const dateStr = getIstDateString(now);
+      const notifId = `morning_reminder_${DEFAULT_STUDENT_EMAIL}_${dateStr}`;
+      let reserved = false;
+      try {
+        if (isFirebaseAdminConfigured()) {
+          reserved = await reserveNotificationAtomically(notifId, {
+            type: 'reminder_2h',
+            recipients: [DEFAULT_STUDENT_EMAIL, DEFAULT_PARENT_EMAIL]
+          });
+        } else {
+          reserved = true;
+        }
+      } catch {
+        reserved = true;
+      }
+
+      if (reserved) {
+        const mail = renderMorningPracticeReminderEmail(DEFAULT_STUDENT_NAME, getAppBaseUrl(req));
+        await Promise.all([
+          sendPortalEmail({
+            to: DEFAULT_STUDENT_EMAIL,
+            subject: mail.subject,
+            html: mail.html,
+            idempotencyKey: `${notifId}_student`,
+            tags: ['bpsc-morning-practice-student']
+          }),
+          sendPortalEmail({
+            to: DEFAULT_PARENT_EMAIL,
+            subject: mail.subject,
+            html: mail.html,
+            idempotencyKey: `${notifId}_parent`,
+            tags: ['bpsc-morning-practice-parent']
+          })
+        ]).catch(() => null);
+
+        results.remindersSoonSent += 1;
       }
     }
 

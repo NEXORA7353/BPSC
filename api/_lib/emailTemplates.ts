@@ -641,3 +641,46 @@ export function renderTestReminderEmail(
     testUrl
   };
 }
+
+// -------------------------------------------------------------
+// 6. DAILY MORNING PRACTICE REMINDER (हिंदी)
+// -------------------------------------------------------------
+export function renderMorningPracticeReminderEmail(
+  studentName?: string,
+  baseUrlOverride?: string
+): { subject: string; html: string; portalUrl: string } {
+  const baseUrl = baseUrlOverride ? baseUrlOverride.replace(/\/+$/, '') : getAppBaseUrl();
+  const candidateName = studentName || 'प्रिया पटेल';
+
+  const content = `
+    <h2 style="margin: 0 0 8px 0; font-size: 21px; color: #0f172a;">☀️ सुप्रभात! आज का गणित अभ्यास लक्ष्य तैयार है</h2>
+    <p style="font-size: 14px; color: #475569; line-height: 1.6; margin: 0 0 16px 0;">
+      👤 <strong>अभ्यर्थी:</strong> ${candidateName} &nbsp;|&nbsp; 🎯 <strong>लक्ष्य:</strong> BPSC TRE 4.0 शिक्षक चयन परीक्षा
+    </p>
+
+    <div class="card" style="border-left: 5px solid #2563eb;">
+      <h3 style="margin: 0 0 6px 0; font-size: 16px; color: #1e3a8a;">📝 आज के पहले सत्र में कम से कम 20 प्रश्न हल करें:</h3>
+      <p style="margin: 0; font-size: 13px; color: #334155; line-height: 1.7;">
+        • परीक्षा में सफलता निरंतर दैनिक अभ्यास से मिलती है।<br>
+        • पोर्टल पर 677+ प्रामाणिक प्रश्न और नए मॉक टेस्ट उपलब्ध हैं।<br>
+        • -0.33 नेगेटिव मार्किंग से बचने के लिए Option (E) सेफ स्किप का अभ्यास करें।
+      </p>
+    </div>
+
+    <div style="text-align: center; margin: 28px 0 18px 0;">
+      <a href="${baseUrl}" class="btn">⚡ अभी सुबह का मॉक टेस्ट शुरू करें</a>
+    </div>
+
+    <div class="direct-link-box">
+      🔗 <strong>सीधा पोर्टल लिंक:</strong><br>
+      <a href="${baseUrl}" style="color: #2563eb; text-decoration: underline; font-weight: 600;">${baseUrl}</a>
+    </div>
+  `;
+
+  return {
+    subject: `[Morning Practice Alert] Daily Mock Test Ready for ${candidateName} - BPSC TRE 4.0`,
+    html: baseEmailWrapper('दैनिक सुबह का मॉक टेस्ट', content),
+    portalUrl: baseUrl
+  };
+}
+
