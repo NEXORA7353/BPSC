@@ -19,11 +19,17 @@ import {
   TrendingUp,
   Zap,
   Target,
-  Bell
+  Bell,
+  BellRing
 } from 'lucide-react';
 import { ThemeMode } from '../types';
 import { LanguageToggle } from './LanguageToggle';
 import { PortalLanguage } from '../utils/language';
+import {
+  requestMobileNotificationPermission,
+  saveNotificationSettings,
+  dispatchPortalNotification
+} from '../utils/mobileNotificationService';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -247,13 +253,51 @@ export function Sidebar({
             </button>
 
             <button
-              onClick={() => {
-                if (onOpenNotificationCenter) onOpenNotificationCenter();
+              onClick={async () => {
+                if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission !== 'granted') {
+                  const res = await requestMobileNotificationPermission();
+                  if (res === 'granted') {
+                    saveNotificationSettings({ pushEnabled: true });
+                    await dispatchPortalNotification({
+                      title: '[अधिसूचना सक्रिय]: BPSC TRE 4.0 अलर्ट चालू हुए',
+                      body: 'बधाई! आपके मोबाइल व लैपटॉप पर नोटिफिकेशन सफलतापूर्वक चालू हो गए हैं।',
+                      category: 'system',
+                      severity: 'info',
+                      url: window.location.origin
+                    });
+                  } else {
+                    if (onOpenNotificationCenter) onOpenNotificationCenter();
+                  }
+                } else {
+                  if (onOpenNotificationCenter) onOpenNotificationCenter();
+                }
                 onClose();
               }}
               className="w-full p-2.5 rounded-xl font-bold text-xs flex items-center justify-between text-slate-300 hover:bg-white/5 hover:text-white transition-all cursor-pointer"
             >
-
+              <div className="flex items-center gap-3">
+                {typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted' ? (
+                  <Bell className="w-4 h-4 text-emerald-400" />
+                ) : (
+                  <BellRing className="w-4 h-4 text-amber-400 animate-pulse" />
+                )}
+                <span>
+                  {typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted'
+                    ? 'अधिसूचना सेटिंग्स व अलर्ट्स'
+                    : 'नोटिफिकेशन ऑन करें (1-Click)'}
+                </span>
+              </div>
+              <span
+                className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold ${
+                  typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted'
+                    ? 'bg-emerald-500/20 text-emerald-300'
+                    : 'bg-amber-500/20 text-amber-300 animate-pulse'
+                }`}
+              >
+                {typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted'
+                  ? 'ON'
+                  : 'ENABLE'}
+              </span>
             </button>
           </div>
 

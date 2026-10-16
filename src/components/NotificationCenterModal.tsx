@@ -77,6 +77,13 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
       if (res === 'granted') {
         saveNotificationSettings({ pushEnabled: true });
         setSettings(getNotificationSettings());
+        await dispatchPortalNotification({
+          title: '[अधिसूचना सक्रिय]: BPSC TRE 4.0 अलर्ट चालू हुए',
+          body: 'बधाई! आपके मोबाइल व लैपटॉप पर नोटिफिकेशन सफलतापूर्वक चालू हो गए हैं।',
+          category: 'system',
+          severity: 'info',
+          url: window.location.origin
+        });
       }
     } else {
       const next = !settings.pushEnabled;
@@ -257,17 +264,17 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
             <div className="space-y-1">
               <div className="font-bold text-amber-300 flex items-center gap-1.5">
                 <Smartphone className="w-4 h-4" />
-                <span>मोबाइल लॉकस्क्रीन नोटिफिकेशन निष्क्रिय है</span>
+                <span>मोबाइल व लैपटॉप नोटिफिकेशन बंद हैं</span>
               </div>
               <p className="text-slate-300">
-                ब्राउज़र नोटिफिकेशन अनुमति चालू करें ताकि फोन की स्क्रीन लॉक होने पर भी आपको समय पर अभ्यास अलर्ट मिले।
+                1-क्लिक में चालू करें ताकि फोन या लैपटॉप पर अभ्यास स्मरण व परीक्षा रिजल्ट अलर्ट तुरंत आएं।
               </p>
             </div>
             <button
               onClick={handleTogglePush}
-              className="px-4 py-2 rounded-xl bg-amber-400 text-slate-950 font-black shrink-0 hover:bg-amber-300 transition-colors cursor-pointer shadow-md"
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black shrink-0 hover:from-amber-400 hover:to-orange-400 transition-all cursor-pointer shadow-md shadow-amber-500/20 active:scale-95 animate-pulse"
             >
-              अनुमति दें (Enable)
+              तुरंत चालू करें (1-Click Enable)
             </button>
           </div>
         )}

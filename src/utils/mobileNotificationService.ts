@@ -240,6 +240,9 @@ export async function requestMobileNotificationPermission(): Promise<Notificatio
     const permission = await Notification.requestPermission();
     if (permission === 'granted') {
       saveNotificationSettings({ pushEnabled: true });
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+      }
     }
     return permission;
   } catch {

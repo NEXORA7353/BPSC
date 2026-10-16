@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   FileDown,
   HelpCircle,
@@ -13,9 +13,16 @@ import {
   Database,
   User,
   PanelLeftOpen,
-  Bell
+  Bell,
+  BellRing,
+  CheckCircle2
 } from 'lucide-react';
 import { MockTestSet, ThemeMode } from '../types';
+import {
+  requestMobileNotificationPermission,
+  saveNotificationSettings,
+  dispatchPortalNotification
+} from '../utils/mobileNotificationService';
 import { ThemeToggle } from './ThemeToggle';
 import { LanguageToggle } from './LanguageToggle';
 import { PortalLanguage } from '../utils/language';
@@ -82,6 +89,57 @@ export function TopBar({
 }: TopBarProps) {
   const qCount = totalQuestionsCount > 0 ? totalQuestionsCount : 0;
   const qLabel = qCount > 0 ? `${qCount}` : '…';
+
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission>(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      return Notification.permission;
+    }
+    return 'default';
+  });
+  const [isActivatingNotif, setIsActivatingNotif] = useState(false);
+
+  useEffect(() => {
+    const updatePerm = () => {
+      if (typeof window !== 'undefined' && 'Notification' in window) {
+        setNotifPermission(Notification.permission);
+      }
+    };
+    updatePerm();
+    window.addEventListener('focus', updatePerm);
+    window.addEventListener('bpsc_notification_settings_changed', updatePerm);
+    return () => {
+      window.removeEventListener('focus', updatePerm);
+      window.removeEventListener('bpsc_notification_settings_changed', updatePerm);
+    };
+  }, []);
+
+  const handleDirectEnableNotif = async () => {
+    if (notifPermission === 'granted') {
+      if (onOpenNotificationCenter) onOpenNotificationCenter();
+      return;
+    }
+    setIsActivatingNotif(true);
+    try {
+      const res = await requestMobileNotificationPermission();
+      setNotifPermission(res);
+      if (res === 'granted') {
+        saveNotificationSettings({ pushEnabled: true });
+        await dispatchPortalNotification({
+          title: '[अधिसूचना सक्रिय]: BPSC TRE 4.0 अलर्ट चालू हुए',
+          body: 'बधाई! आपके मोबाइल व लैपटॉप पर दैनिक अभ्यास अलर्ट व हर घंटे का मोटिवेशन सक्रिय हो गया है।',
+          category: 'system',
+          severity: 'info',
+          url: window.location.origin
+        });
+      } else if (res === 'denied') {
+        if (onOpenNotificationCenter) onOpenNotificationCenter();
+      }
+    } catch (e) {
+      console.warn('Error enabling notification:', e);
+    } finally {
+      setIsActivatingNotif(false);
+    }
+  };
 
   return (
     <header className="border-b border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl sticky top-0 z-40 shadow-xs dark:shadow-xl text-slate-900 dark:text-slate-100 transition-colors">
@@ -190,14 +248,32 @@ export function TopBar({
 
         {/* Right: User Profile & Actions */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {/* Notification Center Trigger */}
-          <button
-            onClick={onOpenNotificationCenter}
-            className="relative flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 text-xs font-bold text-slate-700 dark:text-slate-200 transition-all cursor-pointer shadow-xs"
-            title="Mobile Notifications & Hourly Discipline Engine"
-          >
-
-          </button>
+          {/* Notification Button: Direct 1-Click when not granted, or opens Center when granted */}
+          {notifPermission !== 'granted' ? (
+            <button
+              onClick={handleDirectEnableNotif}
+              disabled={isActivatingNotif}
+              className="relative flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs transition-all cursor-pointer shadow-md shadow-amber-500/25 active:scale-95 animate-pulse"
+              title="मोबाइल व लैपटॉप नोटिफिकेशन 1-क्लिक में चालू करें"
+            >
+              <BellRing className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden sm:inline">नोटिफिकेशन ऑन करें</span>
+              <span className="sm:hidden">अलर्ट ऑन</span>
+            </button>
+          ) : (
+            <button
+              onClick={onOpenNotificationCenter}
+              className="relative flex items-center gap-1.5 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 text-xs font-bold text-slate-700 dark:text-slate-200 transition-all cursor-pointer shadow-xs"
+              title="नोटिफिकेशन केंद्र व अलर्ट सेटिंग्स"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <Bell className="w-3.5 h-3.5 text-amber-500" />
+              <span className="hidden sm:inline">अलर्ट्स</span>
+            </button>
+          )}
 
           {/* User Name Badge / Sync Profile Trigger */}
           <button
